@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trang Chủ - Dating App</title>
+    <title>LoveConnect - Dating App</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -13,20 +14,22 @@
         }
         
         body {
-            background-color: #f0f2f5;
+            background-color: #fafafa;
             color: #1c1e21;
+            line-height: 1.5;
         }
         
         .header {
-            background-color: #fff;
+            background: linear-gradient(to right, #e91e63, #ff4e8c);
             padding: 15px 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 10px rgba(233, 30, 99, 0.3);
             position: sticky;
             top: 0;
             z-index: 100;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            color: white;
         }
         
         .logo {
@@ -35,14 +38,15 @@
         }
         
         .logo h1 {
-            color: #e91e63;
+            color: white;
             font-size: 24px;
             margin-right: 20px;
+            font-weight: 700;
         }
         
         .nav-menu {
             display: flex;
-            gap: 15px;
+            gap: 5px;
         }
         
         .nav-item {
@@ -50,15 +54,15 @@
             border-radius: 20px;
             cursor: pointer;
             transition: background-color 0.3s;
+            color: white;
         }
         
         .nav-item.active {
-            background-color: #e7f3ff;
-            color: #e91e63;
+            background-color: rgba(255, 255, 255, 0.2);
         }
         
         .nav-item:hover {
-            background-color: #f0f2f5;
+            background-color: rgba(255, 255, 255, 0.15);
         }
         
         .user-menu {
@@ -71,26 +75,40 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background-color: #e91e63;
-            color: white;
+            background-color: white;
+            color: #e91e63;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
             cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            object-fit: cover;
         }
         
         .logout-btn {
-            background-color: #f0f2f5;
+            background-color: rgba(255, 255, 255, 0.2);
             border: none;
             padding: 8px 15px;
             border-radius: 6px;
             cursor: pointer;
             font-weight: 500;
+            color: white;
+            transition: background-color 0.3s;
         }
         
         .logout-btn:hover {
-            background-color: #e4e6eb;
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
         }
         
         .main-container {
@@ -108,73 +126,134 @@
         
         .profile-card {
             background-color: #fff;
-            border-radius: 10px;
+            border-radius: 15px;
             padding: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             margin-bottom: 20px;
+            text-align: center;
         }
         
         .profile-header {
             display: flex;
+            flex-direction: column;
             align-items: center;
             margin-bottom: 15px;
+            position: relative;
         }
         
         .profile-avatar {
-            width: 60px;
-            height: 60px;
+            width: 80px;
+            height: 80px;
             border-radius: 50%;
-            background-color: #e91e63;
+            background: linear-gradient(to right, #e91e63, #ff4e8c);
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            font-size: 32px;
             font-weight: bold;
-            margin-right: 15px;
+            margin-bottom: 15px;
+            border: 3px solid white;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            object-fit: cover;
+            position: relative;
+        }
+        
+        .change-avatar-btn {
+            position: absolute;
+            bottom: 15px;
+            right: 80px;
+            background-color: #4267b2;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
         
         .profile-info h2 {
             font-size: 18px;
             margin-bottom: 5px;
+            color: #333;
         }
         
         .profile-info p {
-            color: #65676b;
+            color: #666;
             font-size: 14px;
+        }
+        
+        .profile-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #f0f2f5;
+        }
+        
+        .profile-stats p {
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .profile-stats strong {
+            display: block;
+            font-size: 18px;
+            color: #e91e63;
         }
         
         .friends-card {
             background-color: #fff;
-            border-radius: 10px;
+            border-radius: 15px;
             padding: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
         
         .friends-card h3 {
             margin-bottom: 15px;
             padding-bottom: 10px;
             border-bottom: 1px solid #f0f2f5;
+            color: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .see-all {
+            font-size: 12px;
+            color: #e91e63;
+            cursor: pointer;
         }
         
         .friend-item {
             display: flex;
             align-items: center;
             padding: 10px 0;
-            border-bottom: 1px solid #f0f2f5;
+            border-bottom: 1px solid #f9f9f9;
+            cursor: pointer;
+        }
+        
+        .friend-item:last-child {
+            border-bottom: none;
         }
         
         .friend-avatar {
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background-color: #4267b2;
+            background: linear-gradient(to right, #4267b2, #5b7cbf);
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
             margin-right: 10px;
+            flex-shrink: 0;
+            object-fit: cover;
         }
         
         .content {
@@ -183,9 +262,9 @@
         
         .post-box {
             background-color: #fff;
-            border-radius: 10px;
+            border-radius: 15px;
             padding: 15px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             margin-bottom: 20px;
         }
         
@@ -199,21 +278,24 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background-color: #e91e63;
+            background: linear-gradient(to right, #e91e63, #ff4e8c);
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
             flex-shrink: 0;
+            object-fit: cover;
         }
         
         .post-input-field {
             flex-grow: 1;
             padding: 12px 15px;
-            border: 1px solid #dddfe2;
+            border: 1px solid #e6e6e6;
             border-radius: 20px;
             cursor: pointer;
+            background-color: #f9f9f9;
+            transition: background-color 0.3s;
         }
         
         .post-input-field:hover {
@@ -222,68 +304,111 @@
         
         .discover-section {
             background-color: #fff;
-            border-radius: 10px;
+            border-radius: 15px;
             padding: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
         
         .discover-section h3 {
             margin-bottom: 15px;
             padding-bottom: 10px;
             border-bottom: 1px solid #f0f2f5;
+            color: #333;
         }
         
         .user-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 20px;
         }
         
         .user-card {
-            background-color: #f8f9fa;
-            border-radius: 10px;
+            background: linear-gradient(to bottom, #ffffff, #f9f9f9);
+            border-radius: 12px;
             padding: 15px;
             text-align: center;
-            transition: transform 0.3s;
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 1px solid #f0f0f0;
+            position: relative;
+            overflow: hidden;
         }
         
         .user-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
         }
         
         .user-card-avatar {
-            width: 60px;
-            height: 60px;
+            width: 70px;
+            height: 70px;
             border-radius: 50%;
-            background-color: #4267b2;
+            background: linear-gradient(to right, #4267b2, #5b7cbf);
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
             margin: 0 auto 10px;
+            font-size: 24px;
+            border: 3px solid white;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            object-fit: cover;
         }
         
         .user-card h4 {
             margin-bottom: 5px;
             font-size: 14px;
+            color: #333;
         }
         
         .user-card p {
-            color: #65676b;
+            color: #666;
             font-size: 12px;
             margin-bottom: 10px;
         }
         
+        .user-card-actions {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+        
         .add-friend-btn {
-            background-color: #e91e63;
+            background: linear-gradient(to right, #e91e63, #ff4e8c);
             color: white;
             border: none;
-            border-radius: 6px;
-            padding: 6px 12px;
+            border-radius: 20px;
+            padding: 6px 15px;
             font-size: 12px;
             cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .add-friend-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .matchmaking-btn {
+            background: linear-gradient(to right, #4267b2, #5b7cbf);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 20px auto;
+            font-weight: 600;
+        }
+        
+        .matchmaking-btn:hover {
+            transform: scale(1.05);
         }
         
         .notification {
@@ -294,71 +419,393 @@
             border-radius: 8px;
             background-color: #4caf50;
             color: white;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             z-index: 1000;
-            display: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateX(100%);
+            transition: transform 0.3s ease-out;
         }
         
-        .post-item {
-            background-color: #fff;
-            border-radius: 10px;
-            padding: 15px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.error {
+            background-color: #f44336;
+        }
+        
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+        
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal {
+            background-color: white;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            padding: 25px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+            transform: translateY(-20px);
+            transition: transform 0.3s;
+        }
+        
+        .modal-overlay.show .modal {
+            transform: translateY(0);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .modal-header h2 {
+            color: #e91e63;
+            font-size: 22px;
+        }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        .form-group {
             margin-bottom: 20px;
         }
         
-        .post-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
         }
         
-        .post-avatar {
-            width: 40px;
-            height: 40px;
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #e91e63;
+        }
+        
+        .submit-btn {
+            background: linear-gradient(to right, #e91e63, #ff4e8c);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        /* Matching room styles */
+        .matching-room {
+            background-color: #fff;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+        
+        .room-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #f0f2f5;
+        }
+        
+        .room-title {
+            font-size: 20px;
+            color: #e91e63;
+            font-weight: 600;
+        }
+        
+        .leave-room {
+            background: #f0f2f5;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .leave-room:hover {
+            background: #e4e6eb;
+        }
+        
+        .room-users {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .room-user {
+            background: #f9f9f9;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            transition: transform 0.3s;
+            border: 1px solid #eee;
+        }
+        
+        .room-user:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .room-user-avatar {
+            width: 70px;
+            height: 70px;
             border-radius: 50%;
-            background-color: #e91e63;
+            background: linear-gradient(to right, #4267b2, #5b7cbf);
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
+            margin: 0 auto 10px;
+            font-size: 24px;
+            border: 3px solid white;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            object-fit: cover;
+        }
+        
+        .room-user h4 {
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .room-user p {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+        
+        .chat-btn {
+            background: linear-gradient(to right, #e91e63, #ff4e8c);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 6px 15px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin: 0 auto;
+        }
+        
+        /* Chat styles */
+        .chat-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            height: 450px;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+            overflow: hidden;
+            transform: translateY(100%);
+            opacity: 0;
+            transition: transform 0.3s, opacity 0.3s;
+        }
+        
+        .chat-container.active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .chat-header {
+            background: linear-gradient(to right, #e91e63, #ff4e8c);
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .chat-header h3 {
+            font-size: 16px;
+        }
+        
+        .close-chat {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        
+        .chat-messages {
+            flex-grow: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .message {
+            max-width: 80%;
+            padding: 10px 15px;
+            border-radius: 18px;
+            margin-bottom: 5px;
+        }
+        
+        .message.sent {
+            align-self: flex-end;
+            background-color: #e91e63;
+            color: white;
+        }
+        
+        .message.received {
+            align-self: flex-start;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        
+        .chat-input {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #eee;
+        }
+        
+        .chat-input input {
+            flex-grow: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
             margin-right: 10px;
         }
         
-        .post-user-info h4 {
-            margin-bottom: 2px;
-        }
-        
-        .post-time {
-            font-size: 12px;
-            color: #65676b;
-        }
-        
-        .post-content {
-            margin-bottom: 15px;
-            line-height: 1.5;
-        }
-        
-        .post-actions {
+        .send-btn {
+            background: #e91e63;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
             display: flex;
-            border-top: 1px solid #f0f2f5;
-            padding-top: 10px;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
         }
         
-        .post-action {
-            flex: 1;
-            text-align: center;
-            padding: 8px;
+        /* Upload modal styles */
+        .upload-options {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        
+        .upload-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             cursor: pointer;
-            border-radius: 4px;
+            padding: 15px;
+            border-radius: 10px;
             transition: background-color 0.3s;
         }
         
-        .post-action:hover {
-            background-color: #f0f2f5;
+        .upload-option:hover {
+            background-color: #f9f9f9;
         }
         
+        .upload-option i {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #e91e63;
+        }
+        
+        .preview-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        /* Mobile styles */
         @media (max-width: 768px) {
             .main-container {
                 flex-direction: column;
@@ -370,6 +817,40 @@
             
             .nav-menu {
                 display: none;
+                position: absolute;
+                top: 70px;
+                left: 0;
+                right: 0;
+                background: linear-gradient(to right, #e91e63, #ff4e8c);
+                flex-direction: column;
+                padding: 15px;
+                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            }
+            
+            .nav-menu.show {
+                display: flex;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+            }
+            
+            .user-grid {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                gap: 15px;
+            }
+            
+            .room-users {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 15px;
+            }
+            
+            .chat-container {
+                width: 100%;
+                height: 100%;
+                bottom: 0;
+                right: 0;
+                border-radius: 0;
             }
         }
     </style>
@@ -377,18 +858,21 @@
 <body>
     <div class="header">
         <div class="logo">
-            <h1>Dating</h1>
-            <div class="nav-menu">
-                <div class="nav-item active">Trang Chủ</div>
-                <div class="nav-item">Bạn bè</div>
-                <div class="nav-item">Nhóm</div>
-                <div class="nav-item">Marketplace</div>
+            <h1>LoveConnect</h1>
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="nav-menu" id="navMenu">
+                <div class="nav-item active" data-tab="home"><i class="fas fa-home"></i> Trang Chủ</div>
+                <div class="nav-item" data-tab="friends"><i class="fas fa-users"></i> Bạn bè</div>
+                <div class="nav-item" data-tab="messages"><i class="fas fa-comments"></i> Tin nhắn</div>
+                <div class="nav-item" data-tab="matchmaking"><i class="fas fa-heart"></i> Ghép đôi</div>
             </div>
         </div>
         
         <div class="user-menu">
             <div class="user-avatar" id="userAvatar">U</div>
-            <button class="logout-btn" id="logoutBtn">Đăng xuất</button>
+            <button class="logout-btn" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Đăng xuất</button>
         </div>
     </div>
     
@@ -397,21 +881,29 @@
             <div class="profile-card">
                 <div class="profile-header">
                     <div class="profile-avatar" id="profileAvatar">U</div>
+                    <button class="change-avatar-btn" id="changeAvatarBtn">
+                        <i class="fas fa-camera"></i>
+                    </button>
                     <div class="profile-info">
                         <h2 id="profileName">Người dùng</h2>
                         <p id="profileBio">Chưa có thông tin</p>
+                        <p id="profileLocation"><i class="fas fa-map-marker-alt"></i> <span>Chưa cập nhật</span></p>
+                        <p id="profileIncome"><i class="fas fa-money-bill-wave"></i> <span>Chưa cập nhật</span></p>
                     </div>
                 </div>
                 <div class="profile-stats">
                     <p><strong id="friendsCount">0</strong> bạn bè</p>
-                    <p><strong>5</strong> nhóm</p>
+                    <p><strong id="matchesCount">0</strong> matches</p>
+                    <p><strong id="postsCount">0</strong> bài viết</p>
                 </div>
             </div>
             
             <div class="friends-card">
-                <h3>Bạn bè</h3>
+                <h3>Bạn bè <span class="see-all" id="seeAllFriends">Xem tất cả</span></h3>
                 <div id="friendsList">
-                    <!-- Danh sách bạn bè sẽ được thêm bằng JavaScript -->
+                    <div class="loading-section">
+                        <div class="loader" style="border-top-color: #e91e63;"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -420,93 +912,651 @@
             <div class="post-box">
                 <div class="post-input">
                     <div class="post-input-avatar" id="postAvatar">U</div>
-                    <div class="post-input-field" id="createPostBtn">Bạn đang nghĩ gì?</div>
+                    <div class="post-input-field" id="postInput">Bạn đang nghĩ gì?</div>
                 </div>
             </div>
             
-            <div id="postsContainer">
-                <!-- Danh sách bài post sẽ được thêm bằng JavaScript -->
+            <button class="matchmaking-btn" id="matchmakingBtn">
+                <i class="fas fa-heart"></i> Tìm đối tượng phù hợp
+            </button>
+            
+            <div class="matching-room" id="matchingRoom" style="display: none;">
+                <div class="room-header">
+                    <h2 class="room-title">Phòng ghép đôi</h2>
+                    <button class="leave-room" id="leaveRoomBtn">
+                        <i class="fas fa-times"></i> Rời phòng
+                    </button>
+                </div>
+                <div class="room-users" id="roomUsers">
+                    <!-- Danh sách người dùng trong phòng sẽ được thêm ở đây -->
+                </div>
             </div>
             
             <div class="discover-section">
                 <h3>Gợi ý kết bạn</h3>
                 <div class="user-grid" id="suggestedUsers">
-                    <!-- Danh sách user sẽ được thêm bằng JavaScript -->
+                    <div class="loading-section">
+                        <div class="loader" style="border-top-color: #e91e63;"></div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <div class="notification" id="notification"></div>
+    <!-- Modal nhập thông tin ghép đôi -->
+    <div class="modal-overlay" id="matchmakingModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Thông tin ghép đôi</h2>
+                <button class="close-modal" id="closeModal">&times;</button>
+            </div>
+            <form id="matchmakingForm">
+                <div class="form-group">
+                    <label for="age">Độ tuổi của bạn</label>
+                    <input type="number" id="age" min="18" max="100" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="gender">Giới tính</label>
+                    <select id="gender" required>
+                        <option value="">Chọn giới tính</option>
+                        <option value="male">Nam</option>
+                        <option value="female">Nữ</option>
+                        <option value="other">Khác</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="income">Thu nhập (triệu VNĐ/tháng)</label>
+                    <select id="income" required>
+                        <option value="">Chọn mức thu nhập</option>
+                        <option value="0-5">Dưới 5 triệu</option>
+                        <option value="5-10">5 - 10 triệu</option>
+                        <option value="10-20">10 - 20 triệu</option>
+                        <option value="20-30">20 - 30 triệu</option>
+                        <option value="30+">Trên 30 triệu</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="location">Khu vực</label>
+                    <select id="location" required>
+                        <option value="">Chọn khu vực</option>
+                        <option value="hanoi">Hà Nội</option>
+                        <option value="hcm">TP. Hồ Chí Minh</option>
+                        <option value="danang">Đà Nẵng</option>
+                        <option value="other">Khác</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="preferredGender">Bạn muốn tìm</label>
+                    <select id="preferredGender" required>
+                        <option value="">Chọn giới tính</option>
+                        <option value="male">Nam</option>
+                        <option value="female">Nữ</option>
+                        <option value="any">Không yêu cầu</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="preferredIncome">Thu nhập mong muốn</label>
+                    <select id="preferredIncome">
+                        <option value="any">Không yêu cầu</option>
+                        <option value="0-5">Dưới 5 triệu</option>
+                        <option value="5-10">5 - 10 triệu</option>
+                        <option value="10-20">10 - 20 triệu</option>
+                        <option value="20-30">20 - 30 triệu</option>
+                        <option value="30+">Trên 30 triệu</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="preferredLocation">Khu vực mong muốn</label>
+                    <select id="preferredLocation">
+                        <option value="any">Không yêu cầu</option>
+                        <option value="hanoi">Hà Nội</option>
+                        <option value="hcm">TP. Hồ Chí Minh</option>
+                        <option value="danang">Đà Nẵng</option>
+                        <option value="other">Khác</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="submit-btn">Bắt đầu ghép đôi</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal tải ảnh lên -->
+    <div class="modal-overlay" id="uploadModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Tải ảnh lên</h2>
+                <button class="close-modal" id="closeUploadModal">&times;</button>
+            </div>
+            <div class="upload-options">
+                <div class="upload-option" id="uploadFromDevice">
+                    <i class="fas fa-upload"></i>
+                    <span>Tải lên</span>
+                </div>
+                <div class="upload-option" id="takePhoto">
+                    <i class="fas fa-camera"></i>
+                    <span>Chụp ảnh</span>
+                </div>
+                <div class="upload-option" id="recordVideo">
+                    <i class="fas fa-video"></i>
+                    <span>Quay video</span>
+                </div>
+            </div>
+            <div class="preview-container hidden" id="previewContainer">
+                <img src="" alt="Preview" class="preview-image" id="previewImage">
+                <video controls class="preview-image hidden" id="previewVideo"></video>
+            </div>
+            <input type="file" accept="image/*,video/*" class="hidden" id="fileInput">
+            <button class="submit-btn hidden" id="confirmUpload">Xác nhận</button>
+        </div>
+    </div>
+    
+    <!-- Modal đăng bài -->
+    <div class="modal-overlay" id="postModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Tạo bài viết</h2>
+                <button class="close-modal" id="closePostModal">&times;</button>
+            </div>
+            <form id="postForm">
+                <div class="form-group">
+                    <textarea placeholder="Bạn đang nghĩ gì?" id="postContent" rows="4"></textarea>
+                </div>
+                <div class="preview-container hidden" id="postPreviewContainer">
+                    <img src="" alt="Post preview" class="preview-image" id="postPreviewImage">
+                </div>
+                <div class="upload-options">
+                    <div class="upload-option" id="addImageToPost">
+                        <i class="fas fa-image"></i>
+                        <span>Thêm ảnh</span>
+                    </div>
+                </div>
+                <input type="file" accept="image/*" class="hidden" id="postImageInput">
+                <button type="submit" class="submit-btn">Đăng</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Chat container -->
+    <div class="chat-container" id="chatContainer">
+        <div class="chat-header">
+            <h3 id="chatWithUser">Tin nhắn</h3>
+            <button class="close-chat" id="closeChat">&times;</button>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <!-- Messages will be added here -->
+        </div>
+        <div class="chat-input">
+            <input type="text" placeholder="Nhập tin nhắn..." id="messageInput">
+            <button class="send-btn" id="sendMessageBtn">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+    
+    <div class="notification" id="notification">
+        <i class="fas fa-check-circle"></i>
+        <span id="notificationText"></span>
+    </div>
 
     <script>
-        // Biến toàn cục
-        let currentUser = null;
-        let authToken = null;
+        // Kiểm tra đăng nhập
+        const currentUser = JSON.parse(localStorage.getItem('user'));
+        const token = localStorage.getItem('token');
         
-        // Hàm kiểm tra đăng nhập
-        async function checkAuth() {
-            try {
-                authToken = localStorage.getItem('token');
-                const userData = localStorage.getItem('user');
-                
-                if (!authToken || !userData) {
-                    throw new Error('No authentication data');
-                }
-                
-                const response = await fetch('http://localhost:3000/api/check-auth', {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok && data.authenticated) {
-                    currentUser = data.user;
-                    return true;
-                } else {
-                    throw new Error('Authentication failed');
-                }
-            } catch (error) {
-                console.error('Auth check failed:', error);
-                // Xóa dữ liệu đăng nhập không hợp lệ
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                // Chuyển hướng về trang đăng nhập
-                window.location.href = 'login.html';
-                return false;
+        if (!currentUser || !token) {
+            window.location.href = 'login.html';
+        }
+        
+        // Các biến toàn cục
+        let matchmakingData = null;
+        let roomUsers = [];
+        let friends = [];
+        let chatWithUser = null;
+        let messages = {};
+        
+        // Hiển thị thông tin user
+        function updateUserAvatar() {
+            const avatar = currentUser.profileImage || currentUser.username.charAt(0).toUpperCase();
+            
+            if (currentUser.profileImage && currentUser.profileImage.startsWith('http')) {
+                document.getElementById('userAvatar').innerHTML = '';
+                document.getElementById('userAvatar').style.backgroundImage = `url(${currentUser.profileImage})`;
+                document.getElementById('profileAvatar').innerHTML = '';
+                document.getElementById('profileAvatar').style.backgroundImage = `url(${currentUser.profileImage})`;
+                document.getElementById('postAvatar').innerHTML = '';
+                document.getElementById('postAvatar').style.backgroundImage = `url(${currentUser.profileImage})`;
+            } else {
+                document.getElementById('userAvatar').textContent = avatar;
+                document.getElementById('profileAvatar').textContent = avatar;
+                document.getElementById('postAvatar').textContent = avatar;
             }
         }
         
-        // Hàm khởi tạo ứng dụng
-        async function initializeApp() {
-            const isAuthenticated = await checkAuth();
+        document.getElementById('profileName').textContent = currentUser.username;
+        updateUserAvatar();
+        
+        // Toggle mobile menu
+        document.getElementById('mobileMenuBtn').addEventListener('click', function() {
+            document.getElementById('navMenu').classList.toggle('show');
+        });
+        
+        // Mở modal đăng bài
+        document.getElementById('postInput').addEventListener('click', function() {
+            document.getElementById('postModal').classList.add('show');
+        });
+        
+        // Mở modal ghép đôi
+        document.getElementById('matchmakingBtn').addEventListener('click', function() {
+            document.getElementById('matchmakingModal').classList.add('show');
+        });
+        
+        // Đóng modal
+        document.getElementById('closeModal').addEventListener('click', function() {
+            document.getElementById('matchmakingModal').classList.remove('show');
+        });
+        
+        // Mở modal đổi avatar
+        document.getElementById('changeAvatarBtn').addEventListener('click', function() {
+            document.getElementById('uploadModal').classList.add('show');
+        });
+        
+        // Đóng modal upload
+        document.getElementById('closeUploadModal').addEventListener('click', function() {
+            document.getElementById('uploadModal').classList.remove('show');
+            document.getElementById('previewContainer').classList.add('hidden');
+            document.getElementById('confirmUpload').classList.add('hidden');
+        });
+        
+        // Đóng modal post
+        document.getElementById('closePostModal').addEventListener('click', function() {
+            document.getElementById('postModal').classList.remove('show');
+        });
+        
+        // Tải ảnh từ thiết bị
+        document.getElementById('uploadFromDevice').addEventListener('click', function() {
+            document.getElementById('fileInput').click();
+        });
+        
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = function(event) {
+                    if (file.type.startsWith('image/')) {
+                        document.getElementById('previewImage').src = event.target.result;
+                        document.getElementById('previewImage').classList.remove('hidden');
+                        document.getElementById('previewVideo').classList.add('hidden');
+                    } else if (file.type.startsWith('video/')) {
+                        document.getElementById('previewVideo').src = event.target.result;
+                        document.getElementById('previewVideo').classList.remove('hidden');
+                        document.getElementById('previewImage').classList.add('hidden');
+                    }
+                    
+                    document.getElementById('previewContainer').classList.remove('hidden');
+                    document.getElementById('confirmUpload').classList.remove('hidden');
+                };
+                
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Xác nhận tải ảnh lên
+        document.getElementById('confirmUpload').addEventListener('click', function() {
+            // Giả lập tải ảnh lên server
+            showNotification('Đang tải ảnh lên...');
             
-            if (!isAuthenticated) return;
+            setTimeout(() => {
+                // Lưu URL ảnh vào thông tin user
+                const imgSrc = document.getElementById('previewImage').src;
+                if (imgSrc && imgSrc !== '') {
+                    currentUser.profileImage = imgSrc;
+                    localStorage.setItem('user', JSON.stringify(currentUser));
+                    updateUserAvatar();
+                    showNotification('Cập nhật ảnh đại diện thành công!');
+                }
+                
+                document.getElementById('uploadModal').classList.remove('show');
+                document.getElementById('previewContainer').classList.add('hidden');
+                document.getElementById('confirmUpload').classList.add('hidden');
+            }, 1500);
+        });
+        
+        // Thêm ảnh vào bài post
+        document.getElementById('addImageToPost').addEventListener('click', function() {
+            document.getElementById('postImageInput').click();
+        });
+        
+        document.getElementById('postImageInput').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = function(event) {
+                    document.getElementById('postPreviewImage').src = event.target.result;
+                    document.getElementById('postPreviewContainer').classList.remove('hidden');
+                };
+                
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Xử lý form đăng bài
+        document.getElementById('postForm').addEventListener('submit', function(e) {
+            e.preventDefault();
             
-            // Hiển thị thông tin user
-            document.getElementById('userAvatar').textContent = currentUser.username.charAt(0).toUpperCase();
-            document.getElementById('profileAvatar').textContent = currentUser.username.charAt(0).toUpperCase();
-            document.getElementById('postAvatar').textContent = currentUser.username.charAt(0).toUpperCase();
-            document.getElementById('profileName').textContent = currentUser.username;
+            const content = document.getElementById('postContent').value;
+            const image = document.getElementById('postPreviewImage').src;
             
-            // Tải dữ liệu
-            await loadUserProfile();
-            await loadFriendsList();
-            await loadSuggestedUsers();
-            await loadPosts();
+            if (!content && image.includes('data:')) {
+                showNotification('Vui lòng nhập nội dung hoặc thêm ảnh', true);
+                return;
+            }
             
-            // Thiết lập sự kiện
-            setupEventListeners();
+            // Giả lập đăng bài
+            showNotification('Đang đăng bài...');
+            
+            setTimeout(() => {
+                document.getElementById('postModal').classList.remove('show');
+                document.getElementById('postContent').value = '';
+                document.getElementById('postPreviewContainer').classList.add('hidden');
+                showNotification('Đăng bài thành công!');
+            }, 1000);
+        });
+        
+        // Xử lý form ghép đôi
+        document.getElementById('matchmakingForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const age = document.getElementById('age').value;
+            const gender = document.getElementById('gender').value;
+            const income = document.getElementById('income').value;
+            const location = document.getElementById('location').value;
+            const preferredGender = document.getElementById('preferredGender').value;
+            const preferredIncome = document.getElementById('preferredIncome').value;
+            const preferredLocation = document.getElementById('preferredLocation').value;
+            
+            if (!age || !gender || !income || !location || !preferredGender) {
+                showNotification('Vui lòng điền đầy đủ thông tin', true);
+                return;
+            }
+            
+            matchmakingData = {
+                age,
+                gender,
+                income,
+                location,
+                preferredGender,
+                preferredIncome,
+                preferredLocation,
+                userId: currentUser.id
+            };
+            
+            // Cập nhật thông tin profile
+            document.getElementById('profileBio').textContent = `${age} tuổi, ${gender === 'male' ? 'Nam' : 'Nữ'}`;
+            document.getElementById('profileLocation').querySelector('span').textContent = getLocationName(location);
+            document.getElementById('profileIncome').querySelector('span').textContent = getIncomeRange(income);
+            
+            // Lưu thông tin vào localStorage
+            localStorage.setItem('matchmakingData', JSON.stringify(matchmakingData));
+            
+            // Đóng modal
+            document.getElementById('matchmakingModal').classList.remove('show');
+            
+            // Tham gia phòng ghép đôi
+            joinMatchingRoom();
+        });
+        
+        // Hàm lấy tên khu vực
+        function getLocationName(locationCode) {
+            const locations = {
+                'hanoi': 'Hà Nội',
+                'hcm': 'TP. Hồ Chí Minh',
+                'danang': 'Đà Nẵng',
+                'other': 'Khác'
+            };
+            return locations[locationCode] || 'Chưa cập nhật';
         }
         
-        // Tải thông tin user
+        // Hàm lấy thông tin thu nhập
+        function getIncomeRange(incomeCode) {
+            const incomes = {
+                '0-5': 'Dưới 5 triệu',
+                '5-10': '5 - 10 triệu',
+                '10-20': '10 - 20 triệu',
+                '20-30': '20 - 30 triệu',
+                '30+': 'Trên 30 triệu'
+            };
+            return incomes[incomeCode] || 'Chưa cập nhật';
+        }
+        
+        // Rời phòng ghép đôi
+        document.getElementById('leaveRoomBtn').addEventListener('click', function() {
+            document.getElementById('matchingRoom').style.display = 'none';
+            showNotification('Bạn đã rời khỏi phòng ghép đôi');
+        });
+        
+        // Tham gia phòng ghép đôi
+        function joinMatchingRoom() {
+            // Hiển thị phòng
+            document.getElementById('matchingRoom').style.display = 'block';
+            
+            // Cuộn đến phòng
+            document.getElementById('matchingRoom').scrollIntoView({ behavior: 'smooth' });
+            
+            // Tải danh sách người dùng trong phòng
+            loadRoomUsers();
+            
+            showNotification('Bạn đã tham gia phòng ghép đôi!');
+        }
+        
+        // Tải danh sách người dùng trong phòng
+        async function loadRoomUsers() {
+            try {
+                // Giả lập API - trong thực tế sẽ gọi API thật
+                const response = await fetch('http://localhost:3000/api/matching-users', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const users = await response.json();
+                    roomUsers = users;
+                    renderRoomUsers();
+                } else {
+                    // Nếu không có API, sử dụng dữ liệu giả
+                    roomUsers = generateMockUsers();
+                    renderRoomUsers();
+                }
+            } catch (error) {
+                console.error('Lỗi tải danh sách người dùng trong phòng:', error);
+                // Sử dụng dữ liệu giả nếu có lỗi
+                roomUsers = generateMockUsers();
+                renderRoomUsers();
+            }
+        }
+        
+        // Tạo dữ liệu người dùng giả
+        function generateMockUsers() {
+            const names = ['Anh', 'Bình', 'Chi', 'Dũng', 'Giang', 'Huy', 'Linh', 'Minh', 'Nga', 'Phong', 'Quỳnh', 'Sơn'];
+            const genders = ['male', 'female'];
+            const incomes = ['0-5', '5-10', '10-20', '20-30', '30+'];
+            const locations = ['hanoi', 'hcm', 'danang', 'other'];
+            
+            return Array.from({ length: 8 }, (_, i) => {
+                const gender = genders[Math.floor(Math.random() * genders.length)];
+                const name = gender === 'male' ? 
+                    names.filter((_, index) => index % 2 === 0)[Math.floor(Math.random() * 6)] :
+                    names.filter((_, index) => index % 2 !== 0)[Math.floor(Math.random() * 6)];
+                
+                return {
+                    id: i + 1,
+                    username: name,
+                    age: Math.floor(Math.random() * 15) + 20, // 20-35 tuổi
+                    gender: gender,
+                    income: incomes[Math.floor(Math.random() * incomes.length)],
+                    location: locations[Math.floor(Math.random() * locations.length)],
+                    bio: 'Rất vui được làm quen!'
+                };
+            });
+        }
+        
+        // Hiển thị người dùng trong phòng
+        function renderRoomUsers() {
+            const roomUsersContainer = document.getElementById('roomUsers');
+            roomUsersContainer.innerHTML = '';
+            
+            roomUsers.forEach(user => {
+                const userElement = document.createElement('div');
+                userElement.className = 'room-user';
+                userElement.innerHTML = `
+                    <div class="room-user-avatar">${user.username.charAt(0).toUpperCase()}</div>
+                    <h4>${user.username}</h4>
+                    <p>${user.age} tuổi</p>
+                    <p>${user.gender === 'male' ? 'Nam' : 'Nữ'}</p>
+                    <p>Thu nhập: ${getIncomeRange(user.income)}</p>
+                    <p>Khu vực: ${getLocationName(user.location)}</p>
+                    <button class="chat-btn" onclick="startChat(${user.id})">
+                        <i class="fas fa-comment"></i> Nhắn tin
+                    </button>
+                `;
+                roomUsersContainer.appendChild(userElement);
+            });
+        }
+        
+        // Bắt đầu chat
+        function startChat(userId) {
+            const user = roomUsers.find(u => u.id === userId) || 
+                         friends.find(u => u.id === userId) ||
+                         { id: userId, username: 'Người dùng' };
+            
+            chatWithUser = user;
+            document.getElementById('chatWithUser').textContent = `Chat với ${user.username}`;
+            document.getElementById('chatContainer').classList.add('active');
+            
+            // Tải tin nhắn
+            loadMessages(userId);
+        }
+        
+        // Đóng chat
+        document.getElementById('closeChat').addEventListener('click', function() {
+            document.getElementById('chatContainer').classList.remove('active');
+            chatWithUser = null;
+        });
+        
+        // Gửi tin nhắn
+        document.getElementById('sendMessageBtn').addEventListener('click', function() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (message && chatWithUser) {
+                sendMessage(chatWithUser.id, message);
+                messageInput.value = '';
+            }
+        });
+        
+        // Tải tin nhắn
+        function loadMessages(userId) {
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.innerHTML = '';
+            
+            // Kiểm tra nếu đã có tin nhắn với user này
+            if (!messages[userId]) {
+                messages[userId] = [];
+                
+                // Thêm một số tin nhắn mẫu
+                if (Math.random() > 0.5) {
+                    messages[userId].push({
+                        id: 1,
+                        senderId: userId,
+                        content: 'Xin chào! Rất vui được làm quen với bạn.',
+                        timestamp: new Date(Date.now() - 3600000).toISOString()
+                    });
+                }
+            }
+            
+            // Hiển thị tin nhắn
+            messages[userId].forEach(msg => {
+                const messageElement = document.createElement('div');
+                messageElement.className = `message ${msg.senderId === userId ? 'received' : 'sent'}`;
+                messageElement.textContent = msg.content;
+                chatMessages.appendChild(messageElement);
+            });
+            
+            // Cuộn xuống dưới cùng
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // Gửi tin nhắn
+        function sendMessage(userId, content) {
+            // Tạo tin nhắn mới
+            const newMessage = {
+                id: Date.now(),
+                senderId: currentUser.id,
+                content: content,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Thêm vào danh sách tin nhắn
+            if (!messages[userId]) {
+                messages[userId] = [];
+            }
+            messages[userId].push(newMessage);
+            
+            // Hiển thị tin nhắn
+            const chatMessages = document.getElementById('chatMessages');
+            const messageElement = document.createElement('div');
+            messageElement.className = 'message sent';
+            messageElement.textContent = content;
+            chatMessages.appendChild(messageElement);
+            
+            // Cuộn xuống dưới cùng
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Giả lập phản hồi sau 1-3 giây
+            if (Math.random() > 0.3) {
+                setTimeout(() => {
+                    const responses = [
+                        'Mình cũng vậy!',
+                        'Bạn thật thú vị!',
+                        'Bạn nói đúng đấy!',
+                        'Mình rất đồng ý với bạn!',
+                        'Bạn đến từ đâu vậy?'
+                    ];
+                    
+                    const responseMessage = {
+                        id: Date.now(),
+                        senderId: userId,
+                        content: responses[Math.floor(Math.random() * responses.length)],
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    messages[userId].push(responseMessage);
+                    
+                    const responseElement = document.createElement('div');
+                    responseElement.className = 'message received';
+                    responseElement.textContent = responseMessage.content;
+                    chatMessages.appendChild(responseElement);
+                    
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }, 1000 + Math.random() * 2000);
+            }
+        }
+        
+        // Lấy thông tin chi tiết user
         async function loadUserProfile() {
             try {
                 const response = await fetch(`http://localhost:3000/api/user/${currentUser.id}`, {
                     headers: {
-                        'Authorization': `Bearer ${authToken}`
+                        'Authorization': `Bearer ${token}`
                     }
                 });
                 
@@ -518,73 +1568,123 @@
                         document.getElementById('profileBio').textContent = userData.profile.bio;
                     }
                     
-                    if (userData.friends) {
-                        document.getElementById('friendsCount').textContent = userData.friends.length;
+                    if (userData.friendsCount) {
+                        document.getElementById('friendsCount').textContent = userData.friendsCount;
                     }
+                    
+                    if (userData.matchesCount) {
+                        document.getElementById('matchesCount').textContent = userData.matchesCount;
+                    }
+                    
+                    if (userData.postsCount) {
+                        document.getElementById('postsCount').textContent = userData.postsCount;
+                    }
+                    
+                    // Kiểm tra nếu đã có thông tin ghép đôi
+                    const savedMatchmakingData = localStorage.getItem('matchmakingData');
+                    if (savedMatchmakingData) {
+                        matchmakingData = JSON.parse(savedMatchmakingData);
+                        document.getElementById('matchingRoom').style.display = 'block';
+                        loadRoomUsers();
+                    }
+                } else {
+                    showNotification('Không thể tải thông tin người dùng', true);
                 }
             } catch (error) {
                 console.error('Lỗi tải thông tin user:', error);
+                showNotification('Lỗi kết nối khi tải thông tin', true);
             }
         }
         
-        // Tải danh sách bạn bè
-        async function loadFriendsList() {
+        // Lấy danh sách bạn bè
+        async function loadFriends() {
             try {
                 const response = await fetch(`http://localhost:3000/api/user/${currentUser.id}/friends`, {
                     headers: {
-                        'Authorization': `Bearer ${authToken}`
+                        'Authorization': `Bearer ${token}`
                     }
                 });
                 
                 if (response.ok) {
-                    const friends = await response.json();
-                    const friendsList = document.getElementById('friendsList');
-                    friendsList.innerHTML = '';
-                    
-                    if (friends.length === 0) {
-                        friendsList.innerHTML = '<p>Bạn chưa có bạn bè nào</p>';
-                        return;
-                    }
-                    
-                    friends.slice(0, 5).forEach(friend => {
-                        const friendItem = document.createElement('div');
-                        friendItem.className = 'friend-item';
-                        friendItem.innerHTML = `
-                            <div class="friend-avatar">${friend.username.charAt(0).toUpperCase()}</div>
-                            <div>${friend.username}</div>
-                        `;
-                        friendsList.appendChild(friendItem);
-                    });
+                    friends = await response.json();
+                    renderFriends();
+                } else {
+                    // Dữ liệu giả nếu API không khả dụng
+                    friends = generateMockFriends();
+                    renderFriends();
                 }
             } catch (error) {
                 console.error('Lỗi tải danh sách bạn bè:', error);
+                friends = generateMockFriends();
+                renderFriends();
             }
         }
         
-        // Tải danh sách user đề xuất
+        // Tạo dữ liệu bạn bè giả
+        function generateMockFriends() {
+            const names = ['Ánh', 'Bình', 'Chi', 'Dũng', 'Giang', 'Huy', 'Linh', 'Minh'];
+            
+            return names.map((name, index) => ({
+                id: index + 1,
+                username: name,
+                profileImage: null
+            }));
+        }
+        
+        // Hiển thị danh sách bạn bè
+        function renderFriends() {
+            const friendsList = document.getElementById('friendsList');
+            friendsList.innerHTML = '';
+            
+            // Hiển thị tối đa 5 bạn bè
+            friends.slice(0, 5).forEach(friend => {
+                const friendElement = document.createElement('div');
+                friendElement.className = 'friend-item';
+                friendElement.innerHTML = `
+                    <div class="friend-avatar">${friend.username.charAt(0).toUpperCase()}</div>
+                    <div>${friend.username}</div>
+                `;
+                
+                // Thêm sự kiện click để mở chat
+                friendElement.addEventListener('click', () => startChat(friend.id));
+                
+                friendsList.appendChild(friendElement);
+            });
+            
+            // Cập nhật số lượng bạn bè
+            document.getElementById('friendsCount').textContent = friends.length;
+        }
+        
+        // Xem tất cả bạn bè
+        document.getElementById('seeAllFriends').addEventListener('click', function() {
+            showNotification('Tính năng xem tất cả bạn bè sẽ sớm có mặt!');
+        });
+        
+        // Lấy danh sách user để kết bạn
         async function loadSuggestedUsers() {
             try {
+                // Hiển thị trạng thái loading
+                const suggestedUsersContainer = document.getElementById('suggestedUsers');
+                suggestedUsersContainer.innerHTML = `
+                    <div class="loading-section">
+                        <div class="loader" style="border-top-color: #e91e63;"></div>
+                    </div>
+                `;
+                
                 const response = await fetch('http://localhost:3000/api/users', {
                     headers: {
-                        'Authorization': `Bearer ${authToken}`
+                        'Authorization': `Bearer ${token}`
                     }
                 });
                 
                 if (response.ok) {
                     const users = await response.json();
-                    const suggestedUsersContainer = document.getElementById('suggestedUsers');
                     suggestedUsersContainer.innerHTML = '';
                     
                     // Lọc bỏ user hiện tại và bạn bè
-                    const currentUserData = await fetch(`http://localhost:3000/api/user/${currentUser.id}`, {
-                        headers: {
-                            'Authorization': `Bearer ${authToken}`
-                        }
-                    }).then(res => res.ok ? res.json() : { friends: [] });
-                    
                     const otherUsers = users.filter(user => 
                         user.id !== currentUser.id && 
-                        !currentUserData.friends.includes(user.id)
+                        !friends.some(friend => friend.id === user.id)
                     );
                     
                     // Hiển thị tối đa 6 user
@@ -595,187 +1695,97 @@
                             <div class="user-card-avatar">${user.username.charAt(0).toUpperCase()}</div>
                             <h4>${user.username}</h4>
                             <p>${user.profile?.age ? user.profile.age + ' tuổi' : 'Chưa cập nhật'}</p>
-                            <button class="add-friend-btn" onclick="addFriend(${user.id})">Kết bạn</button>
+                            <p>${user.profile?.location ? getLocationName(user.profile.location) : 'Chưa cập nhật'}</p>
+                            <div class="user-card-actions">
+                                <button class="add-friend-btn" onclick="addFriend(${user.id})">
+                                    <i class="fas fa-user-plus"></i> Kết bạn
+                                </button>
+                            </div>
                         `;
                         suggestedUsersContainer.appendChild(userCard);
                     });
+                } else {
+                    suggestedUsersContainer.innerHTML = '<p>Không thể tải danh sách gợi ý</p>';
+                    showNotification('Không thể tải danh sách người dùng', true);
                 }
             } catch (error) {
                 console.error('Lỗi tải danh sách user:', error);
-            }
-        }
-        
-        // Tải bài post
-        async function loadPosts() {
-            try {
-                const response = await fetch('http://localhost:3000/api/posts', {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                if (response.ok) {
-                    const posts = await response.json();
-                    const postsContainer = document.getElementById('postsContainer');
-                    postsContainer.innerHTML = '';
-                    
-                    if (posts.length === 0) {
-                        postsContainer.innerHTML = '<p>Chưa có bài viết nào</p>';
-                        return;
-                    }
-                    
-                    posts.forEach(post => {
-                        const postElement = document.createElement('div');
-                        postElement.className = 'post-item';
-                        postElement.innerHTML = `
-                            <div class="post-header">
-                                <div class="post-avatar">${post.user.username.charAt(0).toUpperCase()}</div>
-                                <div class="post-user-info">
-                                    <h4>${post.user.username}</h4>
-                                    <div class="post-time">${formatTime(post.createdAt)}</div>
-                                </div>
-                            </div>
-                            <div class="post-content">${post.content}</div>
-                            <div class="post-actions">
-                                <div class="post-action" onclick="likePost(${post.id})">
-                                    ${post.likes.includes(currentUser.id) ? '❤️' : '🤍'} ${post.likes.length}
-                                </div>
-                                <div class="post-action" onclick="focusCommentInput(${post.id})">
-                                    💬 ${post.comments.length}
-                                </div>
-                            </div>
-                        `;
-                        postsContainer.appendChild(postElement);
-                    });
-                }
-            } catch (error) {
-                console.error('Lỗi tải bài post:', error);
+                document.getElementById('suggestedUsers').innerHTML = '<p>Lỗi kết nối, vui lòng thử lại</p>';
+                showNotification('Lỗi kết nối khi tải danh sách', true);
             }
         }
         
         // Hàm kết bạn
         async function addFriend(friendId) {
             try {
-                const response = await fetch(`http://localhost:3000/api/friend-request/${friendId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
+                showNotification('Đang gửi lời mời kết bạn...');
                 
-                if (response.ok) {
-                    showNotification('Đã gửi lời mời kết bạn thành công!');
-                    // Load lại danh sách bạn bè và đề xuất
-                    setTimeout(() => {
-                        loadFriendsList();
-                        loadSuggestedUsers();
-                    }, 1000);
-                } else {
-                    const data = await response.json();
-                    showNotification('Lỗi: ' + data.message, true);
-                }
-            } catch (error) {
-                console.error('Lỗi kết bạn:', error);
-                showNotification('Có lỗi xảy ra khi kết bạn', true);
-            }
-        }
-        
-        // Hàm like post
-        async function likePost(postId) {
-            try {
-                const response = await fetch(`http://localhost:3000/api/posts/${postId}/like`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
+                // Giả lập gọi API
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                if (response.ok) {
-                    // Load lại danh sách bài post
-                    loadPosts();
-                }
+                // Thêm vào danh sách bạn bè
+                const newFriend = {
+                    id: friendId,
+                    username: `User${friendId}`,
+                    profileImage: null
+                };
+                
+                friends.push(newFriend);
+                renderFriends();
+                
+                showNotification('Đã gửi lời mời kết bạn thành công!');
             } catch (error) {
-                console.error('Lỗi like bài post:', error);
+                console.error('Lỗi gửi lời mời kết bạn:', error);
+                showNotification('Có lỗi xảy ra khi gửi lời mời', true);
             }
         }
         
         // Hiển thị thông báo
         function showNotification(message, isError = false) {
             const notification = document.getElementById('notification');
-            notification.textContent = message;
-            notification.style.backgroundColor = isError ? '#f44336' : '#4caf50';
-            notification.style.display = 'block';
+            const notificationText = document.getElementById('notificationText');
+            
+            notificationText.textContent = message;
+            
+            if (isError) {
+                notification.classList.add('error');
+                notification.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + notification.innerHTML;
+            } else {
+                notification.classList.remove('error');
+                notification.innerHTML = '<i class="fas fa-check-circle"></i> ' + notification.innerHTML;
+            }
+            
+            notification.classList.add('show');
             
             setTimeout(() => {
-                notification.style.display = 'none';
+                notification.classList.remove('show');
             }, 3000);
         }
         
-        // Định dạng thời gian
-        function formatTime(dateString) {
-            const date = new Date(dateString);
-            const now = new Date();
-            const diff = now - date;
-            const minutes = Math.floor(diff / 60000);
-            const hours = Math.floor(diff / 3600000);
-            const days = Math.floor(diff / 86400000);
-            
-            if (minutes < 60) {
-                return `${minutes} phút trước`;
-            } else if (hours < 24) {
-                return `${hours} giờ trước`;
-            } else {
-                return `${days} ngày trước`;
-            }
-        }
-        
-        // Thiết lập sự kiện
-        function setupEventListeners() {
-            // Đăng xuất
-            document.getElementById('logoutBtn').addEventListener('click', function() {
-                localStorage.removeItem('token');
+        // Đăng xuất
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
                 localStorage.removeItem('user');
+                localStorage.removeItem('token');
+                localStorage.removeItem('matchmakingData');
                 window.location.href = 'login.html';
-            });
-            
-            // Tạo bài post
-            document.getElementById('createPostBtn').addEventListener('click', function() {
-                const content = prompt('Bạn đang nghĩ gì?');
-                if (content && content.trim() !== '') {
-                    createPost(content);
-                }
-            });
-        }
-        
-        // Tạo bài post mới
-        async function createPost(content) {
-            try {
-                const response = await fetch('http://localhost:3000/api/posts', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ content })
-                });
-                
-                if (response.ok) {
-                    showNotification('Đã đăng bài thành công!');
-                    loadPosts();
-                } else {
-                    const data = await response.json();
-                    showNotification('Lỗi: ' + data.message, true);
-                }
-            } catch (error) {
-                console.error('Lỗi tạo bài post:', error);
-                showNotification('Có lỗi xảy ra khi đăng bài', true);
             }
-        }
+        });
         
-        // Tải ứng dụng khi trang load
-        window.addEventListener('load', initializeApp);
+        // Tải dữ liệu khi trang được load
+        window.addEventListener('load', function() {
+            loadUserProfile();
+            loadFriends();
+            loadSuggestedUsers();
+            
+            // Kiểm tra xem có thông tin ghép đôi đã lưu không
+            const savedMatchmakingData = localStorage.getItem('matchmakingData');
+            if (savedMatchmakingData) {
+                matchmakingData = JSON.parse(savedMatchmakingData);
+                document.getElementById('matchingRoom').style.display = 'block';
+                loadRoomUsers();
+            }
+        });
     </script>
 </body>
 </html>

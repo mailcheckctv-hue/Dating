@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiểm tra kết nối MongoDB</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status-card {
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            background-color: #f8f9fa;
+        }
+        .connected {
+            border-left: 5px solid #28a745;
+            background-color: #d4edda;
+        }
+        .disconnected {
+            border-left: 5px solid #dc3545;
+            background-color: #f8d7da;
+        }
+        .connecting {
+            border-left: 5px solid #ffc107;
+            background-color: #fff3cd;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .status-connected {
+            background-color: #28a745;
+        }
+        .status-disconnected {
+            background-color: #dc3545;
+        }
+        .status-connecting {
+            background-color: #ffc107;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .info-item {
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #6c757d;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        .btn:hover {
+            background-color: #0069d9;
+        }
+        .btn-test {
+            background-color: #17a2b8;
+        }
+        .btn-refresh {
+            background-color: #6c757d;
+        }
+        .log-container {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #2c3e50;
+            color: #fff;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
+        .instructions {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        .instructions h3 {
+            margin-top: 0;
+        }
+        .tab {
+            overflow: hidden;
+            border: 1px solid #ccc;
+            background-color: #f1f1f1;
+            border-radius: 4px 4px 0 0;
+        }
+        .tab button {
+            background-color: inherit;
+            float: left;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 10px 16px;
+            transition: 0.3s;
+        }
+        .tab button:hover {
+            background-color: #ddd;
+        }
+        .tab button.active {
+            background-color: #ccc;
+        }
+        .tabcontent {
+            display: none;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+        }
+        .active-tab {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Kiểm tra kết nối MongoDB</h1>
+        
+        <div class="tab">
+            <button class="tablinks active" onclick="openTab(event, 'StatusTab')">Trạng thái</button>
+            <button class="tablinks" onclick="openTab(event, 'InstructionsTab')">Hướng dẫn</button>
+            <button class="tablinks" onclick="openTab(event, 'TestTab')">Kiểm tra</button>
+        </div>
+        
+        <div id="StatusTab" class="tabcontent active-tab">
+            <div id="statusCard" class="status-card">
+                <h2>Đang kiểm tra kết nối...</h2>
+                <p>Vui lòng chờ trong giây lát</p>
+            </div>
+            
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Trạng thái:</span>
+                    <span id="statusText">Đang kiểm tra...</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Database:</span>
+                    <span id="databaseName">Đang kiểm tra...</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">MongoDB Atlas:</span>
+                    <span id="atlasStatus">Đang kiểm tra...</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Chế độ:</span>
+                    <span id="modeStatus">Đang kiểm tra...</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Cluster:</span>
+                    <span id="clusterInfo">Cluster0</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Phiên bản Driver:</span>
+                    <span id="driverVersion">Đang kiểm tra...</span>
+                </div>
+            </div>
+            
+            <button class="btn btn-refresh" onclick="checkConnection()">Làm mới</button>
+            <button class="btn btn-test" onclick="testConnection()">Kiểm tra kết nối</button>
+            
+            <h3>Nhật ký kết nối:</h3>
+            <div class="log-container" id="logContainer">
+                <div>> Khởi tạo kiểm tra kết nối MongoDB...</div>
+            </div>
+        </div>
+        
+        <div id="InstructionsTab" class="tabcontent">
+            <div class="instructions">
+                <h3>Hướng dẫn kết nối MongoDB Atlas</h3>
+                <ol>
+                    <li>Cập nhật file <code>.env</code> với connection string từ MongoDB Atlas</li>
+                    <li>Đảm bảo đã cài đặt MongoDB driver: <code>npm install mongodb</code></li>
+                    <li>Khởi động server: <code>node server.js</code></li>
+                    <li>Kiểm tra kết nối tại: <code>http://localhost:1000/api/debug/db-connection</code></li>
+                    <li>Nếu kết nối thành công, ứng dụng sẽ sử dụng MongoDB Atlas thay vì dữ liệu tạm</li>
+                </ol>
+                
+                <h4>Connection string mẫu:</h4>
+                <code>mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/database?retryWrites=true&w=majority</code>
+                
+                <h4>Xử lý lỗi thường gặp:</h4>
+                <ul>
+                    <li>Đảm bảo đã whitelist IP trong MongoDB Atlas</li>
+                    <li>Kiểm tra username và password trong connection string</li>
+                    <li>Đảm bảo đã chỉ định tên database trong connection string</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div id="TestTab" class="tabcontent">
+            <h3>Kiểm tra kết nối cơ sở dữ liệu</h3>
+            <p>Nhấn vào nút bên dưới để kiểm tra kết nối đến MongoDB Atlas:</p>
+            
+            <button class="btn" onclick="testFullConnection()">Kiểm tra toàn diện</button>
+            
+            <div id="testResults" style="margin-top: 20px;">
+                <h4>Kết quả kiểm tra:</h4>
+                <div id="testOutput"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tabcontent");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tablinks");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+        }
+        
+        function addLog(message) {
+            const logContainer = document.getElementById('logContainer');
+            logContainer.innerHTML += `<div>> ${new Date().toLocaleTimeString()}: ${message}</div>`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        function updateStatus(status, message) {
+            const statusCard = document.getElementById('statusCard');
+            const statusText = document.getElementById('statusText');
+            
+            statusCard.className = 'status-card';
+            statusText.textContent = message;
+            
+            if (status === 'connected') {
+                statusCard.classList.add('connected');
+                statusText.innerHTML = '<span class="status-indicator status-connected"></span> Đã kết nối đến MongoDB Atlas';
+            } else if (status === 'disconnected') {
+                statusCard.classList.add('disconnected');
+                statusText.innerHTML = '<span class="status-indicator status-disconnected"></span> Không kết nối được đến MongoDB';
+            } else {
+                statusCard.classList.add('connecting');
+                statusText.innerHTML = '<span class="status-indicator status-connecting"></span> Đang kết nối...';
+            }
+        }
+        
+        async function checkConnection() {
+            addLog('Đang kiểm tra kết nối...');
+            updateStatus('connecting', 'Đang kiểm tra kết nối...');
+            
+            try {
+                const response = await fetch('/api/debug/db-connection');
+                const data = await response.json();
+                
+                addLog(`Nhận phản hồi từ server: ${data.mongooseState}`);
+                
+                if (data.mongooseState === 'connected') {
+                    updateStatus('connected', 'Đã kết nối đến MongoDB Atlas');
+                    document.getElementById('databaseName').textContent = 'datingapp';
+                    document.getElementById('atlasStatus').textContent = 'Đã kết nối';
+                    document.getElementById('modeStatus').textContent = 'MongoDB Atlas';
+                    document.getElementById('driverVersion').textContent = 'MongoDB Node.js Driver';
+                    addLog('Kết nối MongoDB Atlas thành công!');
+                } else {
+                    updateStatus('disconnected', 'Không kết nối được đến MongoDB');
+                    document.getElementById('databaseName').textContent = 'N/A';
+                    document.getElementById('atlasStatus').textContent = 'Không kết nối';
+                    document.getElementById('modeStatus').textContent = 'Chế độ fallback';
+                    document.getElementById('driverVersion').textContent = 'N/A';
+                    addLog('Đang sử dụng dữ liệu tạm thời (fallback mode)');
+                }
+            } catch (error) {
+                addLog(`Lỗi khi kiểm tra kết nối: ${error.message}`);
+                updateStatus('disconnected', 'Không thể kết nối đến server');
+            }
+        }
+        
+        async function testConnection() {
+            addLog('Đang thử nghiệm kết nối...');
+            
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                
+                addLog(`Server health: ${data.status}`);
+                addLog(`Database: ${data.database}`);
+                addLog(`Environment: ${data.environment}`);
+                
+                if (data.database === 'connected') {
+                    addLog('✅ Kết nối database thành công!');
+                } else {
+                    addLog('⚠️ Đang sử dụng chế độ fallback');
+                }
+            } catch (error) {
+                addLog(`❌ Lỗi kết nối: ${error.message}`);
+            }
+        }
+        
+        async function testFullConnection() {
+            const testOutput = document.getElementById('testOutput');
+            testOutput.innerHTML = '<div>Đang kiểm tra...</div>';
+            
+            try {
+                // Test server connection
+                const healthResponse = await fetch('/api/health');
+                const healthData = await healthResponse.json();
+                
+                let results = `<div><strong>Server Status:</strong> ${healthData.status}</div>`;
+                results += `<div><strong>Database:</strong> ${healthData.database}</div>`;
+                results += `<div><strong>Using Fallback:</strong> ${healthData.usingFallback}</div>`;
+                
+                // Test database connection if available
+                if (!healthData.usingFallback) {
+                    const dbResponse = await fetch('/api/debug/db');
+                    const dbData = await dbResponse.json();
+                    
+                    results += `<div><strong>Collections:</strong> ${dbData.collections ? dbData.collections.join(', ') : 'N/A'}</div>`;
+                    results += `<div><strong>User Count:</strong> ${dbData.userCount || dbData.fallbackUserCount}</div>`;
+                    results += `<div><strong>Post Count:</strong> ${dbData.postCount || dbData.fallbackPostCount}</div>`;
+                    
+                    results += `<div style="color: green; margin-top: 10px;">✅ Kết nối MongoDB Atlas thành công!</div>`;
+                } else {
+                    results += `<div style="color: orange; margin-top: 10px;">⚠️ Đang sử dụng chế độ fallback - Kiểm tra kết nối MongoDB</div>`;
+                }
+                
+                testOutput.innerHTML = results;
+            } catch (error) {
+                testOutput.innerHTML = `<div style="color: red;">❌ Lỗi: ${error.message}</div>`;
+            }
+        }
+        
+        // Kiểm tra kết nối khi trang được tải
+        document.addEventListener('DOMContentLoaded', function() {
+            addLog('Trang đã tải xong');
+            checkConnection();
+        });
+    </script>
+</body>
+</html>
