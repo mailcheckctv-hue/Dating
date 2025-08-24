@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trang Chủ - Dating App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f0f2f5;
+            color: #1c1e21;
+        }
+        
+        .header {
+            background-color: #fff;
+            padding: 15px 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo h1 {
+            color: #e91e63;
+            font-size: 24px;
+            margin-right: 20px;
+        }
+        
+        .nav-menu {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .nav-item {
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .nav-item.active {
+            background-color: #e7f3ff;
+            color: #e91e63;
+        }
+        
+        .nav-item:hover {
+            background-color: #f0f2f5;
+        }
+        
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #e91e63;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .logout-btn {
+            background-color: #f0f2f5;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .logout-btn:hover {
+            background-color: #e4e6eb;
+        }
+        
+        .main-container {
+            display: flex;
+            max-width: 1200px;
+            margin: 20px auto;
+            gap: 20px;
+            padding: 0 20px;
+        }
+        
+        .sidebar {
+            width: 300px;
+            flex-shrink: 0;
+        }
+        
+        .profile-card {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .profile-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .profile-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #e91e63;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        
+        .profile-info h2 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        
+        .profile-info p {
+            color: #65676b;
+            font-size: 14px;
+        }
+        
+        .friends-card {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .friends-card h3 {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0f2f5;
+        }
+        
+        .friend-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f2f5;
+        }
+        
+        .friend-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #4267b2;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .content {
+            flex-grow: 1;
+        }
+        
+        .post-box {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .post-input {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .post-input-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #e91e63;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        
+        .post-input-field {
+            flex-grow: 1;
+            padding: 12px 15px;
+            border: 1px solid #dddfe2;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        
+        .post-input-field:hover {
+            background-color: #f0f2f5;
+        }
+        
+        .discover-section {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .discover-section h3 {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0f2f5;
+        }
+        
+        .user-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .user-card {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+        
+        .user-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .user-card-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #4267b2;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin: 0 auto 10px;
+        }
+        
+        .user-card h4 {
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .user-card p {
+            color: #65676b;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+        
+        .add-friend-btn {
+            background-color: #e91e63;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            background-color: #4caf50;
+            color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            display: none;
+        }
+        
+        .post-item {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .post-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .post-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #e91e63;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .post-user-info h4 {
+            margin-bottom: 2px;
+        }
+        
+        .post-time {
+            font-size: 12px;
+            color: #65676b;
+        }
+        
+        .post-content {
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        
+        .post-actions {
+            display: flex;
+            border-top: 1px solid #f0f2f5;
+            padding-top: 10px;
+        }
+        
+        .post-action {
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        
+        .post-action:hover {
+            background-color: #f0f2f5;
+        }
+        
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+            }
+            
+            .nav-menu {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <h1>Dating</h1>
+            <div class="nav-menu">
+                <div class="nav-item active">Trang Chủ</div>
+                <div class="nav-item">Bạn bè</div>
+                <div class="nav-item">Nhóm</div>
+                <div class="nav-item">Marketplace</div>
+            </div>
+        </div>
+        
+        <div class="user-menu">
+            <div class="user-avatar" id="userAvatar">U</div>
+            <button class="logout-btn" id="logoutBtn">Đăng xuất</button>
+        </div>
+    </div>
+    
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="profile-card">
+                <div class="profile-header">
+                    <div class="profile-avatar" id="profileAvatar">U</div>
+                    <div class="profile-info">
+                        <h2 id="profileName">Người dùng</h2>
+                        <p id="profileBio">Chưa có thông tin</p>
+                    </div>
+                </div>
+                <div class="profile-stats">
+                    <p><strong id="friendsCount">0</strong> bạn bè</p>
+                    <p><strong>5</strong> nhóm</p>
+                </div>
+            </div>
+            
+            <div class="friends-card">
+                <h3>Bạn bè</h3>
+                <div id="friendsList">
+                    <!-- Danh sách bạn bè sẽ được thêm bằng JavaScript -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="post-box">
+                <div class="post-input">
+                    <div class="post-input-avatar" id="postAvatar">U</div>
+                    <div class="post-input-field" id="createPostBtn">Bạn đang nghĩ gì?</div>
+                </div>
+            </div>
+            
+            <div id="postsContainer">
+                <!-- Danh sách bài post sẽ được thêm bằng JavaScript -->
+            </div>
+            
+            <div class="discover-section">
+                <h3>Gợi ý kết bạn</h3>
+                <div class="user-grid" id="suggestedUsers">
+                    <!-- Danh sách user sẽ được thêm bằng JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="notification" id="notification"></div>
+
+    <script>
+        // Biến toàn cục
+        let currentUser = null;
+        let authToken = null;
+        
+        // Hàm kiểm tra đăng nhập
+        async function checkAuth() {
+            try {
+                authToken = localStorage.getItem('token');
+                const userData = localStorage.getItem('user');
+                
+                if (!authToken || !userData) {
+                    throw new Error('No authentication data');
+                }
+                
+                const response = await fetch('http://localhost:3000/api/check-auth', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.authenticated) {
+                    currentUser = data.user;
+                    return true;
+                } else {
+                    throw new Error('Authentication failed');
+                }
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                // Xóa dữ liệu đăng nhập không hợp lệ
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                // Chuyển hướng về trang đăng nhập
+                window.location.href = 'login.html';
+                return false;
+            }
+        }
+        
+        // Hàm khởi tạo ứng dụng
+        async function initializeApp() {
+            const isAuthenticated = await checkAuth();
+            
+            if (!isAuthenticated) return;
+            
+            // Hiển thị thông tin user
+            document.getElementById('userAvatar').textContent = currentUser.username.charAt(0).toUpperCase();
+            document.getElementById('profileAvatar').textContent = currentUser.username.charAt(0).toUpperCase();
+            document.getElementById('postAvatar').textContent = currentUser.username.charAt(0).toUpperCase();
+            document.getElementById('profileName').textContent = currentUser.username;
+            
+            // Tải dữ liệu
+            await loadUserProfile();
+            await loadFriendsList();
+            await loadSuggestedUsers();
+            await loadPosts();
+            
+            // Thiết lập sự kiện
+            setupEventListeners();
+        }
+        
+        // Tải thông tin user
+        async function loadUserProfile() {
+            try {
+                const response = await fetch(`http://localhost:3000/api/user/${currentUser.id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const userData = await response.json();
+                    document.getElementById('profileName').textContent = userData.username;
+                    
+                    if (userData.profile && userData.profile.bio) {
+                        document.getElementById('profileBio').textContent = userData.profile.bio;
+                    }
+                    
+                    if (userData.friends) {
+                        document.getElementById('friendsCount').textContent = userData.friends.length;
+                    }
+                }
+            } catch (error) {
+                console.error('Lỗi tải thông tin user:', error);
+            }
+        }
+        
+        // Tải danh sách bạn bè
+        async function loadFriendsList() {
+            try {
+                const response = await fetch(`http://localhost:3000/api/user/${currentUser.id}/friends`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const friends = await response.json();
+                    const friendsList = document.getElementById('friendsList');
+                    friendsList.innerHTML = '';
+                    
+                    if (friends.length === 0) {
+                        friendsList.innerHTML = '<p>Bạn chưa có bạn bè nào</p>';
+                        return;
+                    }
+                    
+                    friends.slice(0, 5).forEach(friend => {
+                        const friendItem = document.createElement('div');
+                        friendItem.className = 'friend-item';
+                        friendItem.innerHTML = `
+                            <div class="friend-avatar">${friend.username.charAt(0).toUpperCase()}</div>
+                            <div>${friend.username}</div>
+                        `;
+                        friendsList.appendChild(friendItem);
+                    });
+                }
+            } catch (error) {
+                console.error('Lỗi tải danh sách bạn bè:', error);
+            }
+        }
+        
+        // Tải danh sách user đề xuất
+        async function loadSuggestedUsers() {
+            try {
+                const response = await fetch('http://localhost:3000/api/users', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const users = await response.json();
+                    const suggestedUsersContainer = document.getElementById('suggestedUsers');
+                    suggestedUsersContainer.innerHTML = '';
+                    
+                    // Lọc bỏ user hiện tại và bạn bè
+                    const currentUserData = await fetch(`http://localhost:3000/api/user/${currentUser.id}`, {
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`
+                        }
+                    }).then(res => res.ok ? res.json() : { friends: [] });
+                    
+                    const otherUsers = users.filter(user => 
+                        user.id !== currentUser.id && 
+                        !currentUserData.friends.includes(user.id)
+                    );
+                    
+                    // Hiển thị tối đa 6 user
+                    otherUsers.slice(0, 6).forEach(user => {
+                        const userCard = document.createElement('div');
+                        userCard.className = 'user-card';
+                        userCard.innerHTML = `
+                            <div class="user-card-avatar">${user.username.charAt(0).toUpperCase()}</div>
+                            <h4>${user.username}</h4>
+                            <p>${user.profile?.age ? user.profile.age + ' tuổi' : 'Chưa cập nhật'}</p>
+                            <button class="add-friend-btn" onclick="addFriend(${user.id})">Kết bạn</button>
+                        `;
+                        suggestedUsersContainer.appendChild(userCard);
+                    });
+                }
+            } catch (error) {
+                console.error('Lỗi tải danh sách user:', error);
+            }
+        }
+        
+        // Tải bài post
+        async function loadPosts() {
+            try {
+                const response = await fetch('http://localhost:3000/api/posts', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const posts = await response.json();
+                    const postsContainer = document.getElementById('postsContainer');
+                    postsContainer.innerHTML = '';
+                    
+                    if (posts.length === 0) {
+                        postsContainer.innerHTML = '<p>Chưa có bài viết nào</p>';
+                        return;
+                    }
+                    
+                    posts.forEach(post => {
+                        const postElement = document.createElement('div');
+                        postElement.className = 'post-item';
+                        postElement.innerHTML = `
+                            <div class="post-header">
+                                <div class="post-avatar">${post.user.username.charAt(0).toUpperCase()}</div>
+                                <div class="post-user-info">
+                                    <h4>${post.user.username}</h4>
+                                    <div class="post-time">${formatTime(post.createdAt)}</div>
+                                </div>
+                            </div>
+                            <div class="post-content">${post.content}</div>
+                            <div class="post-actions">
+                                <div class="post-action" onclick="likePost(${post.id})">
+                                    ${post.likes.includes(currentUser.id) ? '❤️' : '🤍'} ${post.likes.length}
+                                </div>
+                                <div class="post-action" onclick="focusCommentInput(${post.id})">
+                                    💬 ${post.comments.length}
+                                </div>
+                            </div>
+                        `;
+                        postsContainer.appendChild(postElement);
+                    });
+                }
+            } catch (error) {
+                console.error('Lỗi tải bài post:', error);
+            }
+        }
+        
+        // Hàm kết bạn
+        async function addFriend(friendId) {
+            try {
+                const response = await fetch(`http://localhost:3000/api/friend-request/${friendId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    showNotification('Đã gửi lời mời kết bạn thành công!');
+                    // Load lại danh sách bạn bè và đề xuất
+                    setTimeout(() => {
+                        loadFriendsList();
+                        loadSuggestedUsers();
+                    }, 1000);
+                } else {
+                    const data = await response.json();
+                    showNotification('Lỗi: ' + data.message, true);
+                }
+            } catch (error) {
+                console.error('Lỗi kết bạn:', error);
+                showNotification('Có lỗi xảy ra khi kết bạn', true);
+            }
+        }
+        
+        // Hàm like post
+        async function likePost(postId) {
+            try {
+                const response = await fetch(`http://localhost:3000/api/posts/${postId}/like`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    // Load lại danh sách bài post
+                    loadPosts();
+                }
+            } catch (error) {
+                console.error('Lỗi like bài post:', error);
+            }
+        }
+        
+        // Hiển thị thông báo
+        function showNotification(message, isError = false) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.style.backgroundColor = isError ? '#f44336' : '#4caf50';
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+        
+        // Định dạng thời gian
+        function formatTime(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diff = now - date;
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
+            
+            if (minutes < 60) {
+                return `${minutes} phút trước`;
+            } else if (hours < 24) {
+                return `${hours} giờ trước`;
+            } else {
+                return `${days} ngày trước`;
+            }
+        }
+        
+        // Thiết lập sự kiện
+        function setupEventListeners() {
+            // Đăng xuất
+            document.getElementById('logoutBtn').addEventListener('click', function() {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                window.location.href = 'login.html';
+            });
+            
+            // Tạo bài post
+            document.getElementById('createPostBtn').addEventListener('click', function() {
+                const content = prompt('Bạn đang nghĩ gì?');
+                if (content && content.trim() !== '') {
+                    createPost(content);
+                }
+            });
+        }
+        
+        // Tạo bài post mới
+        async function createPost(content) {
+            try {
+                const response = await fetch('http://localhost:3000/api/posts', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ content })
+                });
+                
+                if (response.ok) {
+                    showNotification('Đã đăng bài thành công!');
+                    loadPosts();
+                } else {
+                    const data = await response.json();
+                    showNotification('Lỗi: ' + data.message, true);
+                }
+            } catch (error) {
+                console.error('Lỗi tạo bài post:', error);
+                showNotification('Có lỗi xảy ra khi đăng bài', true);
+            }
+        }
+        
+        // Tải ứng dụng khi trang load
+        window.addEventListener('load', initializeApp);
+    </script>
+</body>
+</html>

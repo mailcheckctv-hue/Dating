@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập - Dating App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+        }
+        
+        .logo {
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        
+        .logo h1 {
+            color: #e91e63;
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .logo p {
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .login-card {
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+            width: 100%;
+            transition: transform 0.3s ease;
+        }
+        
+        .login-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .success-message {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            border-left: 4px solid #2e7d32;
+        }
+        
+        .error-message {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            border-left: 4px solid #c62828;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #555;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus {
+            border-color: #e91e63;
+            box-shadow: 0 0 0 2px rgba(233, 30, 99, 0.2);
+            outline: none;
+        }
+        
+        .forgot-password {
+            text-align: right;
+            margin-bottom: 20px;
+        }
+        
+        .forgot-password a {
+            color: #e91e63;
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.3s;
+        }
+        
+        .forgot-password a:hover {
+            text-decoration: underline;
+            color: #c2185b;
+        }
+        
+        .login-btn {
+            background: linear-gradient(to right, #e91e63, #ad1457);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+        
+        .login-btn:hover {
+            background: linear-gradient(to right, #d81b60, #880e4f);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 25px 0;
+            color: #777;
+            font-size: 14px;
+        }
+        
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .divider::before {
+            margin-right: 10px;
+        }
+        
+        .divider::after {
+            margin-left: 10px;
+        }
+        
+        .social-login {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .social-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+        }
+        
+        .social-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        
+        .social-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .fb-btn {
+            background-color: #3b5998;
+        }
+        
+        .gg-btn {
+            background-color: #db4437;
+        }
+        
+        .zl-btn {
+            background-color: #0068ff;
+        }
+        
+        .register-link {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #555;
+        }
+        
+        .register-link a {
+            color: #e91e63;
+            text-decoration: none;
+            font-weight: bold;
+            transition: color 0.3s;
+        }
+        
+        .register-link a:hover {
+            text-decoration: underline;
+            color: #c2185b;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #777;
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .login-card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>Dating</h1>
+            <p>Kết nối và làm quen với bạn bè mới</p>
+        </div>
+        
+        <div class="success-message" id="successMessage">
+            <strong>Thành công!</strong> Đăng nhập thành công với tài khoản: <span id="usernameDisplay"></span>
+        </div>
+        
+        <div class="error-message" id="errorMessage">
+            <strong>Lỗi!</strong> <span id="errorText"></span>
+        </div>
+        
+        <div class="login-card">
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Tên đăng nhập hoặc Email</label>
+                    <input type="text" id="username" placeholder="Nhập tên đăng nhập hoặc email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Mật khẩu</label>
+                    <input type="password" id="password" placeholder="Nhập mật khẩu" required>
+                </div>
+                
+                <div class="forgot-password">
+                    <a href="#">Quên mật khẩu?</a>
+                </div>
+                
+                <button type="submit" class="login-btn">Đăng nhập</button>
+                
+                <div class="divider">
+                    Hoặc đăng nhập bằng
+                </div>
+                
+                <div class="social-login">
+                    <div class="social-buttons">
+                        <div class="social-btn fb-btn">f</div>
+                        <div class="social-btn gg-btn">g</div>
+                        <div class="social-btn zl-btn">z</div>
+                    </div>
+                </div>
+                
+                <div class="register-link">
+                    Chưa có tài khoản? <a href="dang-ky.html">Đăng ký ngay</a>
+                </div>
+            </form>
+        </div>
+        
+        <div class="footer">
+            © 2023 Dating - Mãi kết nối bạn bè
+        </div>
+    </div>
+
+    <script>
+        // Kiểm tra nếu đã đăng nhập
+        window.addEventListener('load', function() {
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user');
+            
+            if (token && user) {
+                // Kiểm tra token có còn hiệu lực không
+                fetch('http://localhost:3000/api/check-auth', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.authenticated) {
+                        // Nếu đã đăng nhập, chuyển hướng đến trang chủ
+                        window.location.href = 'trang-chu.html';
+                    } else {
+                        // Token không hợp lệ, xóa dữ liệu cũ
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user');
+                    }
+                })
+                .catch(error => {
+                    console.error('Lỗi kiểm tra đăng nhập:', error);
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                });
+            }
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            // Ẩn thông báo lỗi cũ
+            document.getElementById('errorMessage').style.display = 'none';
+            
+            if (!username || !password) {
+                showError('Vui lòng nhập đầy đủ thông tin đăng nhập!');
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Lưu token và thông tin user
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    // Kiểm tra token có hợp lệ không
+                    const authCheck = await fetch('http://localhost:3000/api/check-auth', {
+                        headers: {
+                            'Authorization': `Bearer ${data.token}`
+                        }
+                    });
+                    
+                    const authData = await authCheck.json();
+                    
+                    if (authCheck.ok && authData.authenticated) {
+                        // Hiển thị thông báo thành công
+                        document.getElementById('usernameDisplay').textContent = data.user.username;
+                        document.getElementById('successMessage').style.display = 'block';
+                        
+                        // Chuyển hướng đến trang chủ sau 1.5 giây
+                        setTimeout(function() {
+                            window.location.href = 'trang-chu.html';
+                        }, 1500);
+                    } else {
+                        throw new Error('Xác thực token thất bại');
+                    }
+                } else {
+                    showError('Đăng nhập thất bại: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Lỗi:', error);
+                showError('Có lỗi xảy ra khi kết nối đến server. Vui lòng thử lại.');
+            }
+        });
+        
+        function showError(message) {
+            document.getElementById('errorText').textContent = message;
+            document.getElementById('errorMessage').style.display = 'block';
+        }
+        
+        function showSuccess(message) {
+            document.getElementById('usernameDisplay').textContent = message;
+            document.getElementById('successMessage').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
