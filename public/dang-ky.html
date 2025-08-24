@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng ký - Dating App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .logo {
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .logo h1 {
+            color: #e91e63;
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .logo p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .register-card {
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            width: 100%;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: #e91e63;
+            box-shadow: 0 0 0 2px rgba(233, 30, 99, 0.2);
+            outline: none;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .register-btn {
+            background: linear-gradient(to right, #e91e63, #ad1457);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+
+        .register-btn:hover {
+            background: linear-gradient(to right, #d81b60, #880e4f);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .login-link {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .login-link a {
+            color: #e91e63;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .message {
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            border-left: 4px solid transparent;
+        }
+
+        .success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border-color: #2e7d32;
+        }
+
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            border-color: #c62828;
+        }
+
+        @media (max-width: 600px) {
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>Dating</h1>
+            <p>Kết nối và làm quen với bạn bè mới</p>
+        </div>
+
+        <div class="message" id="message"></div>
+
+        <div class="register-card">
+            <form id="registerForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="username">Tên đăng nhập *</label>
+                        <input type="text" id="username" placeholder="Tên đăng nhập" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email *</label>
+                        <input type="email" id="email" placeholder="Email" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="password">Mật khẩu *</label>
+                        <input type="password" id="password" placeholder="Mật khẩu" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirmPassword">Xác nhận mật khẩu *</label>
+                        <input type="password" id="confirmPassword" placeholder="Xác nhận mật khẩu" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="fullname">Họ và tên</label>
+                        <input type="text" id="fullname" placeholder="Họ và tên">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="age">Tuổi</label>
+                        <input type="number" id="age" placeholder="Tuổi" min="18" max="100">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="gender">Giới tính</label>
+                    <select id="gender">
+                        <option value="">Chọn giới tính</option>
+                        <option value="male">Nam</option>
+                        <option value="female">Nữ</option>
+                        <option value="other">Khác</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="bio">Giới thiệu bản thân</label>
+                    <textarea id="bio" placeholder="Hãy giới thiệu đôi chút về bản thân bạn..." rows="3"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="interests">Sở thích (ngăn cách bằng dấu phẩy)</label>
+                    <input type="text" id="interests" placeholder="VD: du lịch, âm nhạc, thể thao...">
+                </div>
+
+                <button type="submit" class="register-btn">Đăng ký</button>
+
+                <div class="login-link">
+                    Đã có tài khoản? <a href="login.html">Đăng nhập ngay</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const fullname = document.getElementById('fullname').value;
+            const age = document.getElementById('age').value;
+            const gender = document.getElementById('gender').value;
+            const bio = document.getElementById('bio').value;
+            const interests = document.getElementById('interests').value.split(',').map(i => i.trim()).filter(i => i);
+
+            // Validate
+            if (password !== confirmPassword) {
+                showMessage('Mật khẩu xác nhận không khớp!', 'error');
+                return;
+            }
+
+            if (password.length < 6) {
+                showMessage('Mật khẩu phải có ít nhất 6 ký tự!', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:3000/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username,
+                        email,
+                        password,
+                        profile: {
+                            fullname,
+                            age: age ? parseInt(age) : null,
+                            gender,
+                            bio,
+                            interests
+                        }
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('Đăng ký thành công! Đang chuyển hướng đến trang đăng nhập...', 'success');
+
+                    // Chuyển hướng đến trang đăng nhập sau 2 giây
+                    setTimeout(function() {
+                        window.location.href = 'login.html';
+                    }, 2000);
+                } else {
+                    showMessage('Đăng ký thất bại: ' + data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Lỗi:', error);
+                showMessage('Có lỗi xảy ra khi kết nối đến server', 'error');
+            }
+        });
+
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = 'message ' + type;
+            messageEl.style.display = 'block';
+
+            // Tự động ẩn thông báo sau 5 giây
+            setTimeout(() => {
+                messageEl.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
