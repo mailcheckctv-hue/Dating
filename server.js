@@ -44,6 +44,7 @@ mongoose.connect(MONGODB_URI)
     console.log('❌ Lỗi kết nối MongoDB:', err.message);
     console.log('⚠️  Ứng dụng sẽ chạy ở chế độ fallback (bộ nhớ)');
   });
+
 // ==================== MIDDLEWARE ====================
 app.use(cors({
   origin: '*',
