@@ -5,20 +5,19 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const path = require('path');
-console.log('🔄 Đang kết nối đến MongoDB...');
-console.log('📝 URI from env:', process.env.MONGODB_URI ? 'Exists' : 'Missing');
-console.log('📝 Using URI:', MONGODB_URI.replace(/:[^:]*@/, ':****@'));
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// ✅ URI MỚI VỚI PASSWORD 95485675 (không cần encode)
+// ✅ KHAI BÁO BIẾN TRƯỚC KHI SỬ DỤNG
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://datingappuser:95485675@cluster0.hsl2eh4.mongodb.net/dating-app?retryWrites=true&w=majority&appName=Cluster0';
 
+// ✅ SỬ DỤNG BIẾN SAU KHI ĐÃ KHAI BÁO
 console.log('🔄 Đang kết nối đến MongoDB...');
-console.log('📝 URI:', MONGODB_URI.replace(/:[^:]*@/, ':****@'));
+console.log('📝 URI from env:', process.env.MONGODB_URI ? 'Exists' : 'Missing');
+console.log('📝 Using URI:', MONGODB_URI.replace(/:[^:]*@/, ':****@'));
 
-// ✅ KẾT NỐI MONGODB DUY NHẤT
+// ✅ KẾT NỐI MONGODB
 mongoose.connect(MONGODB_URI)
   .then(() => {
     console.log('✅ Đã kết nối đến MongoDB thành công!');
@@ -28,6 +27,8 @@ mongoose.connect(MONGODB_URI)
     console.log('❌ Lỗi kết nối MongoDB, sử dụng fallback mode...');
     console.log('💡 Lỗi:', err.message);
   });
+
+// ... (phần còn lại của code) ...
 
 // Middleware
 app.use(cors({
