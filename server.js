@@ -8,7 +8,8 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 1000;
-// Debug connection
+
+// Debug connection - CHỈ KHAI BÁO 1 LẦN DUY NHẤT
 console.log('🔍 Connecting to MongoDB...');
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://datingappuser:Check68%40@cluster0.hsl2eh4.mongodb.net/dating-app?retryWrites=true&w=majority&appName=Cluster0';
 
@@ -27,6 +28,10 @@ const connectDB = async () => {
     console.log('🔄 Using fallback mode...');
   }
 };
+
+connectDB();
+
+// ... (phần còn lại của code giữ nguyên)
 
 connectDB();
 
@@ -62,7 +67,6 @@ app.get('/api/test', (req, res) => {
 });
 
 // Kết nối MongoDB với timeout dài hơn và xử lý lỗi chi tiết
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/datingapp';
 
 console.log('🔄 Đang kết nối đến MongoDB...');
 console.log('📝 URI:', MONGODB_URI);
