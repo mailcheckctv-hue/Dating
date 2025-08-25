@@ -226,7 +226,7 @@
     </div>
 
     <script>
-        // URL API - ĐÃ SỬA THÀNH URL RENDER
+        // URL API - ĐÃ SỬA THÀNH URL RENDER ✅
         const API_BASE_URL = 'https://dating-bixm.onrender.com';
 
         document.getElementById('registerForm').addEventListener('submit', async function(e) {
@@ -254,6 +254,8 @@
             }
 
             try {
+                console.log('Đang gửi request đăng ký...'); // ✅ Thêm logging
+                
                 const response = await fetch(API_BASE_URL + '/api/register', {
                     method: 'POST',
                     headers: {
@@ -263,7 +265,7 @@
                         username,
                         email,
                         password,
-                        confirmPassword,
+                        confirmPassword, // ✅ Thêm confirmPassword
                         profile: {
                             fullname,
                             age: age ? parseInt(age) : null,
@@ -274,7 +276,10 @@
                     })
                 });
 
+                console.log('Response status:', response.status); // ✅ Thêm logging
+                
                 const data = await response.json();
+                console.log('Response data:', data); // ✅ Thêm logging
 
                 if (response.ok) {
                     showMessage('Đăng ký thành công! Đang chuyển hướng đến trang đăng nhập...', 'success');
@@ -288,7 +293,7 @@
                 }
             } catch (error) {
                 console.error('Lỗi:', error);
-                showMessage('Có lỗi xảy ra khi kết nối đến server', 'error');
+                showMessage('Có lỗi xảy ra khi kết nối đến server: ' + error.message, 'error');
             }
         });
 
