@@ -9,26 +9,23 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 1000;
 
-// Debug connection - CHỈ KHAI BÁO 1 LẦN DUY NHẤT
-console.log('🔍 Connecting to MongoDB...');
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://datingappuser:Check68%40@cluster0.hsl2eh4.mongodb.net/dating-app?retryWrites=true&w=majority&appName=Cluster0';
+// Kết nối MongoDB ĐƠN GIẢN
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://datingappuser:Check68%40@cluster0.hsl2eh4.mongodb.net/dating-app?retryWrites=true&w=majority';
 
-console.log('📝 Using URI:', MONGODB_URI.replace(/:[^:]*@/, ':****@')); // Ẩn password trong log
+console.log('🔄 Đang kết nối đến MongoDB...');
+console.log('📝 URI:', MONGODB_URI.replace(/:[^:]*@/, ':****@'));
 
-const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 5000,
-    });
-    console.log('✅ MongoDB Connected successfully!');
-  } catch (error) {
-    console.error('❌ MongoDB Connection Failed:', error.message);
-    console.log('🔄 Using fallback mode...');
-  }
-};
+// Kết nối MongoDB với options tối thiểu
+mongoose.connect(MONGODB_URI)
+  .then(() => {
+    console.log('✅ Kết nối MongoDB thành công!');
+  })
+  .catch((error) => {
+    console.log('❌ Lỗi kết nối MongoDB, sử dụng fallback mode...');
+    console.log('💡 Lỗi:', error.message);
+  });
 
+// ... (phần middleware và các route giữ nguyên) ...
 connectDB();
 
 // ... (phần còn lại của code giữ nguyên)
