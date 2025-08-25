@@ -200,9 +200,9 @@
                     <label for="gender">Giới tính</label>
                     <select id="gender">
                         <option value="">Chọn giới tính</option>
-                        <option value="male">Nam</option>
-                        <option value="female">Nữ</option>
-                        <option value="other">Khác</option>
+                        <option value="Nam">Nam</option>
+                        <option value="Nữ">Nữ</option>
+                        <option value="Khác">Khác</option>
                     </select>
                 </div>
 
@@ -226,6 +226,9 @@
     </div>
 
     <script>
+        // URL API - ĐÃ SỬA THÀNH URL RENDER
+        const API_BASE_URL = 'https://dating-bixm.onrender.com';
+
         document.getElementById('registerForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
@@ -251,7 +254,7 @@
             }
 
             try {
-                const response = await fetch('http://localhost:3000/api/register', {
+                const response = await fetch(API_BASE_URL + '/api/register', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -260,6 +263,7 @@
                         username,
                         email,
                         password,
+                        confirmPassword,
                         profile: {
                             fullname,
                             age: age ? parseInt(age) : null,
