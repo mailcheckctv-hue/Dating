@@ -108,6 +108,13 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
 
+        .register-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
         .login-link {
             text-align: center;
             margin-top: 20px;
@@ -139,6 +146,21 @@
             background-color: #ffebee;
             color: #c62828;
             border-color: #c62828;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
         @media (max-width: 600px) {
@@ -175,7 +197,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="password">Mật khẩu *</label>
-                        <input type="password" id="password" placeholder="Mật khẩu" required>
+                        <input type="password" id="password" placeholder="Mật khẩu" required minlength="6">
                     </div>
 
                     <div class="form-group">
@@ -216,7 +238,10 @@
                     <input type="text" id="interests" placeholder="VD: du lịch, âm nhạc, thể thao...">
                 </div>
 
-                <button type="submit" class="register-btn">Đăng ký</button>
+                <button type="submit" class="register-btn" id="submitBtn">
+                    <span id="btnText">Đăng ký</span>
+                    <span id="btnLoading" class="loading" style="display: none;"></span>
+                </button>
 
                 <div class="login-link">
                     Đã có tài khoản? <a href="login.html">Đăng nhập ngay</a>
@@ -226,35 +251,56 @@
     </div>
 
     <script>
-        // URL API - ĐÃ SỬA THÀNH URL RENDER ✅
-        const API_BASE_URL = 'https://dating-bixm.onrender.com';
+        // URL API - Tự động detect môi trường
+        function getApiBaseUrl() {
+            // Nếu đang chạy trên localhost (development)
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                return 'http://localhost:10000';
+            }
+            // Nếu đang chạy trên production
+            return 'https://dating-bixm.onrender.com';
+        }
+
+        const API_BASE_URL = getApiBaseUrl();
+        console.log('API Base URL:', API_BASE_URL);
 
         document.getElementById('registerForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+            
+            // Hiển thị trạng thái loading
+            const submitBtn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const btnLoading = document.getElementById('btnLoading');
+            
+            submitBtn.disabled = true;
+            btnText.textContent = 'Đang xử lý...';
+            btnLoading.style.display = 'inline-block';
 
-            const username = document.getElementById('username').value;
-            const email = document.getElementById('email').value;
+            const username = document.getElementById('username').value.trim();
+            const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
-            const fullname = document.getElementById('fullname').value;
+            const fullname = document.getElementById('fullname').value.trim();
             const age = document.getElementById('age').value;
             const gender = document.getElementById('gender').value;
-            const bio = document.getElementById('bio').value;
+            const bio = document.getElementById('bio').value.trim();
             const interests = document.getElementById('interests').value.split(',').map(i => i.trim()).filter(i => i);
 
             // Validate
             if (password !== confirmPassword) {
                 showMessage('Mật khẩu xác nhận không khớp!', 'error');
+                resetButton();
                 return;
             }
 
             if (password.length < 6) {
                 showMessage('Mật khẩu phải có ít nhất 6 ký tự!', 'error');
+                resetButton();
                 return;
             }
 
             try {
-                console.log('Đang gửi request đăng ký...'); // ✅ Thêm logging
+                console.log('Đang gửi request đăng ký đến:', API_BASE_URL + '/api/register');
                 
                 const response = await fetch(API_BASE_URL + '/api/register', {
                     method: 'POST',
@@ -265,21 +311,21 @@
                         username,
                         email,
                         password,
-                        confirmPassword, // ✅ Thêm confirmPassword
+                        confirmPassword,
                         profile: {
-                            fullname,
-                            age: age ? parseInt(age) : null,
-                            gender,
-                            bio,
-                            interests
+                            fullname: fullname || undefined,
+                            age: age ? parseInt(age) : undefined,
+                            gender: gender || undefined,
+                            bio: bio || undefined,
+                            interests: interests.length > 0 ? interests : undefined
                         }
                     })
                 });
 
-                console.log('Response status:', response.status); // ✅ Thêm logging
+                console.log('Response status:', response.status);
                 
                 const data = await response.json();
-                console.log('Response data:', data); // ✅ Thêm logging
+                console.log('Response data:', data);
 
                 if (response.ok) {
                     showMessage('Đăng ký thành công! Đang chuyển hướng đến trang đăng nhập...', 'success');
@@ -289,11 +335,13 @@
                         window.location.href = 'login.html';
                     }, 2000);
                 } else {
-                    showMessage('Đăng ký thất bại: ' + data.message, 'error');
+                    showMessage('Đăng ký thất bại: ' + (data.message || 'Lỗi không xác định'), 'error');
+                    resetButton();
                 }
             } catch (error) {
                 console.error('Lỗi:', error);
                 showMessage('Có lỗi xảy ra khi kết nối đến server: ' + error.message, 'error');
+                resetButton();
             }
         });
 
@@ -308,6 +356,28 @@
                 messageEl.style.display = 'none';
             }, 5000);
         }
+
+        function resetButton() {
+            const submitBtn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const btnLoading = document.getElementById('btnLoading');
+            
+            submitBtn.disabled = false;
+            btnText.textContent = 'Đăng ký';
+            btnLoading.style.display = 'none';
+        }
+
+        // Kiểm tra kết nối server khi trang load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch(API_BASE_URL + '/api/health');
+                const data = await response.json();
+                console.log('Kết nối server thành công:', data);
+            } catch (error) {
+                console.warn('Không thể kết nối đến server:', error);
+                showMessage('⚠️ Không thể kết nối đến server. Vui lòng thử lại sau.', 'error');
+            }
+        });
     </script>
 </body>
 </html>
