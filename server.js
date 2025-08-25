@@ -28,15 +28,24 @@ mongoose.connect(MONGODB_URI)
 
 // ==================== MIDDLEWARE ====================
 app.use(cors({
-  origin: '*',
+  origin: ['http://localhost:10000', 'https://dating-bixm.onrender.com'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
+// Xử lý preflight requests
+app.options('*', cors());
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.html')) {
+      res.setHeader('Content-Type', 'text/html; charset=UTF-8');
+    }
+  }
+}));
 
 // Logging middleware
 app.use((req, res, next) => {
@@ -160,6 +169,15 @@ app.get('/api/test', (req, res) => {
     message: 'Server is working!',
     timestamp: new Date().toISOString(),
     port: PORT
+  });
+});
+
+// Test connection endpoint
+app.get('/api/test-connection', (req, res) => {
+  res.json({ 
+    message: 'Kết nối thành công!',
+    timestamp: new Date().toISOString(),
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
   });
 });
 
