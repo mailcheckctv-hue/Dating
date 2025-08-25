@@ -7,7 +7,7 @@ const cors = require('cors');
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 30000;
+const PORT = process.env.PORT || 10000;
 const HOST = '0.0.0.0';
 
 // ==================== MONGODB CONNECTION ====================
@@ -15,7 +15,6 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://datingappuser:9548
 
 console.log('🔄 Đang kết nối đến MongoDB...');
 
-// CHỈ 1 KẾT NỐI DUY NHẤT
 mongoose.connect(MONGODB_URI)
   .then(() => {
     console.log('✅ Đã kết nối đến MongoDB thành công!');
@@ -23,6 +22,7 @@ mongoose.connect(MONGODB_URI)
   })
   .catch(err => {
     console.log('❌ Lỗi kết nối MongoDB:', err.message);
+    console.log('⚠️  Ứng dụng sẽ chạy ở chế độ fallback (bộ nhớ)');
   });
 
 // ==================== MIDDLEWARE ====================
@@ -30,7 +30,7 @@ app.use(cors({
   origin: '*',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 
 app.use(express.json({ limit: '10mb' }));
@@ -133,10 +133,14 @@ app.get('/api/test', (req, res) => {
 // Register
 app.post('/api/register', async (req, res) => {
   try {
-    const { username, email, password, profile } = req.body;
+    const { username, email, password, confirmPassword, profile } = req.body;
     
-    if (!username || !email || !password) {
+    if (!username || !email || !password || !confirmPassword) {
       return res.status(400).json({ message: 'Vui lòng điền đầy đủ thông tin' });
+    }
+    
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: 'Mật khẩu xác nhận không khớp' });
     }
     
     // Kiểm tra user tồn tại
@@ -220,32 +224,40 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// Login
+// Login endpoint - ĐÃ ĐƯỢC THÊM VÀO
 app.post('/api/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
     
-    if (!username || !password) {
-      return res.status(400).json({ message: 'Vui lòng điền đầy đủ thông tin' });
+    console.log('Login attempt:', { email });
+    
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Vui lòng điền email và mật khẩu' });
     }
     
     let user;
     if (mongoose.connection.readyState === 1) {
       // MongoDB mode
-      user = await User.findOne({ $or: [{ username }, { email: username }] });
-      if (user && !(await bcrypt.compare(password, user.password))) {
-        user = null;
+      user = await User.findOne({ $or: [{ email }, { username: email }] });
+      if (user) {
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+          user = null;
+        }
       }
     } else {
       // Fallback mode
-      user = users.find(u => u.username === username || u.email === username);
-      if (user && !(await bcrypt.compare(password, user.password))) {
-        user = null;
+      user = users.find(u => u.email === email || u.username === email);
+      if (user) {
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+          user = null;
+        }
       }
     }
     
     if (!user) {
-      return res.status(400).json({ message: 'Tên đăng nhập hoặc mật khẩu không đúng' });
+      return res.status(400).json({ message: 'Email hoặc mật khẩu không đúng' });
     }
     
     const token = jwt.sign(
@@ -255,15 +267,16 @@ app.post('/api/login', async (req, res) => {
     );
     
     res.json({ 
-      token, 
-      user: { 
-        id: mongoose.connection.readyState === 1 ? user._id : user.id, 
+      message: 'Đăng nhập thành công',
+      token,
+      user: {
+        id: mongoose.connection.readyState === 1 ? user._id : user.id,
         username: user.username,
         email: user.email,
         profile: user.profile
-      },
-      message: 'Đăng nhập thành công'
+      }
     });
+    
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Lỗi server', error: error.message });
