@@ -5,6 +5,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const path = require('path');
+console.log('🔄 Đang kết nối đến MongoDB...');
+console.log('📝 URI from env:', process.env.MONGODB_URI ? 'Exists' : 'Missing');
+console.log('📝 Using URI:', MONGODB_URI.replace(/:[^:]*@/, ':****@'));
 
 const app = express();
 const PORT = process.env.PORT || 10000;
