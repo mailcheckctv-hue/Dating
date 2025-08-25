@@ -7,7 +7,7 @@ const cors = require('cors');
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 30000;
 const HOST = '0.0.0.0';
 
 // ==================== MONGODB CONNECTION ====================
