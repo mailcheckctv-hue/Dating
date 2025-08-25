@@ -10,30 +10,11 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 const HOST = '0.0.0.0';
 
-// ==================== MIDDLEWARE ====================
-app.use(cors({
-  origin: '*',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
-}));
-
-// Handle preflight requests for all routes
-app.options('*', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With');
-  res.status(200).end();
-});
-
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
-
 // ==================== MONGODB CONNECTION ====================
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://datingappuser:95485675@cluster0.hsl2eh4.mongodb.net/dating-app?retryWrites=true&w=majority&appName=Cluster0';
 
 console.log('🔄 Đang kết nối đến MongoDB...');
+console.log('📝 URI from env:', process.env.MONGODB_URI ? 'Exists' : 'Missing');
 
 mongoose.connect(MONGODB_URI)
   .then(() => {
@@ -41,8 +22,8 @@ mongoose.connect(MONGODB_URI)
     console.log('📊 Database:', mongoose.connection.name);
   })
   .catch(err => {
-    console.log('❌ Lỗi kết nối MongoDB:', err.message);
-    console.log('⚠️  Ứng dụng sẽ chạy ở chế độ fallback (bộ nhớ)');
+    console.log('❌ Lỗi kết nối MongoDB, sử dụng fallback mode...');
+    console.log('💡 Lỗi:', err.message);
   });
 
 // ==================== MIDDLEWARE ====================
@@ -50,11 +31,8 @@ app.use(cors({
   origin: '*',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
-
-// Handle preflight requests
-app.options('*', cors());
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -114,6 +92,37 @@ let posts = [];
 let messages = [];
 let nextId = 1;
 
+// Create test user for fallback
+const createTestUser = async () => {
+  try {
+    const hashedPassword = await bcrypt.hash('123456', 10);
+    users.push({
+      id: 1,
+      username: 'demo1',
+      email: 'demo1@example.com',
+      password: hashedPassword,
+      profile: {
+        fullname: 'Người Dùng Demo',
+        age: 25,
+        gender: 'Khác',
+        bio: 'Đây là tài khoản demo',
+        interests: ['test', 'demo'],
+        avatar: ''
+      },
+      friends: [],
+      createdAt: new Date()
+    });
+    console.log('✅ Đã tạo tài khoản test: demo1 / 123456');
+  } catch (error) {
+    console.error('❌ Lỗi tạo user test:', error);
+  }
+};
+
+if (mongoose.connection.readyState !== 1 && users.length === 0) {
+  console.log('👤 Tạo tài khoản test trong fallback mode...');
+  createTestUser();
+}
+
 // ==================== AUTH MIDDLEWARE ====================
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -140,6 +149,7 @@ app.get('/api/health', (req, res) => {
     status: 'OK', 
     timestamp: new Date().toISOString(),
     database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    usingFallback: mongoose.connection.readyState !== 1,
     environment: process.env.NODE_ENV || 'development'
   });
 });
@@ -156,17 +166,12 @@ app.get('/api/test', (req, res) => {
 // Register
 app.post('/api/register', async (req, res) => {
   try {
-    const { username, email, password, confirmPassword, profile } = req.body;
+    const { username, email, password, profile } = req.body;
     
-    if (!username || !email || !password || !confirmPassword) {
+    if (!username || !email || !password) {
       return res.status(400).json({ message: 'Vui lòng điền đầy đủ thông tin' });
     }
     
-    if (password !== confirmPassword) {
-      return res.status(400).json({ message: 'Mật khẩu xác nhận không khớp' });
-    }
-    
-    // Kiểm tra user tồn tại
     let existingUser;
     if (mongoose.connection.readyState === 1) {
       existingUser = await User.findOne({ $or: [{ username }, { email }] });
@@ -178,12 +183,10 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ message: 'Tên đăng nhập hoặc email đã tồn tại' });
     }
     
-    // Mã hóa password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     
     if (mongoose.connection.readyState === 1) {
-      // MongoDB mode
       const newUser = new User({
         username,
         email,
@@ -211,7 +214,6 @@ app.post('/api/register', async (req, res) => {
         }
       });
     } else {
-      // Fallback mode
       const newUser = {
         id: nextId++,
         username,
@@ -247,40 +249,30 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// Login endpoint - ĐÃ ĐƯỢC THÊM VÀO
+// Login
 app.post('/api/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
     
-    console.log('Login attempt:', { email });
-    
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Vui lòng điền email và mật khẩu' });
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Vui lòng điền đầy đủ thông tin' });
     }
     
     let user;
     if (mongoose.connection.readyState === 1) {
-      // MongoDB mode
-      user = await User.findOne({ $or: [{ email }, { username: email }] });
-      if (user) {
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-          user = null;
-        }
+      user = await User.findOne({ $or: [{ username }, { email: username }] });
+      if (user && !(await bcrypt.compare(password, user.password))) {
+        user = null;
       }
     } else {
-      // Fallback mode
-      user = users.find(u => u.email === email || u.username === email);
-      if (user) {
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-          user = null;
-        }
+      user = users.find(u => u.username === username || u.email === username);
+      if (user && !(await bcrypt.compare(password, user.password))) {
+        user = null;
       }
     }
     
     if (!user) {
-      return res.status(400).json({ message: 'Email hoặc mật khẩu không đúng' });
+      return res.status(400).json({ message: 'Tên đăng nhập hoặc mật khẩu không đúng' });
     }
     
     const token = jwt.sign(
@@ -290,16 +282,15 @@ app.post('/api/login', async (req, res) => {
     );
     
     res.json({ 
-      message: 'Đăng nhập thành công',
-      token,
-      user: {
-        id: mongoose.connection.readyState === 1 ? user._id : user.id,
+      token, 
+      user: { 
+        id: mongoose.connection.readyState === 1 ? user._id : user.id, 
         username: user.username,
         email: user.email,
         profile: user.profile
-      }
+      },
+      message: 'Đăng nhập thành công'
     });
-    
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Lỗi server', error: error.message });
@@ -396,44 +387,6 @@ app.get('/api/posts', authenticateToken, async (req, res) => {
   }
 });
 
-// =================================== Update profile=======
-
-
-app.put('/api/profile', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.userId;
-    const { fullname, age, gender, bio, interests, avatar } = req.body;
-    
-    if (mongoose.connection.readyState === 1) {
-      const user = await User.findById(userId);
-      if (!user) return res.status(404).json({ message: 'User not found' });
-      
-      user.profile = { fullname, age, gender, bio, interests, avatar };
-      await user.save();
-      
-      res.json({ message: 'Profile updated successfully', profile: user.profile });
-    } else {
-      const user = users.find(u => u.id == userId);
-      if (!user) return res.status(404).json({ message: 'User not found' });
-      
-      user.profile = { fullname, age, gender, bio, interests, avatar };
-      res.json({ message: 'Profile updated successfully', profile: user.profile });
-    }
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-// ==================== CHECK AUTH ENDPOINT ====================
-app.get('/api/check-auth', authenticateToken, (req, res) => {
-  res.json({ 
-    authenticated: true, 
-    userId: req.user.userId,
-    message: 'User is authenticated'
-  });
-});
-
-
 // ==================== STATIC ROUTES ====================
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
@@ -466,6 +419,7 @@ app.listen(PORT, HOST, () => {
   console.log(`=== SERVER DATING APP ===`);
   console.log(`🚀 Server đang chạy trên ${HOST}:${PORT}`);
   console.log(`🌍 Môi trường: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`📊 Kết nối MongoDB: ${mongoose.connection.readyState === 1 ? '✅ Thành công' : '❌ Thất bại'}`);
   console.log(`📁 Phục vụ file tĩnh từ: ${path.join(__dirname, 'public')}`);
   console.log(`================================`);
 });
