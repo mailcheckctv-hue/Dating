@@ -15,7 +15,7 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://datingappuser:Chec
 console.log('🔄 Đang kết nối đến MongoDB...');
 console.log('📝 URI:', MONGODB_URI.replace(/:[^:]*@/, ':****@'));
 
-// Kết nối MongoDB với options tối thiểu
+// Kết nối MongoDB trực tiếp - XÓA HÀM connectDB() VÀ CHỈ DÙNG CODE NÀY
 mongoose.connect(MONGODB_URI)
   .then(() => {
     console.log('✅ Kết nối MongoDB thành công!');
@@ -25,22 +25,16 @@ mongoose.connect(MONGODB_URI)
     console.log('💡 Lỗi:', error.message);
   });
 
-// ... (phần middleware và các route giữ nguyên) ...
-connectDB();
-
-// ... (phần còn lại của code giữ nguyên)
-
-connectDB();
-
 // Middleware - CORS configuration chi tiết
 app.use(cors({
   origin: function(origin, callback) {
-    // Cho phép tất cả các origin (bao gồm cả mobile)
     callback(null, true);
   },
   credentials: true,
   optionsSuccessStatus: 200
 }));
+
+// ... (phần middleware và các route tiếp theo giữ nguyên) ...
 
 // Thêm middleware để xử lý preflight requests
 app.options('*', cors());
