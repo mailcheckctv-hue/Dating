@@ -14,16 +14,15 @@ const HOST = '0.0.0.0';
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://datingappuser:95485675@cluster0.hsl2eh4.mongodb.net/dating-app?retryWrites=true&w=majority&appName=Cluster0';
 
 console.log('🔄 Đang kết nối đến MongoDB...');
-console.log('📝 URI from env:', process.env.MONGODB_URI ? 'Exists' : 'Missing');
 
+// CHỈ 1 KẾT NỐI DUY NHẤT
 mongoose.connect(MONGODB_URI)
   .then(() => {
     console.log('✅ Đã kết nối đến MongoDB thành công!');
     console.log('📊 Database:', mongoose.connection.name);
   })
   .catch(err => {
-    console.log('❌ Lỗi kết nối MongoDB, sử dụng fallback mode...');
-    console.log('💡 Lỗi:', err.message);
+    console.log('❌ Lỗi kết nối MongoDB:', err.message);
   });
 
 // ==================== MIDDLEWARE ====================
@@ -92,37 +91,6 @@ let posts = [];
 let messages = [];
 let nextId = 1;
 
-// Create test user for fallback
-const createTestUser = async () => {
-  try {
-    const hashedPassword = await bcrypt.hash('123456', 10);
-    users.push({
-      id: 1,
-      username: 'demo1',
-      email: 'demo1@example.com',
-      password: hashedPassword,
-      profile: {
-        fullname: 'Người Dùng Demo',
-        age: 25,
-        gender: 'Khác',
-        bio: 'Đây là tài khoản demo',
-        interests: ['test', 'demo'],
-        avatar: ''
-      },
-      friends: [],
-      createdAt: new Date()
-    });
-    console.log('✅ Đã tạo tài khoản test: demo1 / 123456');
-  } catch (error) {
-    console.error('❌ Lỗi tạo user test:', error);
-  }
-};
-
-if (mongoose.connection.readyState !== 1 && users.length === 0) {
-  console.log('👤 Tạo tài khoản test trong fallback mode...');
-  createTestUser();
-}
-
 // ==================== AUTH MIDDLEWARE ====================
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -149,7 +117,6 @@ app.get('/api/health', (req, res) => {
     status: 'OK', 
     timestamp: new Date().toISOString(),
     database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-    usingFallback: mongoose.connection.readyState !== 1,
     environment: process.env.NODE_ENV || 'development'
   });
 });
@@ -172,6 +139,7 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ message: 'Vui lòng điền đầy đủ thông tin' });
     }
     
+    // Kiểm tra user tồn tại
     let existingUser;
     if (mongoose.connection.readyState === 1) {
       existingUser = await User.findOne({ $or: [{ username }, { email }] });
@@ -183,10 +151,12 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ message: 'Tên đăng nhập hoặc email đã tồn tại' });
     }
     
+    // Mã hóa password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     
     if (mongoose.connection.readyState === 1) {
+      // MongoDB mode
       const newUser = new User({
         username,
         email,
@@ -214,6 +184,7 @@ app.post('/api/register', async (req, res) => {
         }
       });
     } else {
+      // Fallback mode
       const newUser = {
         id: nextId++,
         username,
@@ -260,11 +231,13 @@ app.post('/api/login', async (req, res) => {
     
     let user;
     if (mongoose.connection.readyState === 1) {
+      // MongoDB mode
       user = await User.findOne({ $or: [{ username }, { email: username }] });
       if (user && !(await bcrypt.compare(password, user.password))) {
         user = null;
       }
     } else {
+      // Fallback mode
       user = users.find(u => u.username === username || u.email === username);
       if (user && !(await bcrypt.compare(password, user.password))) {
         user = null;
@@ -387,6 +360,32 @@ app.get('/api/posts', authenticateToken, async (req, res) => {
   }
 });
 
+// Update profile
+app.put('/api/profile', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { fullname, age, gender, bio, interests, avatar } = req.body;
+    
+    if (mongoose.connection.readyState === 1) {
+      const user = await User.findById(userId);
+      if (!user) return res.status(404).json({ message: 'User not found' });
+      
+      user.profile = { fullname, age, gender, bio, interests, avatar };
+      await user.save();
+      
+      res.json({ message: 'Profile updated successfully', profile: user.profile });
+    } else {
+      const user = users.find(u => u.id == userId);
+      if (!user) return res.status(404).json({ message: 'User not found' });
+      
+      user.profile = { fullname, age, gender, bio, interests, avatar };
+      res.json({ message: 'Profile updated successfully', profile: user.profile });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // ==================== STATIC ROUTES ====================
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
@@ -419,7 +418,6 @@ app.listen(PORT, HOST, () => {
   console.log(`=== SERVER DATING APP ===`);
   console.log(`🚀 Server đang chạy trên ${HOST}:${PORT}`);
   console.log(`🌍 Môi trường: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📊 Kết nối MongoDB: ${mongoose.connection.readyState === 1 ? '✅ Thành công' : '❌ Thất bại'}`);
   console.log(`📁 Phục vụ file tĩnh từ: ${path.join(__dirname, 'public')}`);
   console.log(`================================`);
 });
