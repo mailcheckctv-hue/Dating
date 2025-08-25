@@ -30,8 +30,11 @@ app.use(cors({
   origin: '*',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
 }));
+
+// Handle preflight requests
+app.options('*', cors());
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -373,7 +376,9 @@ app.get('/api/posts', authenticateToken, async (req, res) => {
   }
 });
 
-// Update profile
+// =================================== Update profile=======
+
+
 app.put('/api/profile', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -398,6 +403,16 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
+
+// ==================== CHECK AUTH ENDPOINT ====================
+app.get('/api/check-auth', authenticateToken, (req, res) => {
+  res.json({ 
+    authenticated: true, 
+    userId: req.user.userId,
+    message: 'User is authenticated'
+  });
+});
+
 
 // ==================== STATIC ROUTES ====================
 app.get('/', (req, res) => {
