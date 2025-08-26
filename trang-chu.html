@@ -880,6 +880,9 @@
         
         .chat-header h3 {
             font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
         .close-chat {
@@ -904,6 +907,7 @@
             padding: 10px 15px;
             border-radius: 18px;
             margin-bottom: 5px;
+            position: relative;
         }
         
         .message.sent {
@@ -916,6 +920,13 @@
             align-self: flex-start;
             background-color: #f0f2f5;
             color: #333;
+        }
+        
+        .message-time {
+            font-size: 10px;
+            margin-top: 5px;
+            opacity: 0.7;
+            text-align: right;
         }
         
         .chat-input {
@@ -1073,6 +1084,44 @@
             z-index: 10;
         }
         
+        /* Upload modal styles */
+        .upload-container {
+            text-align: center;
+        }
+        
+        .upload-preview {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin: 15px auto;
+            border: 3px solid #e91e63;
+            display: none;
+        }
+        
+        .upload-btn {
+            background: #4267b2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 15px;
+        }
+        
+        /* Post modal styles */
+        .post-preview {
+            max-width: 100%;
+            max-height: 300px;
+            margin: 15px auto;
+            display: block;
+            border-radius: 10px;
+            display: none;
+        }
+        
         /* Mobile styles */
         @media (max-width: 768px) {
             .main-container {
@@ -1168,183 +1217,294 @@
                         <i class="fas fa-camera"></i>
                     </button>
                     <div class="profile-info">
-                        <h2 id="profileName">Người dùng</h2>
-                        <p id="profileBio">Chưa có thông tin</p>
-                        <p id="profileLocation"><i class="fas fa-map-marker-alt"></i> <span>Chưa cập nhật</span></p>
-                        <p id="profileIncome"><i class="fas fa-money-bill-wave"></i> <span>Chưa cập nhật</span></p>
+                        <h2 id="profileName">User Name</h2>
+                        <p id="profileAgeLocation">25 tuổi, Hà Nội</p>
                     </div>
                 </div>
                 <div class="profile-stats">
-                    <p><strong id="friendsCount">0</strong> bạn bè</p>
-                    <p><strong id="matchesCount">0</strong> matches</p>
-                    <p><strong id="postsCount">0</strong> bài viết</p>
+                    <p>Bạn bè <strong id="friendsCount">120</strong></p>
+                    <p>Lượt thích <strong id="likesCount">245</strong></p>
+                    <p>Đã match <strong id="matchesCount">56</strong></p>
                 </div>
             </div>
             
             <div class="friends-card">
-                <h3>Bạn bè <span class="see-all" id="seeAllFriends">Xem tất cả</span></h3>
-                <div id="friendsList">
-                    <div class="loading-section">
-                        <div class="loader" style="border-top-color: #e91e63;"></div>
+                <h3>Bạn bè <span class="see-all">Xem tất cả</span></h3>
+                <div class="friend-item">
+                    <div class="friend-avatar">L</div>
+                    <div>
+                        <h4>Lan Nguyễn</h4>
+                        <p>Online 5 phút trước</p>
+                    </div>
+                </div>
+                <div class="friend-item">
+                    <div class="friend-avatar">M</div>
+                    <div>
+                        <h4>Minh Trần</h4>
+                        <p>Đang hoạt động</p>
+                    </div>
+                </div>
+                <div class="friend-item">
+                    <div class="friend-avatar">H</div>
+                    <div>
+                        <h4>Hương Lê</h4>
+                        <p>Online 1 giờ trước</p>
+                    </div>
+                </div>
+                <div class="friend-item">
+                    <div class="friend-avatar">T</div>
+                    <div>
+                        <h4>Tuấn Phạm</h4>
+                        <p>Đang hoạt động</p>
                     </div>
                 </div>
             </div>
         </div>
         
         <div class="content">
-            <!-- Banner nâng cấp VIP -->
             <div class="premium-banner" id="premiumBanner">
-                <h2><i class="fas fa-crown"></i> Nâng cấp tài khoản VIP</h2>
-                <p>Tận hưởng trải nghiệm hẹn hò cao cấp với nhiều tính năng đặc biệt</p>
+                <h2>Nâng cấp tài khoản VIP</h2>
+                <p>Tận hưởng trải nghiệm hẹn hò cao cấp với nhiều đặc quyền hấp dẫn</p>
                 <button class="upgrade-btn" id="upgradeBtn">Nâng cấp ngay</button>
             </div>
             
-            <!-- Nút tìm đối tượng phù hợp - đã được di chuyển lên trên -->
             <div class="matchmaking-section">
                 <button class="matchmaking-btn" id="matchmakingBtn">
-                    <i class="fas fa-heart"></i> Tìm đối tượng phù hợp
+                    <i class="fas fa-heart"></i> Bắt đầu ghép đôi
                 </button>
             </div>
             
             <div class="post-box">
                 <div class="post-input">
-                    <div class="post-input-avatar" id="postAvatar">U</div>
-                    <div class="post-input-field" id="postInput">Bạn đang nghĩ gì?</div>
+                    <div class="post-input-avatar">U</div>
+                    <div class="post-input-field" id="createPostBtn">Bạn đang nghĩ gì?</div>
                 </div>
             </div>
             
             <div class="matching-room" id="matchingRoom" style="display: none;">
                 <div class="room-header">
-                    <h2 class="room-title">Phòng ghép đôi</h2>
+                    <div class="room-title">Phòng ghép đôi</div>
                     <button class="leave-room" id="leaveRoomBtn">
                         <i class="fas fa-times"></i> Rời phòng
                     </button>
                 </div>
                 <div class="room-users" id="roomUsers">
-                    <!-- Danh sách người dùng trong phòng sẽ được thêm ở đây -->
+                    <div class="loading-section">
+                        <div class="loader"></div>
+                    </div>
                 </div>
             </div>
             
             <div class="discover-section">
-                <h3>Gợi ý kết bạn</h3>
-                <div class="user-grid" id="suggestedUsers">
-                    <div class="loading-section">
-                        <div class="loader" style="border-top-color: #e91e63;"></div>
+                <h3>Khám phá - Gợi ý hôm nay</h3>
+                <div class="user-grid" id="userGrid">
+                    <div class="user-card">
+                        <div class="user-card-avatar">L</div>
+                        <h4>Lan Nguyễn</h4>
+                        <p>23 tuổi, Hà Nội</p>
+                        <div class="user-card-actions">
+                            <button class="add-friend-btn"><i class="fas fa-user-plus"></i> Kết bạn</button>
+                            <button class="view-profile-btn"><i class="fas fa-eye"></i> Xem</button>
+                        </div>
+                    </div>
+                    <div class="user-card">
+                        <div class="vip-feature">VIP</div>
+                        <div class="user-card-avatar">H</div>
+                        <h4>Hương Lê</h4>
+                        <p>25 tuổi, TP.HCM</p>
+                        <div class="user-card-actions">
+                            <button class="add-friend-btn"><i class="fas fa-user-plus"></i> Kết bạn</button>
+                            <button class="view-profile-btn"><i class="fas fa-eye"></i> Xem</button>
+                        </div>
+                    </div>
+                    <div class="user-card">
+                        <div class="user-card-avatar">M</div>
+                        <h4>Minh Trần</h4>
+                        <p>28 tuổi, Đà Nẵng</p>
+                        <div class="user-card-actions">
+                            <button class="add-friend-btn"><i class="fas fa-user-plus"></i> Kết bạn</button>
+                            <button class="view-profile-btn"><i class="fas fa-eye"></i> Xem</button>
+                        </div>
+                    </div>
+                    <div class="user-card">
+                        <div class="vip-feature">VIP</div>
+                        <div class="user-card-avatar">T</div>
+                        <h4>Trang Phạm</h4>
+                        <p>22 tuổi, Hải Phòng</p>
+                        <div class="user-card-actions">
+                            <button class="add-friend-btn"><i class="fas fa-user-plus"></i> Kết bạn</button>
+                            <button class="view-profile-btn"><i class="fas fa-eye"></i> Xem</button>
+                        </div>
+                    </div>
+                    <div class="user-card">
+                        <div class="user-card-avatar">N</div>
+                        <h4>Nam Đỗ</h4>
+                        <p>26 tuổi, Cần Thơ</p>
+                        <div class="user-card-actions">
+                            <button class="add-friend-btn"><i class="fas fa-user-plus"></i> Kết bạn</button>
+                            <button class="view-profile-btn"><i class="fas fa-eye"></i> Xem</button>
+                        </div>
+                    </div>
+                    <div class="user-card">
+                        <div class="vip-feature">VIP</div>
+                        <div class="user-card-avatar">A</div>
+                        <h4>Anh Nguyễn</h4>
+                        <p>24 tuổi, Nha Trang</p>
+                        <div class="user-card-actions">
+                            <button class="add-friend-btn"><i class="fas fa-user-plus"></i> Kết bạn</button>
+                            <button class="view-profile-btn"><i class="fas fa-eye"></i> Xem</button>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Phần hỗ trợ -->
+            
             <div class="support-section">
-                <h3>Hỗ trợ</h3>
-                <p>Bạn cần trợ giúp? Liên hệ với quản trị viên của chúng tôi.</p>
-                <button class="chat-btn" id="contactAdminBtn">
-                    <i class="fas fa-headset"></i> Liên hệ hỗ trợ
-                </button>
+                <h3>Hỗ trợ & Hướng dẫn</h3>
+                <p>Nếu bạn cần trợ giúp hoặc có thắc mắc, vui lòng liên hệ với chúng tôi qua email: support@loveconnect.com hoặc gọi hotline: 1900 1234</p>
             </div>
         </div>
     </div>
     
-    <!-- Modal nhập thông tin ghép đôi -->
-    <div class="modal-overlay" id="matchmakingModal">
+    <!-- Modal đăng nhập -->
+    <div class="modal-overlay" id="loginModal">
         <div class="modal">
             <div class="modal-header">
-                <h2>Thông tin ghép đôi</h2>
-                <button class="close-modal" id="closeModal">&times;</button>
+                <h2>Đăng nhập LoveConnect</h2>
+                <button class="close-modal">&times;</button>
             </div>
-            <form id="matchmakingForm">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="age">Độ tuổi của bạn</label>
-                        <input type="number" id="age" min="18" max="100" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="gender">Giới tính</label>
-                        <select id="gender" required>
-                            <option value="">Chọn giới tính</option>
-                            <option value="male">Nam</option>
-                            <option value="female">Nữ</option>
-                            <option value="other">Khác</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="income">Thu nhập (triệu VNĐ/tháng)</label>
-                        <select id="income" required>
-                            <option value="">Chọn mức thu nhập</option>
-                            <option value="0-5">Dưới 5 triệu</option>
-                            <option value="5-10">5 - 10 triệu</option>
-                            <option value="10-20">10 - 20 triệu</option>
-                            <option value="20-30">20 - 30 triệu</option>
-                            <option value="30+">Trên 30 triệu</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="location">Khu vực</label>
-                        <select id="location" required>
-                            <option value="">Chọn khu vực</option>
-                            <option value="hanoi">Hà Nội</option>
-                            <option value="hcm">TP. Hồ Chí Minh</option>
-                            <option value="danang">Đà Nẵng</option>
-                            <option value="other">Khác</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="preferredGender">Bạn muốn tìm</label>
-                        <select id="preferredGender" required>
-                            <option value="">Chọn giới tính</option>
-                            <option value="male">Nam</option>
-                            <option value="female">Nữ</option>
-                            <option value="any">Không yêu cầu</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="preferredIncome">Thu nhập mong muốn</label>
-                        <select id="preferredIncome">
-                            <option value="any">Không yêu cầu</option>
-                            <option value="0-5">Dưới 5 triệu</option>
-                            <option value="5-10">5 - 10 triệu</option>
-                            <option value="10-20">10 - 20 triệu</option>
-                            <option value="20-30">20 - 30 triệu</option>
-                            <option value="30+">Trên 30 triệu</option>
-                        </select>
-                    </div>
-                </div>
-                
+            <form id="loginForm">
                 <div class="form-group">
-                    <label for="preferredLocation">Khu vực mong muốn</label>
-                    <select id="preferredLocation">
-                        <option value="any">Không yêu cầu</option>
-                        <option value="hanoi">Hà Nội</option>
-                        <option value="hcm">TP. Hồ Chí Minh</option>
-                        <option value="danang">Đà Nẵng</option>
+                    <label for="username">Tên đăng nhập</label>
+                    <input type="text" id="username" placeholder="Nhập tên đăng nhập" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Mật khẩu</label>
+                    <input type="password" id="password" placeholder="Nhập mật khẩu" required>
+                </div>
+                <button type="submit" class="submit-btn">Đăng nhập</button>
+            </form>
+            <p style="text-align: center; margin-top: 15px;">
+                Chưa có tài khoản? <a href="#" id="registerLink">Đăng ký ngay</a>
+            </p>
+        </div>
+    </div>
+    
+    <!-- Modal đăng ký -->
+    <div class="modal-overlay" id="registerModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Đăng ký LoveConnect</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <form id="registerForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="firstName">Họ</label>
+                        <input type="text" id="firstName" placeholder="Nhập họ" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lastName">Tên</label>
+                        <input type="text" id="lastName" placeholder="Nhập tên" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" placeholder="Nhập email" required>
+                </div>
+                <div class="form-group">
+                    <label for="newUsername">Tên đăng nhập</label>
+                    <input type="text" id="newUsername" placeholder="Tạo tên đăng nhập" required>
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">Mật khẩu</label>
+                    <input type="password" id="newPassword" placeholder="Tạo mật khẩu" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Xác nhận mật khẩu</label>
+                    <input type="password" id="confirmPassword" placeholder="Xác nhận mật khẩu" required>
+                </div>
+                <div class="form-group">
+                    <label for="gender">Giới tính</label>
+                    <select id="gender" required>
+                        <option value="">Chọn giới tính</option>
+                        <option value="male">Nam</option>
+                        <option value="female">Nữ</option>
                         <option value="other">Khác</option>
                     </select>
                 </div>
-                
-                <button type="submit" class="submit-btn">Bắt đầu ghép đôi</button>
+                <div class="form-group">
+                    <label for="birthdate">Ngày sinh</label>
+                    <input type="date" id="birthdate" required>
+                </div>
+                <button type="submit" class="submit-btn">Đăng ký</button>
+            </form>
+            <p style="text-align: center; margin-top: 15px;">
+                Đã có tài khoản? <a href="#" id="loginLink">Đăng nhập</a>
+            </p>
+        </div>
+    </div>
+    
+    <!-- Modal tạo bài viết -->
+    <div class="modal-overlay" id="postModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Tạo bài viết mới</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <form id="postForm">
+                <div class="form-group">
+                    <textarea placeholder="Bạn đang nghĩ gì?" rows="5" required></textarea>
+                </div>
+                <div class="form-group">
+                    <input type="file" id="postImage" accept="image/*">
+                </div>
+                <img src="" class="post-preview" id="postPreview">
+                <button type="submit" class="submit-btn">Đăng bài</button>
             </form>
         </div>
     </div>
     
     <!-- Modal nâng cấp VIP -->
-    <div class="modal-overlay" id="premiumModal">
+    <div class="modal-overlay" id="vipModal">
         <div class="modal">
             <div class="modal-header">
                 <h2>Nâng cấp tài khoản VIP</h2>
-                <button class="close-modal" id="closePremiumModal">&times;</button>
+                <button class="close-modal">&times;</button>
             </div>
-            
-            <div class="premium-plans" id="premiumPlans">
-                <!-- Nội dung sẽ được thêm bằng JavaScript -->
+            <div class="premium-plans">
+                <div class="premium-plan">
+                    <h3>Gói 1 tháng</h3>
+                    <div class="plan-price">199.000đ</div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check"></i> Xem profile không giới hạn</li>
+                        <li><i class="fas fa-check"></i> Nhắn tin không giới hạn</li>
+                        <li><i class="fas fa-check"></i> 5 lượt siêu like mỗi ngày</li>
+                    </ul>
+                    <button class="submit-btn" data-plan="1month">Chọn gói</button>
+                </div>
+                <div class="premium-plan recommended">
+                    <div class="recommended-badge">Phổ biến</div>
+                    <h3>Gói 3 tháng</h3>
+                    <div class="plan-price">499.000đ</div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check"></i> Tất cả tính năng gói 1 tháng</li>
+                        <li><i class="fas fa-check"></i> Hiển thị nổi bật trong tìm kiếm</li>
+                        <li><i class="fas fa-check"></i> 10 lượt siêu like mỗi ngày</li>
+                        <li><i class="fas fa-check"></i> Xem ai thích bạn</li>
+                    </ul>
+                    <button class="submit-btn" data-plan="3months">Chọn gói</button>
+                </div>
+                <div class="premium-plan">
+                    <h3>Gói 12 tháng</h3>
+                    <div class="plan-price">1.499.000đ</div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check"></i> Tất cả tính năng gói 3 tháng</li>
+                        <li><i class="fas fa-check"></i> Ưu tiên hỗ trợ khách hàng</li>
+                        <li><i class="fas fa-check"></i> 20 lượt siêu like mỗi ngày</li>
+                        <li><i class="fas fa-check"></i> Quà tặng đặc biệt</li>
+                    </ul>
+                    <button class="submit-btn" data-plan="12months">Chọn gói</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1353,701 +1513,584 @@
     <div class="modal-overlay" id="paymentModal">
         <div class="modal">
             <div class="modal-header">
-                <h2>Thanh toán VIP</h2>
-                <button class="close-modal" id="closePaymentModal">&times;</button>
+                <h2>Thanh toán</h2>
+                <button class="close-modal">&times;</button>
             </div>
-            
             <div class="payment-content">
                 <div class="bank-info">
-                    <h3>Thông tin chuyển khoản</h3>
-                    <p>Ngân hàng: VietCom Bank</p>
-                    <p>Số tài khoản: <strong id="bankAccount">1059173949</strong></p>
-                    <p>Chủ tài khoản: <strong>Nguyễn Thanh Duy</strong></p>
-                    <p>Nội dung: <strong id="paymentContent">VIP_[TÊN_TÀI_KHOẢN]</strong></p>
+                    <p>Chuyển khoản qua ngân hàng:</p>
+                    <p><strong>Ngân hàng: Vietcombank</strong></p>
+                    <p><strong>Số tài khoản: 1234567890</strong></p>
+                    <p><strong>Chủ tài khoản: LOVE CONNECT COMPANY</strong></p>
+                    <p><strong>Số tiền: <span id="paymentAmount">499.000đ</span></strong></p>
+                    <p><strong>Nội dung: VIP <span id="userId">USER123</span></strong></p>
                 </div>
-                
                 <div class="qr-code">
-                    <h3>Quét mã QR để thanh toán</h3>
+                    <p>Hoặc quét mã QR để thanh toán:</p>
                     <div id="qrContainer"></div>
-                    <p class="note">Sau khi thanh toán, vui lòng nhấn nút "Đã thanh toán" bên dưới</p>
                 </div>
-                
-                <button class="submit-btn" id="confirmPaymentBtn">Đã thanh toán</button>
+                <p class="note">Sau khi thanh toán, tài khoản của bạn sẽ được nâng cấp trong vòng 24 giờ.</p>
+                <button class="submit-btn" id="confirmPayment">Tôi đã thanh toán</button>
             </div>
         </div>
     </div>
     
-    <!-- Modal xem profile người dùng -->
-    <div class="modal-overlay" id="profileModal">
+    <!-- Modal thay đổi ảnh đại diện -->
+    <div class="modal-overlay" id="avatarModal">
         <div class="modal">
             <div class="modal-header">
-                <h2>Thông tin người dùng</h2>
-                <button class="close-modal" id="closeProfileModal">&times;</button>
+                <h2>Thay đổi ảnh đại diện</h2>
+                <button class="close-modal">&times;</button>
             </div>
-            
-            <div class="profile-modal-content">
-                <div class="profile-modal-avatar" id="profileModalAvatar">U</div>
-                
-                <div class="profile-details">
-                    <div class="detail-item">
-                        <span class="detail-label">Tên:</span>
-                        <span class="detail-value" id="profileModalName">Người dùng</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Tuổi:</span>
-                        <span class="detail-value" id="profileModalAge">Chưa cập nhật</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Giới tính:</span>
-                        <span class="detail-value" id="profileModalGender">Chưa cập nhật</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Thu nhập:</span>
-                        <span class="detail-value" id="profileModalIncome">Chưa cập nhật</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Khu vực:</span>
-                        <span class="detail-value" id="profileModalLocation">Chưa cập nhật</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Sở thích:</span>
-                        <span class="detail-value" id="profileModalInterests">Chưa cập nhật</span>
-                    </div>
-                </div>
-                
-                <div class="user-card-actions" style="margin-top: 20px;">
-                    <button class="add-friend-btn" id="profileModalAddFriend">
-                        <i class="fas fa-user-plus"></i> Kết bạn
-                    </button>
-                    <button class="chat-btn" id="profileModalChat">
-                        <i class="fas fa-comment"></i> Nhắn tin
-                    </button>
-                </div>
+            <div class="upload-container">
+                <img src="" class="upload-preview" id="avatarPreview">
+                <input type="file" id="avatarUpload" accept="image/*" style="display: none;">
+                <button class="upload-btn" id="triggerUpload">
+                    <i class="fas fa-upload"></i> Chọn ảnh từ máy
+                </button>
+                <button class="submit-btn" id="saveAvatar" style="margin-top: 20px; display: none;">Lưu ảnh đại diện</button>
             </div>
         </div>
+    </div>
+    
+    <!-- Modal thông báo -->
+    <div class="notification" id="notification">
+        <i class="fas fa-check-circle"></i>
+        <span id="notificationText">Thao tác thành công!</span>
     </div>
     
     <!-- Chat container -->
     <div class="chat-container" id="chatContainer">
         <div class="chat-header">
-            <h3 id="chatWithUser">Tin nhắn</h3>
+            <h3><i class="fas fa-user-circle"></i> <span id="chatUserName">Lan Nguyễn</span></h3>
             <button class="close-chat" id="closeChat">&times;</button>
         </div>
         <div class="chat-messages" id="chatMessages">
-            <!-- Messages will be added here -->
+            <div class="message received">
+                Xin chào! Rất vui được gặp bạn.
+                <div class="message-time">10:30</div>
+            </div>
+            <div class="message sent">
+                Mình cũng rất vui khi được làm quen với bạn!
+                <div class="message-time">10:32</div>
+            </div>
         </div>
         <div class="chat-input">
-            <input type="text" placeholder="Nhập tin nhắn..." id="messageInput">
+            <input type="text" placeholder="Nhập tin nhắn..." id="chatInput">
             <button class="send-btn" id="sendMessageBtn">
                 <i class="fas fa-paper-plane"></i>
             </button>
         </div>
     </div>
     
-    <div class="notification" id="notification">
-        <i class="fas fa-check-circle"></i>
-        <span id="notificationText"></span>
-    </div>
-
     <script>
-        // Các biến toàn cục
-        let matchmakingData = null;
-        let roomUsers = [];
-        let friends = [];
-        let chatWithUser = null;
-        let messages = {};
-        let isVip = localStorage.getItem('isVip') === 'true';
-        let suggestedUsers = [];
-        let isAdmin = false;
-        let socket = null;
-        let selectedPlan = null;
-        let currentUserIncome = null;
-
-        // Kiểm tra đăng nhập
-        const currentUser = JSON.parse(localStorage.getItem('user'));
-        const token = localStorage.getItem('token');
+        // Biến toàn cục
+        let currentUser = null;
+        let isLoggedIn = false;
+        let matchmakingInterval = null;
         
-        if (!currentUser || !token) {
-            window.location.href = 'login.html';
+        // DOM Elements
+        const loginModal = document.getElementById('loginModal');
+        const registerModal = document.getElementById('registerModal');
+        const postModal = document.getElementById('postModal');
+        const vipModal = document.getElementById('vipModal');
+        const paymentModal = document.getElementById('paymentModal');
+        const avatarModal = document.getElementById('avatarModal');
+        const notification = document.getElementById('notification');
+        const chatContainer = document.getElementById('chatContainer');
+        const matchingRoom = document.getElementById('matchingRoom');
+        const roomUsers = document.getElementById('roomUsers');
+        const premiumBanner = document.getElementById('premiumBanner');
+        const vipBadge = document.getElementById('vipBadge');
+        const vipIndicator = document.getElementById('vipIndicator');
+        
+        // Khởi tạo ứng dụng
+        document.addEventListener('DOMContentLoaded', function() {
+            initApp();
+            bindEvents();
+        });
+        
+        // Khởi tạo ứng dụng
+        function initApp() {
+            // Kiểm tra trạng thái đăng nhập
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                isLoggedIn = true;
+                updateUIAfterLogin();
+            } else {
+                // Hiển thị modal đăng nhập nếu chưa đăng nhập
+                showModal(loginModal);
+            }
         }
         
-        // Kiểm tra quyền admin
-        if (currentUser.username === 'Admin_CFC' && currentUser.password === '687969') {
-            isAdmin = true;
-            // Thêm badge admin
-            const adminBadge = document.createElement('div');
-            adminBadge.className = 'admin-badge';
-            adminBadge.innerHTML = '<i class="fas fa-shield-alt"></i> ADMIN';
-            document.querySelector('.user-menu').prepend(adminBadge);
-        }
-
-        // Kết nối WebSocket
-        function connectWebSocket() {
-            try {
-                // Giả lập kết nối WebSocket (trong thực tế sẽ kết nối đến server thật)
-                console.log('Kết nối WebSocket...');
+        // Gán sự kiện cho các phần tử
+        function bindEvents() {
+            // Sự kiện đăng nhập
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            
+            // Sự kiện đăng ký
+            document.getElementById('registerForm').addEventListener('submit', handleRegister);
+            
+            // Sự kiện nút đăng xuất
+            document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+            
+            // Sự kiện chuyển đổi giữa đăng nhập và đăng ký
+            document.getElementById('registerLink').addEventListener('click', function(e) {
+                e.preventDefault();
+                hideModal(loginModal);
+                showModal(registerModal);
+            });
+            
+            document.getElementById('loginLink').addEventListener('click', function(e) {
+                e.preventDefault();
+                hideModal(registerModal);
+                showModal(loginModal);
+            });
+            
+            // Sự kiện đóng modal
+            document.querySelectorAll('.close-modal').forEach(button => {
+                button.addEventListener('click', function() {
+                    const modal = this.closest('.modal-overlay');
+                    hideModal(modal);
+                });
+            });
+            
+            // Sự kiện tạo bài viết
+            document.getElementById('createPostBtn').addEventListener('click', function() {
+                if (!isLoggedIn) {
+                    showNotification('Vui lòng đăng nhập để sử dụng tính năng này', true);
+                    showModal(loginModal);
+                    return;
+                }
+                showModal(postModal);
+            });
+            
+            document.getElementById('postForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                hideModal(postModal);
+                showNotification('Bài viết của bạn đã được đăng thành công!');
+            });
+            
+            // Xem trước ảnh bài viết
+            document.getElementById('postImage').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        document.getElementById('postPreview').src = event.target.result;
+                        document.getElementById('postPreview').style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            // Sự kiện nâng cấp VIP
+            document.getElementById('upgradeBtn').addEventListener('click', function() {
+                if (!isLoggedIn) {
+                    showNotification('Vui lòng đăng nhập để sử dụng tính năng này', true);
+                    showModal(loginModal);
+                    return;
+                }
+                showModal(vipModal);
+            });
+            
+            // Chọn gói VIP
+            document.querySelectorAll('.premium-plan .submit-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const plan = this.getAttribute('data-plan');
+                    initiatePayment(plan);
+                });
+            });
+            
+            // Xác nhận thanh toán
+            document.getElementById('confirmPayment').addEventListener('click', function() {
+                hideModal(paymentModal);
                 
-                // Mô phỏng nhận thông báo
-                setInterval(() => {
-                    if (Math.random() > 0.7) {
-                        const notifications = [
-                            'Bạn có một tin nhắn mới',
-                            'Có người vừa xem profile của bạn',
-                            'Bạn có một lời mời kết bạn mới'
-                        ];
-                        const randomNotification = notifications[Math.floor(Math.random() * notifications.length)];
-                        showNotification(randomNotification);
+                // Kích hoạt VIP
+                currentUser.isVip = true;
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                // Cập nhật giao diện
+                vipBadge.style.display = 'flex';
+                vipIndicator.style.display = 'flex';
+                premiumBanner.style.display = 'none';
+                
+                showNotification('Nâng cấp VIP thành công! Tài khoản của bạn đã được kích hoạt tính năng cao cấp.');
+            });
+            
+            // Sự kiện thay đổi ảnh đại diện
+            document.getElementById('changeAvatarBtn').addEventListener('click', function() {
+                if (!isLoggedIn) {
+                    showNotification('Vui lòng đăng nhập để sử dụng tính năng này', true);
+                    showModal(loginModal);
+                    return;
+                }
+                showModal(avatarModal);
+            });
+            
+            document.getElementById('triggerUpload').addEventListener('click', function() {
+                document.getElementById('avatarUpload').click();
+            });
+            
+            document.getElementById('avatarUpload').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        document.getElementById('avatarPreview').src = event.target.result;
+                        document.getElementById('avatarPreview').style.display = 'block';
+                        document.getElementById('saveAvatar').style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            document.getElementById('saveAvatar').addEventListener('click', function() {
+                hideModal(avatarModal);
+                showNotification('Ảnh đại diện đã được cập nhật thành công!');
+            });
+            
+            // Sự kiện ghép đôi
+            document.getElementById('matchmakingBtn').addEventListener('click', function() {
+                if (!isLoggedIn) {
+                    showNotification('Vui lòng đăng nhập để sử dụng tính năng này', true);
+                    showModal(loginModal);
+                    return;
+                }
+                
+                if (!currentUser.isVip) {
+                    showNotification('Vui lòng nâng cấp VIP để sử dụng tính năng ghép đôi', true);
+                    showModal(vipModal);
+                    return;
+                }
+                
+                startMatchmaking();
+            });
+            
+            // Sự kiện rời phòng ghép đôi
+            document.getElementById('leaveRoomBtn').addEventListener('click', function() {
+                stopMatchmaking();
+                matchingRoom.style.display = 'none';
+            });
+            
+            // Sự kiện mở chat
+            document.querySelectorAll('.add-friend-btn, .view-profile-btn, .chat-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    if (!isLoggedIn) {
+                        showNotification('Vui lòng đăng nhập để sử dụng tính năng này', true);
+                        showModal(loginModal);
+                        return;
                     }
-                }, 30000);
-            } catch (error) {
-                console.error('Lỗi kết nối WebSocket:', error);
+                    
+                    if (!currentUser.isVip && this.classList.contains('add-friend-btn')) {
+                        showNotification('Vui lòng nâng cấp VIP để sử dụng tính năng kết bạn', true);
+                        showModal(vipModal);
+                        return;
+                    }
+                    
+                    if (this.classList.contains('chat-btn')) {
+                        openChat('Lan Nguyễn');
+                    } else {
+                        showNotification('Tính năng đang được phát triển');
+                    }
+                });
+            });
+            
+            // Sự kiện đóng chat
+            document.getElementById('closeChat').addEventListener('click', function() {
+                chatContainer.classList.remove('active');
+            });
+            
+            // Sự kiện gửi tin nhắn
+            document.getElementById('sendMessageBtn').addEventListener('click', function() {
+                const input = document.getElementById('chatInput');
+                const message = input.value.trim();
+                
+                if (message) {
+                    sendMessage(message);
+                    input.value = '';
+                }
+            });
+            
+            document.getElementById('chatInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    document.getElementById('sendMessageBtn').click();
+                }
+            });
+            
+            // Menu mobile
+            document.getElementById('mobileMenuBtn').addEventListener('click', function() {
+                document.getElementById('navMenu').classList.toggle('show');
+            });
+        }
+        
+        // Xử lý đăng nhập
+        function handleLogin(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            // Kiểm tra thông tin đăng nhập
+            if (username && password) {
+                // Giả lập đăng nhập thành công
+                currentUser = {
+                    username: username,
+                    firstName: 'Người',
+                    lastName: 'Dùng',
+                    age: 25,
+                    location: 'Hà Nội',
+                    isVip: false,
+                    friends: 120,
+                    likes: 245,
+                    matches: 56
+                };
+                
+                isLoggedIn = true;
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                hideModal(loginModal);
+                updateUIAfterLogin();
+                
+                showNotification('Đăng nhập thành công! Chào mừng bạn đến với LoveConnect');
+            } else {
+                showNotification('Vui lòng nhập đầy đủ thông tin đăng nhập', true);
             }
         }
-
-        // Kiểm tra và áp dụng hạn chế tính năng theo thu nhập
-        function checkFeatureRestrictions() {
-            const userIncome = currentUserIncome || currentUser.income;
+        
+        // Xử lý đăng ký
+        function handleRegister(e) {
+            e.preventDefault();
             
-            // Nếu thu nhập dưới 10 triệu và không phải VIP
-            if ((userIncome === '0-5' || userIncome === '5-10') && !isVip) {
-                // Ẩn banner nâng cấp VIP
-                document.getElementById('premiumBanner').style.display = 'none';
-                
-                // Cho phép sử dụng tất cả tính năng cơ bản
-                console.log('Người dùng thu nhập dưới 10 triệu có thể sử dụng tính năng cơ bản');
-            } 
-            // Nếu thu nhập trên 10 triệu và không phải VIP
-            else if ((userIncome === '10-20' || userIncome === '20-30' || userIncome === '30+') && !isVip) {
-                // Hiển thị banner nâng cấp VIP
-                document.getElementById('premiumBanner').style.display = 'flex';
-                
-                // Hiển thị thông báo về tính năng bị hạn chế
-                showNotification('Bạn cần nâng cấp VIP để sử dụng đầy đủ tính năng');
+            const firstName = document.getElementById('firstName').value;
+            const lastName = document.getElementById('lastName').value;
+            const email = document.getElementById('email').value;
+            const username = document.getElementById('newUsername').value;
+            const password = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const gender = document.getElementById('gender').value;
+            const birthdate = document.getElementById('birthdate').value;
+            
+            // Kiểm tra thông tin đăng ký
+            if (password !== confirmPassword) {
+                showNotification('Mật khẩu xác nhận không khớp', true);
+                return;
             }
-            // Nếu là VIP
-            else if (isVip) {
-                // Ẩn banner nâng cấp VIP
-                document.getElementById('premiumBanner').style.display = 'none';
+            
+            if (firstName && lastName && email && username && password && gender && birthdate) {
+                // Giả lập đăng ký thành công
+                currentUser = {
+                    username: username,
+                    firstName: firstName,
+                    lastName: lastName,
+                    age: calculateAge(birthdate),
+                    location: 'Hà Nội',
+                    isVip: false,
+                    friends: 0,
+                    likes: 0,
+                    matches: 0
+                };
                 
-                // Hiển thị badge VIP
-                document.getElementById('vipBadge').style.display = 'flex';
-                document.getElementById('vipIndicator').style.display = 'flex';
+                isLoggedIn = true;
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                hideModal(registerModal);
+                updateUIAfterLogin();
+                
+                showNotification('Đăng ký thành công! Chào mừng bạn đến với LoveConnect');
+            } else {
+                showNotification('Vui lòng nhập đầy đủ thông tin đăng ký', true);
             }
         }
-
-        // Cập nhật hàm upgradeToVip để hiển thị modal thanh toán
-        function upgradeToVip(plan) {
-            selectedPlan = plan;
-            
-            // Tạo nội dung thanh toán dựa trên gói
-            let amount = 0;
-            let period = '';
-            
-            switch(plan) {
-                case 'weekly':
-                    amount = 50000;
-                    period = 'tuần';
-                    break;
-                case 'basic':
-                    amount = 199000;
-                    period = 'tháng';
-                    break;
-                case 'premium':
-                    amount = 499000;
-                    period = 'tháng';
-                    break;
+        
+        // Xử lý đăng xuất
+        function handleLogout() {
+            if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+                currentUser = null;
+                isLoggedIn = false;
+                localStorage.removeItem('currentUser');
+                
+                // Ẩn các phần tử cần đăng nhập
+                document.querySelectorAll('.user-avatar, .profile-avatar').forEach(avatar => {
+                    avatar.textContent = 'U';
+                });
+                
+                document.getElementById('profileName').textContent = 'User Name';
+                document.getElementById('profileAgeLocation').textContent = '25 tuổi, Hà Nội';
+                
+                vipBadge.style.display = 'none';
+                vipIndicator.style.display = 'none';
+                premiumBanner.style.display = 'flex';
+                
+                // Hiển thị modal đăng nhập
+                showModal(loginModal);
+                
+                showNotification('Đã đăng xuất thành công');
             }
+        }
+        
+        // Cập nhật giao diện sau khi đăng nhập
+        function updateUIAfterLogin() {
+            if (!currentUser) return;
             
-            // Cập nhật thông tin thanh toán
-            document.getElementById('bankAccount').textContent = amount.toLocaleString() + 'đ/' + period;
-            document.getElementById('paymentContent').textContent = `VIP_${currentUser.username}_${plan}`;
+            // Cập nhật thông tin người dùng
+            const firstLetter = currentUser.firstName.charAt(0).toUpperCase();
+            document.querySelectorAll('.user-avatar, .profile-avatar').forEach(avatar => {
+                avatar.textContent = firstLetter;
+            });
             
-            // Tạo mã QR
+            document.getElementById('profileName').textContent = `${currentUser.firstName} ${currentUser.lastName}`;
+            document.getElementById('profileAgeLocation').textContent = `${currentUser.age} tuổi, ${currentUser.location}`;
+            
+            document.getElementById('friendsCount').textContent = currentUser.friends;
+            document.getElementById('likesCount').textContent = currentUser.likes;
+            document.getElementById('matchesCount').textContent = currentUser.matches;
+            
+            // Hiển thị badge VIP nếu có
+            if (currentUser.isVip) {
+                vipBadge.style.display = 'flex';
+                vipIndicator.style.display = 'flex';
+                premiumBanner.style.display = 'none';
+            } else {
+                vipBadge.style.display = 'none';
+                vipIndicator.style.display = 'none';
+                premiumBanner.style.display = 'flex';
+            }
+        }
+        
+        // Bắt đầu ghép đôi
+        function startMatchmaking() {
+            matchingRoom.style.display = 'block';
+            roomUsers.innerHTML = '<div class="loading-section"><div class="loader"></div></div>';
+            
+            // Giả lập tìm kiếm người dùng
+            let count = 0;
+            matchmakingInterval = setInterval(() => {
+                count++;
+                
+                if (count === 3) {
+                    clearInterval(matchmakingInterval);
+                    displayMatchmakingResults();
+                }
+            }, 1000);
+        }
+        
+        // Dừng ghép đôi
+        function stopMatchmaking() {
+            if (matchmakingInterval) {
+                clearInterval(matchmakingInterval);
+            }
+        }
+        
+        // Hiển thị kết quả ghép đôi
+        function displayMatchmakingResults() {
+            roomUsers.innerHTML = '';
+            
+            const users = [
+                { name: 'Lan Nguyễn', age: 23, location: 'Hà Nội', avatar: 'L' },
+                { name: 'Minh Trần', age: 28, location: 'Đà Nẵng', avatar: 'M' },
+                { name: 'Hương Lê', age: 25, location: 'TP.HCM', avatar: 'H' },
+                { name: 'Tuấn Phạm', age: 26, location: 'Cần Thơ', avatar: 'T' }
+            ];
+            
+            users.forEach(user => {
+                const userElement = document.createElement('div');
+                userElement.className = 'room-user';
+                userElement.innerHTML = `
+                    <div class="room-user-avatar">${user.avatar}</div>
+                    <h4>${user.name}</h4>
+                    <p>${user.age} tuổi, ${user.location}</p>
+                    <button class="chat-btn"><i class="fas fa-comment"></i> Nhắn tin</button>
+                `;
+                roomUsers.appendChild(userElement);
+            });
+            
+            // Gán sự kiện cho nút nhắn tin
+            roomUsers.querySelectorAll('.chat-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const userName = this.closest('.room-user').querySelector('h4').textContent;
+                    openChat(userName);
+                });
+            });
+        }
+        
+        // Mở chat
+        function openChat(userName) {
+            document.getElementById('chatUserName').textContent = userName;
+            chatContainer.classList.add('active');
+        }
+        
+        // Gửi tin nhắn
+        function sendMessage(message) {
+            const chatMessages = document.getElementById('chatMessages');
+            const now = new Date();
+            const time = now.getHours() + ':' + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes();
+            
+            const messageElement = document.createElement('div');
+            messageElement.className = 'message sent';
+            messageElement.innerHTML = `
+                ${message}
+                <div class="message-time">${time}</div>
+            `;
+            
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Giả lập phản hồi sau 1-2 giây
+            setTimeout(() => {
+                const responseElement = document.createElement('div');
+                responseElement.className = 'message received';
+                responseElement.innerHTML = `
+                    Mình cũng nghĩ vậy! Bạn có muốn gặp nhau vào cuối tuần này không?
+                    <div class="message-time">${time}</div>
+                `;
+                
+                chatMessages.appendChild(responseElement);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 1000 + Math.random() * 1000);
+        }
+        
+        // Khởi tạo thanh toán
+        function initiatePayment(plan) {
+            let amount = '199.000đ';
+            if (plan === '3months') amount = '499.000đ';
+            if (plan === '12months') amount = '1.499.000đ';
+            
+            document.getElementById('paymentAmount').textContent = amount;
+            document.getElementById('userId').textContent = currentUser.username;
+            
+            // Tạo mã QR giả
             const qrContainer = document.getElementById('qrContainer');
             qrContainer.innerHTML = '';
             
-            const qrText = `VietComBank|1059173949|Nguyễn Thanh Duy|${amount}|VIP_${currentUser.username}_${plan}`;
-            QRCode.toCanvas(qrContainer, qrText, {
+            // Sử dụng thư viện QRCode để tạo mã QR
+            QRCode.toCanvas(qrContainer, `LOVECONNECT|VIP|${plan}|${currentUser.username}`, {
                 width: 180,
                 height: 180,
-                margin: 1
+                margin: 1,
+                color: {
+                    dark: '#000000',
+                    light: '#ffffff'
+                }
             }, function(error) {
                 if (error) console.error(error);
             });
             
-            // Hiển thị modal thanh toán
-            document.getElementById('paymentModal').classList.add('show');
-        }
-
-        // Xử lý sự kiện đã thanh toán
-        document.getElementById('confirmPaymentBtn').addEventListener('click', function() {
-            document.getElementById('paymentModal').classList.remove('show');
-            showNotification('Chờ kiểm tra và tìm profile phù hợp yêu cầu...');
-            
-            // Giả lập xử lý thanh toán
-            setTimeout(() => {
-                isVip = true;
-                localStorage.setItem('isVip', 'true');
-                
-                // Cập nhật giao diện
-                document.getElementById('vipBadge').style.display = 'flex';
-                document.getElementById('vipIndicator').style.display = 'flex';
-                document.getElementById('premiumBanner').style.display = 'none';
-                document.getElementById('premiumModal').classList.remove('show');
-                
-                showNotification(`Nâng cấp VIP thành công! Chào mừng bạn đến với gói ${selectedPlan}`);
-                
-                // Mở khóa tất cả tính năng
-                checkFeatureRestrictions();
-            }, 5000);
-        });
-
-        // Đóng modal thanh toán
-        document.getElementById('closePaymentModal').addEventListener('click', function() {
-            document.getElementById('paymentModal').classList.remove('show');
-        });
-
-        // Liên hệ với admin
-        document.getElementById('contactAdminBtn').addEventListener('click', function() {
-            // Tìm admin trong danh sách người dùng
-            const adminUser = {
-                id: 9999,
-                username: 'Admin_CFC',
-                isAdmin: true
-            };
-            
-            startChat(adminUser.id);
-            showNotification('Đang kết nối với hỗ trợ viên...');
-        });
-
-        // Cải thiện hàm tải người dùng đề xuất
-        async function loadSuggestedUsers() {
-            try {
-                // Hiển thị trạng thái loading
-                const suggestedUsersContainer = document.getElementById('suggestedUsers');
-                suggestedUsersContainer.innerHTML = `
-                    <div class="loading-section">
-                        <div class="loader" style="border-top-color: #e91e63;"></div>
-                    </div>
-                `;
-                
-                // Lấy tất cả người dùng từ localStorage
-                const allUsers = JSON.parse(localStorage.getItem('allUsers')) || [];
-                
-                // Thêm người dùng mới nếu chưa có
-                if (allUsers.length === 0) {
-                    // Tạo dữ liệu mẫu
-                    const mockUsers = generateMockUsers(20);
-                    localStorage.setItem('allUsers', JSON.stringify(mockUsers));
-                    suggestedUsers = mockUsers;
-                } else {
-                    suggestedUsers = allUsers;
-                }
-                
-                suggestedUsersContainer.innerHTML = '';
-                
-                // Lọc bỏ user hiện tại và bạn bè
-                const otherUsers = suggestedUsers.filter(user => 
-                    user.id !== currentUser.id && 
-                    !friends.some(friend => friend.id === user.id)
-                );
-                
-                // Sắp xếp ưu tiên người dùng mới (theo ID cao nhất) và VIP
-                otherUsers.sort((a, b) => {
-                    // Ưu tiên người dùng mới (ID cao hơn)
-                    if (a.id > b.id) return -1;
-                    if (a.id < b.id) return 1;
-                    
-                    // Sau đó ưu tiên người dùng VIP
-                    if (a.isVip && !b.isVip) return -1;
-                    if (!a.isVip && b.isVip) return 1;
-                    
-                    // Sau đó ưu tiên thu nhập cao
-                    const incomeOrder = {'30+': 5, '20-30': 4, '10-20': 3, '5-10': 2, '0-5': 1};
-                    const aIncome = incomeOrder[a.income] || 0;
-                    const bIncome = incomeOrder[b.income] || 0;
-                    
-                    return bIncome - aIncome;
-                });
-                
-                // Hiển thị tối đa 6 user
-                otherUsers.slice(0, 6).forEach(user => {
-                    const userCard = document.createElement('div');
-                    userCard.className = 'user-card';
-                    
-                    // Thêm badge VIP nếu là user VIP
-                    const vipBadge = user.isVip ? '<div class="vip-feature"><i class="fas fa-crown"></i> VIP</div>' : '';
-                    
-                    // Thêm class cho thu nhập cao
-                    const incomeClass = (user.income === '20-30' || user.income === '30+') ? 'income-high' : '';
-                    
-                    userCard.innerHTML = `
-                        ${vipBadge}
-                        <div class="user-card-avatar">${user.username.charAt(0).toUpperCase()}</div>
-                        <h4>${user.username}</h4>
-                        <p>${user.age ? user.age + ' tuổi' : 'Chưa cập nhật'}</p>
-                        <p class="${incomeClass}">${user.income ? getIncomeRange(user.income) : 'Chưa cập nhật'}</p>
-                        <p>${user.location ? getLocationName(user.location) : 'Chưa cập nhật'}</p>
-                        <div class="user-card-actions">
-                            <button class="add-friend-btn" onclick="addFriend(${user.id})">
-                                <i class="fas fa-user-plus"></i> Kết bạn
-                            </button>
-                            <button class="view-profile-btn" onclick="viewProfile(${user.id})">
-                                <i class="fas fa-eye"></i> Xem
-                            </button>
-                        </div>
-                    `;
-                    suggestedUsersContainer.appendChild(userCard);
-                });
-                
-                // Hiển thị thông điệp gợi ý cá nhân hóa
-                const gender = currentUser.gender || 'male';
-                if (gender === 'male') {
-                    showNotification('Nam ơi, Thư cùng nhiều bạn nữ khác đang chờ bạn để trò chuyện');
-                } else {
-                    showNotification('Nữ ơi, Minh cùng nhiều bạn nam khác muốn làm quen với bạn');
-                }
-            } catch (error) {
-                console.error('Lỗi tải danh sách user:', error);
-                document.getElementById('suggestedUsers').innerHTML = '<p>Lỗi kết nối, vui lòng thử lại</p>';
-                showNotification('Lỗi kết nối khi tải danh sách', true);
-            }
-        }
-
-        // Cải thiện hàm gửi tin nhắn để lưu vào localStorage
-        function sendMessage(userId, content) {
-            // Tạo tin nhắn mới
-            const newMessage = {
-                id: Date.now(),
-                senderId: currentUser.id,
-                content: content,
-                timestamp: new Date().toISOString()
-            };
-            
-            // Thêm vào danh sách tin nhắn
-            if (!messages[userId]) {
-                messages[userId] = [];
-            }
-            messages[userId].push(newMessage);
-            
-            // Lưu tin nhắn vào localStorage
-            localStorage.setItem('messages', JSON.stringify(messages));
-            
-            // Hiển thị tin nhắn
-            const chatMessages = document.getElementById('chatMessages');
-            const messageElement = document.createElement('div');
-            messageElement.className = 'message sent';
-            messageElement.textContent = content;
-            chatMessages.appendChild(messageElement);
-            
-            // Cuộn xuống dưới cùng
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            
-            // Giả lập phản hồi sau 1-3 giây
-            if (Math.random() > 0.3 && userId !== 9999) { // Không phản hồi nếu là admin
-                setTimeout(() => {
-                    const responses = [
-                        'Mình cũng vậy!',
-                        'Bạn thật thú vị!',
-                        'Bạn nói đúng đấy!',
-                        'Mình rất đồng ý với bạn!',
-                        'Bạn đến từ đâu vậy?'
-                    ];
-                    
-                    const responseMessage = {
-                        id: Date.now(),
-                        senderId: userId,
-                        content: responses[Math.floor(Math.random() * responses.length)],
-                        timestamp: new Date().toISOString()
-                    };
-                    
-                    messages[userId].push(responseMessage);
-                    localStorage.setItem('messages', JSON.stringify(messages));
-                    
-                    const responseElement = document.createElement('div');
-                    responseElement.className = 'message received';
-                    responseElement.textContent = responseMessage.content;
-                    chatMessages.appendChild(responseElement);
-                    
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }, 1000 + Math.random() * 2000);
-            } else if (userId === 9999) {
-                // Phản hồi từ admin
-                setTimeout(() => {
-                    const adminResponses = [
-                        'Cảm ơn bạn đã liên hệ. Chúng tôi sẽ hỗ trợ bạn sớm nhất!',
-                        'Bạn cần hỗ trợ gì thêm không?',
-                        'Chúng tôi đã ghi nhận yêu cầu của bạn.',
-                        'Vấn đề của bạn sẽ được giải quyết trong 24h.'
-                    ];
-                    
-                    const responseMessage = {
-                        id: Date.now(),
-                        senderId: userId,
-                        content: adminResponses[Math.floor(Math.random() * adminResponses.length)],
-                        timestamp: new Date().toISOString()
-                    };
-                    
-                    messages[userId].push(responseMessage);
-                    localStorage.setItem('messages', JSON.stringify(messages));
-                    
-                    const responseElement = document.createElement('div');
-                    responseElement.className = 'message received';
-                    responseElement.textContent = responseMessage.content;
-                    chatMessages.appendChild(responseElement);
-                    
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }, 1000 + Math.random() * 2000);
-            }
-        }
-
-        // Cải thiện hàm tải tin nhắn từ localStorage
-        function loadMessages(userId) {
-            const chatMessages = document.getElementById('chatMessages');
-            chatMessages.innerHTML = '';
-            
-            // Tải tin nhắn từ localStorage
-            const savedMessages = localStorage.getItem('messages');
-            if (savedMessages) {
-                messages = JSON.parse(savedMessages);
-            }
-            
-            // Kiểm tra nếu đã có tin nhắn với user này
-            if (!messages[userId]) {
-                messages[userId] = [];
-                
-                // Thêm một số tin nhắn mẫu
-                if (Math.random() > 0.5 && userId !== 9999) {
-                    messages[userId].push({
-                        id: 1,
-                        senderId: userId,
-                        content: 'Xin chào! Rất vui được làm quen với bạn.',
-                        timestamp: new Date(Date.now() - 3600000).toISOString()
-                    });
-                } else if (userId === 9999) {
-                    messages[userId].push({
-                        id: 1,
-                        senderId: userId,
-                        content: 'Xin chào! Tôi là admin. Tôi có thể giúp gì cho bạn?',
-                        timestamp: new Date(Date.now() - 3600000).toISOString()
-                    });
-                }
-            }
-            
-            // Hiển thị tin nhắn
-            messages[userId].forEach(msg => {
-                const messageElement = document.createElement('div');
-                messageElement.className = `message ${msg.senderId === userId ? 'received' : 'sent'}`;
-                messageElement.textContent = msg.content;
-                chatMessages.appendChild(messageElement);
-            });
-            
-            // Cuộn xuống dưới cùng
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        // Cải thiện hàm xử lý upload ảnh
-        document.getElementById('confirmUpload').addEventListener('click', function() {
-            const imgSrc = document.getElementById('previewImage').src;
-            if (imgSrc && imgSrc !== '') {
-                // Lưu ảnh vào localStorage
-                currentUser.profileImage = imgSrc;
-                localStorage.setItem('user', JSON.stringify(currentUser));
-                
-                // Cập nhật tất cả ảnh đại diện
-                updateUserAvatar();
-                
-                showNotification('Cập nhật ảnh đại diện thành công!');
-            }
-            
-            document.getElementById('uploadModal').classList.remove('show');
-            document.getElementById('previewContainer').classList.add('hidden');
-            document.getElementById('confirmUpload').classList.add('hidden');
-        });
-
-        // Cải thiện hàm xử lý đăng bài có ảnh
-        document.getElementById('postForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const content = document.getElementById('postContent').value;
-            const image = document.getElementById('postPreviewImage').src;
-            
-            if (!content && image.includes('data:')) {
-                showNotification('Vui lòng nhập nội dung hoặc thêm ảnh', true);
-                return;
-            }
-            
-            // Lưu bài đăng vào localStorage
-            const posts = JSON.parse(localStorage.getItem('posts')) || [];
-            const newPost = {
-                id: Date.now(),
-                userId: currentUser.id,
-                username: currentUser.username,
-                content: content,
-                image: image.includes('data:') ? image : null,
-                timestamp: new Date().toISOString()
-            };
-            
-            posts.unshift(newPost);
-            localStorage.setItem('posts', JSON.stringify(posts));
-            
-            // Cập nhật số lượng bài viết
-            const postsCount = parseInt(document.getElementById('postsCount').textContent) + 1;
-            document.getElementById('postsCount').textContent = postsCount;
-            
-            showNotification('Đang đăng bài...');
-            
-            setTimeout(() => {
-                document.getElementById('postModal').classList.remove('show');
-                document.getElementById('postContent').value = '';
-                document.getElementById('postPreviewContainer').classList.add('hidden');
-                showNotification('Đăng bài thành công!');
-            }, 1000);
-        });
-
-        // Cập nhật modal premium
-        function updatePremiumModal() {
-            const premiumPlans = document.getElementById('premiumPlans');
-            premiumPlans.innerHTML = `
-                <div class="premium-plan">
-                    <h3>Gói Theo Tuần</h3>
-                    <div class="plan-price">50.000đ<span>/tuần</span></div>
-                    <ul class="plan-features">
-                        <li><i class="fas fa-check"></i> Xem profile cơ bản</li>
-                        <li><i class="fas fa-check"></i> Nhắn tin không giới hạn</li>
-                        <li><i class="fas fa-times"></i> Ưu tiên hiển thị</li>
-                        <li><i class="fas fa-times"></i> Gợi ý đối tượng cao cấp</li>
-                    </ul>
-                    <button class="submit-btn" onclick="upgradeToVip('weekly')">Chọn gói</button>
-                </div>
-                
-                <div class="premium-plan">
-                    <h3>Gói Basic</h3>
-                    <div class="plan-price">199.000đ<span>/tháng</span></div>
-                    <ul class="plan-features">
-                        <li><i class="fas fa-check"></i> Xem profile chi tiết</li>
-                        <li><i class="fas fa-check"></i> Nhắn tin không giới hạn</li>
-                        <li><i class="fas fa-times"></i> Ưu tiên hiển thị</li>
-                        <li><i class="fas fa-times"></i> Gợi ý đối tượng cao cấp</li>
-                    </ul>
-                    <button class="submit-btn" onclick="upgradeToVip('basic')">Chọn gói</button>
-                </div>
-                
-                <div class="premium-plan recommended">
-                    <div class="recommended-badge">Đề xuất</div>
-                    <h3>Gói Premium</h3>
-                    <div class="plan-price">499.000đ<span>/tháng</span></div>
-                    <ul class="plan-features">
-                        <li><i class="fas fa-check"></i> Tất cả tính năng Basic</li>
-                        <li><i class="fas fa-check"></i> Ưu tiên hiển thị</li>
-                        <li><i class="fas fa-check"></i> Gợi ý đối tượng cao cấp</li>
-                        <li><i class="fas fa-check"></i> Hồ sơ được xếp hạng cao</li>
-                    </ul>
-                    <button class="submit-btn" onclick="upgradeToVip('premium')">Chọn gói</button>
-                </div>
-            `;
-        }
-
-        // Kết nối WebSocket khi trang load
-        window.addEventListener('load', function() {
-            loadUserProfile();
-            loadFriends();
-            loadSuggestedUsers();
-            connectWebSocket();
-            updatePremiumModal();
-            
-            // Kiểm tra xem có thông tin ghép đôi đã lưu không
-            const savedMatchmakingData = localStorage.getItem('matchmakingData');
-            if (savedMatchmakingData) {
-                matchmakingData = JSON.parse(savedMatchmakingData);
-                document.getElementById('matchingRoom').style.display = 'block';
-                loadRoomUsers();
-            }
-            
-            // Tải tin nhắn từ localStorage
-            const savedMessages = localStorage.getItem('messages');
-            if (savedMessages) {
-                messages = JSON.parse(savedMessages);
-            }
-            
-            // Kiểm tra và áp dụng hạn chế tính năng
-            checkFeatureRestrictions();
-        });
-
-        // Xử lý form ghép đôi
-        document.getElementById('matchmakingForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const age = document.getElementById('age').value;
-            const gender = document.getElementById('gender').value;
-            const income = document.getElementById('income').value;
-            const location = document.getElementById('location').value;
-            const preferredGender = document.getElementById('preferredGender').value;
-            const preferredIncome = document.getElementById('preferredIncome').value;
-            const preferredLocation = document.getElementById('preferredLocation').value;
-            
-            if (!age || !gender || !income || !location || !preferredGender) {
-                showNotification('Vui lòng điền đầy đủ thông tin', true);
-                return;
-            }
-            
-            // Lưu thông tin thu nhập để kiểm tra hạn chế
-            currentUserIncome = income;
-            currentUser.income = income;
-            localStorage.setItem('user', JSON.stringify(currentUser));
-            
-            matchmakingData = {
-                age,
-                gender,
-                income,
-                location,
-                preferredGender,
-                preferredIncome,
-                preferredLocation,
-                userId: currentUser.id
-            };
-            
-            // Cập nhật thông tin profile
-            document.getElementById('profileBio').textContent = `${age} tuổi, ${gender === 'male' ? 'Nam' : gender === 'female' ? 'Nữ' : 'Khác'}`;
-            document.getElementById('profileLocation').querySelector('span').textContent = getLocationName(location);
-            document.getElementById('profileIncome').querySelector('span').textContent = getIncomeRange(income);
-            
-            // Lưu thông tin vào localStorage
-            localStorage.setItem('matchmakingData', JSON.stringify(matchmakingData));
-            
-            // Đóng modal
-            document.getElementById('matchmakingModal').classList.remove('show');
-            
-            // Kiểm tra và áp dụng hạn chế tính năng
-            checkFeatureRestrictions();
-            
-            // Tham gia phòng ghép đôi
-            joinMatchingRoom();
-        });
-
-        // Hàm lấy tên khu vực
-        function getLocationName(locationCode) {
-            const locations = {
-                'hanoi': 'Hà Nội',
-                'hcm': 'TP. Hồ Chí Minh',
-                'danang': 'Đà Nẵng',
-                'other': 'Khác'
-            };
-            return locations[locationCode] || 'Chưa cập nhật';
+            hideModal(vipModal);
+            showModal(paymentModal);
         }
         
-        // Hàm lấy thông tin thu nhập
-        function getIncomeRange(incomeCode) {
-            const incomes = {
-                '0-5': 'Dưới 5 triệu',
-                '5-10': '5 - 10 triệu',
-                '10-20': '10 - 20 triệu',
-                '20-30': '20 - 30 triệu',
-                '30+': 'Trên 30 triệu'
-            };
-            return incomes[incomeCode] || 'Chưa cập nhật';
+        // Hiển thị modal
+        function showModal(modal) {
+            modal.classList.add('show');
         }
-
+        
+        // Ẩn modal
+        function hideModal(modal) {
+            modal.classList.remove('show');
+        }
+        
         // Hiển thị thông báo
         function showNotification(message, isError = false) {
             const notification = document.getElementById('notification');
@@ -2057,10 +2100,8 @@
             
             if (isError) {
                 notification.classList.add('error');
-                notification.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + notification.innerHTML;
             } else {
                 notification.classList.remove('error');
-                notification.innerHTML = '<i class="fas fa-check-circle"></i> ' + notification.innerHTML;
             }
             
             notification.classList.add('show');
@@ -2069,21 +2110,20 @@
                 notification.classList.remove('show');
             }, 3000);
         }
-
-        // Đăng xuất
-        document.getElementById('logoutBtn').addEventListener('click', function() {
-            if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
-                localStorage.removeItem('user');
-                localStorage.removeItem('token');
-                localStorage.removeItem('matchmakingData');
-                localStorage.removeItem('isVip');
-                window.location.href = 'login.html';
-            }
-        });
-
-        // Các hàm khác giữ nguyên từ code gốc...
-        // [Các hàm khác như updateUserAvatar, generateMockUsers, generateMockFriends, v.v...]
         
+        // Tính tuổi từ ngày sinh
+        function calculateAge(birthdate) {
+            const today = new Date();
+            const birthDate = new Date(birthdate);
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            
+            return age;
+        }
     </script>
 </body>
 </html>
