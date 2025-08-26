@@ -7,8 +7,995 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <style>
-        /* CSS hiện tại giữ nguyên, chỉ thêm một số style mới */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
         
+        body {
+            background-color: #fafafa;
+            color: #1c1e21;
+            line-height: 1.5;
+        }
+        
+        .header {
+            background: linear-gradient(to right, #e91e63, #ff4e8c);
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(233, 30, 99, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo h1 {
+            color: white;
+            font-size: 24px;
+            margin-right: 20px;
+            font-weight: 700;
+        }
+        
+        .nav-menu {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .nav-item {
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            color: white;
+        }
+        
+        .nav-item.active {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .nav-item:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+        }
+        
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: white;
+            color: #e91e63;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            object-fit: cover;
+        }
+        
+        .vip-badge {
+            background: linear-gradient(to right, #FFD700, #FFA500);
+            color: #000;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .logout-btn {
+            background-color: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        .main-container {
+            display: flex;
+            max-width: 1200px;
+            margin: 20px auto;
+            gap: 20px;
+            padding: 0 20px;
+        }
+        
+        .sidebar {
+            width: 300px;
+            flex-shrink: 0;
+        }
+        
+        .profile-card {
+            background-color: #fff;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .profile-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(to right, #e91e63, #ff4e8c);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            border: 3px solid white;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            object-fit: cover;
+            position: relative;
+        }
+        
+        .vip-indicator {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: linear-gradient(to right, #FFD700, #FFA500);
+            color: #000;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            border: 2px solid white;
+        }
+        
+        .change-avatar-btn {
+            position: absolute;
+            bottom: 15px;
+            right: 80px;
+            background-color: #4267b2;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        .profile-info h2 {
+            font-size: 18px;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .profile-info p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .profile-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #f0f2f5;
+        }
+        
+        .profile-stats p {
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .profile-stats strong {
+            display: block;
+            font-size: 18px;
+            color: #e91e63;
+        }
+        
+        .friends-card {
+            background-color: #fff;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        
+        .friends-card h3 {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0f2f5;
+            color: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .see-all {
+            font-size: 12px;
+            color: #e91e63;
+            cursor: pointer;
+        }
+        
+        .friend-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f9f9f9;
+            cursor: pointer;
+        }
+        
+        .friend-item:last-child {
+            border-bottom: none;
+        }
+        
+        .friend-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(to right, #4267b2, #5b7cbf);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+            flex-shrink: 0;
+            object-fit: cover;
+        }
+        
+        .content {
+            flex-grow: 1;
+        }
+        
+        .premium-banner {
+            background: linear-gradient(to right, #FFD700, #FFA500);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            color: #000;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .premium-banner h2 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+        
+        .premium-banner p {
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        
+        .upgrade-btn {
+            background: #000;
+            color: #FFD700;
+            border: none;
+            border-radius: 20px;
+            padding: 10px 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .upgrade-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .matchmaking-section {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .matchmaking-btn {
+            background: linear-gradient(to right, #e91e63, #ff4e8c);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 15px 30px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(233, 30, 99, 0.3);
+        }
+        
+        .matchmaking-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .post-box {
+            background-color: #fff;
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+        
+        .post-input {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .post-input-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(to right, #e91e63, #ff4e8c);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+            object-fit: cover;
+        }
+        
+        .post-input-field {
+            flex-grow: 1;
+            padding: 12px 15px;
+            border: 1px solid #e6e6e6;
+            border-radius: 20px;
+            cursor: pointer;
+            background-color: #f9f9f9;
+            transition: background-color 0.3s;
+        }
+        
+        .post-input-field:hover {
+            background-color: #f0f2f5;
+        }
+        
+        .discover-section {
+            background-color: #fff;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        
+        .discover-section h3 {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0f2f5;
+            color: #333;
+        }
+        
+        .user-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 20px;
+        }
+        
+        .user-card {
+            background: linear-gradient(to bottom, #ffffff, #f9f9f9);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 1px solid #f0f0f0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .user-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .user-card-avatar {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: linear-gradient(to right, #4267b2, #5b7cbf);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin: 0 auto 10px;
+            font-size: 24px;
+            border: 3px solid white;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            object-fit: cover;
+        }
+        
+        .user-card h4 {
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .user-card p {
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+        
+        .user-card-actions {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .add-friend-btn {
+            background: linear-gradient(to right, #e91e63, #ff4e8c);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 6px 15px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .add-friend-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .view-profile-btn {
+            background: linear-gradient(to right, #4267b2, #5b7cbf);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 6px 15px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .view-profile-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .vip-feature {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(to right, #FFD700, #FFA500);
+            color: #000;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        
+        .matching-room {
+            background-color: #fff;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+        
+        .room-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #f0f2f5;
+        }
+        
+        .room-title {
+            font-size: 20px;
+            color: #e91e63;
+            font-weight: 600;
+        }
+        
+        .leave-room {
+            background: #f0f2f5;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .leave-room:hover {
+            background: #e4e6eb;
+        }
+        
+        .room-users {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .room-user {
+            background: #f9f9f9;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            transition: transform 0.3s;
+            border: 1px solid #eee;
+        }
+        
+        .room-user:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .room-user-avatar {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: linear-gradient(to right, #4267b2, #5b7cbf);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin: 0 auto 10px;
+            font-size: 24px;
+            border: 3px solid white;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            object-fit: cover;
+        }
+        
+        .room-user h4 {
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .room-user p {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+        
+        .chat-btn {
+            background: linear-gradient(to right, #e91e63, #ff4e8c);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 6px 15px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin: 0 auto;
+        }
+        
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal {
+            background-color: white;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            padding: 25px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+            transform: translateY(-20px);
+            transition: transform 0.3s;
+        }
+        
+        .modal-overlay.show .modal {
+            transform: translateY(0);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .modal-header h2 {
+            color: #e91e63;
+            font-size: 22px;
+        }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            flex: 1;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #e91e63;
+        }
+        
+        .submit-btn {
+            background: linear-gradient(to right, #e91e63, #ff4e8c);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        /* Premium modal styles */
+        .premium-plans {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .premium-plan {
+            flex: 1;
+            border: 1px solid #eee;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.3s;
+            cursor: pointer;
+        }
+        
+        .premium-plan:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .premium-plan.recommended {
+            border: 2px solid #FFD700;
+            position: relative;
+        }
+        
+        .recommended-badge {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #FFD700;
+            color: #000;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .plan-price {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #e91e63;
+        }
+        
+        .plan-features {
+            list-style: none;
+            text-align: left;
+            margin: 15px 0;
+        }
+        
+        .plan-features li {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .plan-features li i {
+            color: #4caf50;
+        }
+        
+        /* User profile modal */
+        .profile-modal-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .profile-modal-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(to right, #e91e63, #ff4e8c);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            border: 3px solid white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            object-fit: cover;
+        }
+        
+        .profile-details {
+            width: 100%;
+        }
+        
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+        
+        .detail-label {
+            font-weight: 500;
+            color: #666;
+        }
+        
+        .detail-value {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .income-high {
+            color: #e91e63;
+        }
+        
+        /* Chat styles */
+        .chat-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            height: 450px;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+            overflow: hidden;
+            transform: translateY(100%);
+            opacity: 0;
+            transition: transform 0.3s, opacity 0.3s;
+        }
+        
+        .chat-container.active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .chat-header {
+            background: linear-gradient(to right, #e91e63, #ff4e8c);
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .chat-header h3 {
+            font-size: 16px;
+        }
+        
+        .close-chat {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        
+        .chat-messages {
+            flex-grow: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .message {
+            max-width: 80%;
+            padding: 10px 15px;
+            border-radius: 18px;
+            margin-bottom: 5px;
+        }
+        
+        .message.sent {
+            align-self: flex-end;
+            background-color: #e91e63;
+            color: white;
+        }
+        
+        .message.received {
+            align-self: flex-start;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        
+        .chat-input {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #eee;
+        }
+        
+        .chat-input input {
+            flex-grow: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            margin-right: 10px;
+        }
+        
+        .send-btn {
+            background: #e91e63;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            background-color: #4caf50;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateX(100%);
+            transition: transform 0.3s ease-out;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.error {
+            background-color: #f44336;
+        }
+        
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+
+        /* Payment modal styles */
         .payment-content {
             text-align: center;
         }
@@ -62,12 +1049,307 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             margin-top: 20px;
         }
+
+        .restricted-feature {
+            position: relative;
+            filter: blur(3px);
+            pointer-events: none;
+        }
+        
+        .restricted-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 15px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 10;
+        }
+        
+        /* Mobile styles */
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+            }
+            
+            .nav-menu {
+                display: none;
+                position: absolute;
+                top: 70px;
+                left: 0;
+                right: 0;
+                background: linear-gradient(to right, #e91e63, #ff4e8c);
+                flex-direction: column;
+                padding: 15px;
+                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            }
+            
+            .nav-menu.show {
+                display: flex;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+            }
+            
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+            
+            .premium-plans {
+                flex-direction: column;
+            }
+            
+            .user-grid {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                gap: 15px;
+            }
+            
+            .room-users {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 15px;
+            }
+            
+            .chat-container {
+                width: 100%;
+                height: 100%;
+                bottom: 0;
+                right: 0;
+                border-radius: 0;
+            }
+        }
     </style>
 </head>
 <body>
-    <!-- Header và các phần khác giữ nguyên -->
+    <div class="header">
+        <div class="logo">
+            <h1>LoveConnect</h1>
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="nav-menu" id="navMenu">
+                <div class="nav-item active" data-tab="home"><i class="fas fa-home"></i> Trang Chủ</div>
+                <div class="nav-item" data-tab="friends"><i class="fas fa-users"></i> Bạn bè</div>
+                <div class="nav-item" data-tab="messages"><i class="fas fa-comments"></i> Tin nhắn</div>
+                <div class="nav-item" data-tab="matchmaking"><i class="fas fa-heart"></i> Ghép đôi</div>
+            </div>
+        </div>
+        
+        <div class="user-menu">
+            <div class="vip-badge" id="vipBadge" style="display: none;">
+                <i class="fas fa-crown"></i> VIP
+            </div>
+            <div class="user-avatar" id="userAvatar">U</div>
+            <button class="logout-btn" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Đăng xuất</button>
+        </div>
+    </div>
     
-    <!-- Thêm modal thanh toán -->
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="profile-card">
+                <div class="profile-header">
+                    <div class="profile-avatar" id="profileAvatar">U</div>
+                    <div class="vip-indicator" id="vipIndicator" style="display: none;">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <button class="change-avatar-btn" id="changeAvatarBtn">
+                        <i class="fas fa-camera"></i>
+                    </button>
+                    <div class="profile-info">
+                        <h2 id="profileName">Người dùng</h2>
+                        <p id="profileBio">Chưa có thông tin</p>
+                        <p id="profileLocation"><i class="fas fa-map-marker-alt"></i> <span>Chưa cập nhật</span></p>
+                        <p id="profileIncome"><i class="fas fa-money-bill-wave"></i> <span>Chưa cập nhật</span></p>
+                    </div>
+                </div>
+                <div class="profile-stats">
+                    <p><strong id="friendsCount">0</strong> bạn bè</p>
+                    <p><strong id="matchesCount">0</strong> matches</p>
+                    <p><strong id="postsCount">0</strong> bài viết</p>
+                </div>
+            </div>
+            
+            <div class="friends-card">
+                <h3>Bạn bè <span class="see-all" id="seeAllFriends">Xem tất cả</span></h3>
+                <div id="friendsList">
+                    <div class="loading-section">
+                        <div class="loader" style="border-top-color: #e91e63;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <!-- Banner nâng cấp VIP -->
+            <div class="premium-banner" id="premiumBanner">
+                <h2><i class="fas fa-crown"></i> Nâng cấp tài khoản VIP</h2>
+                <p>Tận hưởng trải nghiệm hẹn hò cao cấp với nhiều tính năng đặc biệt</p>
+                <button class="upgrade-btn" id="upgradeBtn">Nâng cấp ngay</button>
+            </div>
+            
+            <!-- Nút tìm đối tượng phù hợp - đã được di chuyển lên trên -->
+            <div class="matchmaking-section">
+                <button class="matchmaking-btn" id="matchmakingBtn">
+                    <i class="fas fa-heart"></i> Tìm đối tượng phù hợp
+                </button>
+            </div>
+            
+            <div class="post-box">
+                <div class="post-input">
+                    <div class="post-input-avatar" id="postAvatar">U</div>
+                    <div class="post-input-field" id="postInput">Bạn đang nghĩ gì?</div>
+                </div>
+            </div>
+            
+            <div class="matching-room" id="matchingRoom" style="display: none;">
+                <div class="room-header">
+                    <h2 class="room-title">Phòng ghép đôi</h2>
+                    <button class="leave-room" id="leaveRoomBtn">
+                        <i class="fas fa-times"></i> Rời phòng
+                    </button>
+                </div>
+                <div class="room-users" id="roomUsers">
+                    <!-- Danh sách người dùng trong phòng sẽ được thêm ở đây -->
+                </div>
+            </div>
+            
+            <div class="discover-section">
+                <h3>Gợi ý kết bạn</h3>
+                <div class="user-grid" id="suggestedUsers">
+                    <div class="loading-section">
+                        <div class="loader" style="border-top-color: #e91e63;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phần hỗ trợ -->
+            <div class="support-section">
+                <h3>Hỗ trợ</h3>
+                <p>Bạn cần trợ giúp? Liên hệ với quản trị viên của chúng tôi.</p>
+                <button class="chat-btn" id="contactAdminBtn">
+                    <i class="fas fa-headset"></i> Liên hệ hỗ trợ
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal nhập thông tin ghép đôi -->
+    <div class="modal-overlay" id="matchmakingModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Thông tin ghép đôi</h2>
+                <button class="close-modal" id="closeModal">&times;</button>
+            </div>
+            <form id="matchmakingForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="age">Độ tuổi của bạn</label>
+                        <input type="number" id="age" min="18" max="100" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="gender">Giới tính</label>
+                        <select id="gender" required>
+                            <option value="">Chọn giới tính</option>
+                            <option value="male">Nam</option>
+                            <option value="female">Nữ</option>
+                            <option value="other">Khác</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="income">Thu nhập (triệu VNĐ/tháng)</label>
+                        <select id="income" required>
+                            <option value="">Chọn mức thu nhập</option>
+                            <option value="0-5">Dưới 5 triệu</option>
+                            <option value="5-10">5 - 10 triệu</option>
+                            <option value="10-20">10 - 20 triệu</option>
+                            <option value="20-30">20 - 30 triệu</option>
+                            <option value="30+">Trên 30 triệu</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="location">Khu vực</label>
+                        <select id="location" required>
+                            <option value="">Chọn khu vực</option>
+                            <option value="hanoi">Hà Nội</option>
+                            <option value="hcm">TP. Hồ Chí Minh</option>
+                            <option value="danang">Đà Nẵng</option>
+                            <option value="other">Khác</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="preferredGender">Bạn muốn tìm</label>
+                        <select id="preferredGender" required>
+                            <option value="">Chọn giới tính</option>
+                            <option value="male">Nam</option>
+                            <option value="female">Nữ</option>
+                            <option value="any">Không yêu cầu</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="preferredIncome">Thu nhập mong muốn</label>
+                        <select id="preferredIncome">
+                            <option value="any">Không yêu cầu</option>
+                            <option value="0-5">Dưới 5 triệu</option>
+                            <option value="5-10">5 - 10 triệu</option>
+                            <option value="10-20">10 - 20 triệu</option>
+                            <option value="20-30">20 - 30 triệu</option>
+                            <option value="30+">Trên 30 triệu</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="preferredLocation">Khu vực mong muốn</label>
+                    <select id="preferredLocation">
+                        <option value="any">Không yêu cầu</option>
+                        <option value="hanoi">Hà Nội</option>
+                        <option value="hcm">TP. Hồ Chí Minh</option>
+                        <option value="danang">Đà Nẵng</option>
+                        <option value="other">Khác</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="submit-btn">Bắt đầu ghép đôi</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal nâng cấp VIP -->
+    <div class="modal-overlay" id="premiumModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Nâng cấp tài khoản VIP</h2>
+                <button class="close-modal" id="closePremiumModal">&times;</button>
+            </div>
+            
+            <div class="premium-plans" id="premiumPlans">
+                <!-- Nội dung sẽ được thêm bằng JavaScript -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal thanh toán -->
     <div class="modal-overlay" id="paymentModal">
         <div class="modal">
             <div class="modal-header">
@@ -79,9 +1361,9 @@
                 <div class="bank-info">
                     <h3>Thông tin chuyển khoản</h3>
                     <p>Ngân hàng: VietCom Bank</p>
-                    <p>Số tài khoản: <strong>1059173949</strong></p>
+                    <p>Số tài khoản: <strong id="bankAccount">1059173949</strong></p>
                     <p>Chủ tài khoản: <strong>Nguyễn Thanh Duy</strong></p>
-                    <p>Nội dung: <strong>VIP_[TÊN_TÀI_KHOẢN]</strong></p>
+                    <p>Nội dung: <strong id="paymentContent">VIP_[TÊN_TÀI_KHOẢN]</strong></p>
                 </div>
                 
                 <div class="qr-code">
@@ -95,13 +1377,76 @@
         </div>
     </div>
     
-    <!-- Thêm phần hỗ trợ -->
-    <div class="support-section">
-        <h3>Hỗ trợ</h3>
-        <p>Bạn cần trợ giúp? Liên hệ với quản trị viên của chúng tôi.</p>
-        <button class="chat-btn" id="contactAdminBtn">
-            <i class="fas fa-headset"></i> Liên hệ hỗ trợ
-        </button>
+    <!-- Modal xem profile người dùng -->
+    <div class="modal-overlay" id="profileModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Thông tin người dùng</h2>
+                <button class="close-modal" id="closeProfileModal">&times;</button>
+            </div>
+            
+            <div class="profile-modal-content">
+                <div class="profile-modal-avatar" id="profileModalAvatar">U</div>
+                
+                <div class="profile-details">
+                    <div class="detail-item">
+                        <span class="detail-label">Tên:</span>
+                        <span class="detail-value" id="profileModalName">Người dùng</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Tuổi:</span>
+                        <span class="detail-value" id="profileModalAge">Chưa cập nhật</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Giới tính:</span>
+                        <span class="detail-value" id="profileModalGender">Chưa cập nhật</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Thu nhập:</span>
+                        <span class="detail-value" id="profileModalIncome">Chưa cập nhật</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Khu vực:</span>
+                        <span class="detail-value" id="profileModalLocation">Chưa cập nhật</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Sở thích:</span>
+                        <span class="detail-value" id="profileModalInterests">Chưa cập nhật</span>
+                    </div>
+                </div>
+                
+                <div class="user-card-actions" style="margin-top: 20px;">
+                    <button class="add-friend-btn" id="profileModalAddFriend">
+                        <i class="fas fa-user-plus"></i> Kết bạn
+                    </button>
+                    <button class="chat-btn" id="profileModalChat">
+                        <i class="fas fa-comment"></i> Nhắn tin
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Chat container -->
+    <div class="chat-container" id="chatContainer">
+        <div class="chat-header">
+            <h3 id="chatWithUser">Tin nhắn</h3>
+            <button class="close-chat" id="closeChat">&times;</button>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <!-- Messages will be added here -->
+        </div>
+        <div class="chat-input">
+            <input type="text" placeholder="Nhập tin nhắn..." id="messageInput">
+            <button class="send-btn" id="sendMessageBtn">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+    
+    <div class="notification" id="notification">
+        <i class="fas fa-check-circle"></i>
+        <span id="notificationText"></span>
     </div>
 
     <script>
@@ -116,6 +1461,7 @@
         let isAdmin = false;
         let socket = null;
         let selectedPlan = null;
+        let currentUserIncome = null;
 
         // Kiểm tra đăng nhập
         const currentUser = JSON.parse(localStorage.getItem('user'));
@@ -126,7 +1472,7 @@
         }
         
         // Kiểm tra quyền admin
-        if (currentUser.username === 'Admin_CFC') {
+        if (currentUser.username === 'Admin_CFC' && currentUser.password === '687969') {
             isAdmin = true;
             // Thêm badge admin
             const adminBadge = document.createElement('div');
@@ -158,6 +1504,37 @@
             }
         }
 
+        // Kiểm tra và áp dụng hạn chế tính năng theo thu nhập
+        function checkFeatureRestrictions() {
+            const userIncome = currentUserIncome || currentUser.income;
+            
+            // Nếu thu nhập dưới 10 triệu và không phải VIP
+            if ((userIncome === '0-5' || userIncome === '5-10') && !isVip) {
+                // Ẩn banner nâng cấp VIP
+                document.getElementById('premiumBanner').style.display = 'none';
+                
+                // Cho phép sử dụng tất cả tính năng cơ bản
+                console.log('Người dùng thu nhập dưới 10 triệu có thể sử dụng tính năng cơ bản');
+            } 
+            // Nếu thu nhập trên 10 triệu và không phải VIP
+            else if ((userIncome === '10-20' || userIncome === '20-30' || userIncome === '30+') && !isVip) {
+                // Hiển thị banner nâng cấp VIP
+                document.getElementById('premiumBanner').style.display = 'flex';
+                
+                // Hiển thị thông báo về tính năng bị hạn chế
+                showNotification('Bạn cần nâng cấp VIP để sử dụng đầy đủ tính năng');
+            }
+            // Nếu là VIP
+            else if (isVip) {
+                // Ẩn banner nâng cấp VIP
+                document.getElementById('premiumBanner').style.display = 'none';
+                
+                // Hiển thị badge VIP
+                document.getElementById('vipBadge').style.display = 'flex';
+                document.getElementById('vipIndicator').style.display = 'flex';
+            }
+        }
+
         // Cập nhật hàm upgradeToVip để hiển thị modal thanh toán
         function upgradeToVip(plan) {
             selectedPlan = plan;
@@ -182,13 +1559,14 @@
             }
             
             // Cập nhật thông tin thanh toán
-            document.querySelector('.bank-info strong').textContent = amount.toLocaleString() + 'đ/' + period;
+            document.getElementById('bankAccount').textContent = amount.toLocaleString() + 'đ/' + period;
+            document.getElementById('paymentContent').textContent = `VIP_${currentUser.username}_${plan}`;
             
             // Tạo mã QR
             const qrContainer = document.getElementById('qrContainer');
             qrContainer.innerHTML = '';
             
-            const qrText = `VietComBank|1059173949|Nguyễn Thanh Duy|${amount}|VIP_${currentUser.username}`;
+            const qrText = `VietComBank|1059173949|Nguyễn Thanh Duy|${amount}|VIP_${currentUser.username}_${plan}`;
             QRCode.toCanvas(qrContainer, qrText, {
                 width: 180,
                 height: 180,
@@ -218,6 +1596,9 @@
                 document.getElementById('premiumModal').classList.remove('show');
                 
                 showNotification(`Nâng cấp VIP thành công! Chào mừng bạn đến với gói ${selectedPlan}`);
+                
+                // Mở khóa tất cả tính năng
+                checkFeatureRestrictions();
             }, 5000);
         });
 
@@ -524,31 +1905,9 @@
             }, 1000);
         });
 
-        // Kết nối WebSocket khi trang load
-        window.addEventListener('load', function() {
-            loadUserProfile();
-            loadFriends();
-            loadSuggestedUsers();
-            connectWebSocket();
-            
-            // Kiểm tra xem có thông tin ghép đôi đã lưu không
-            const savedMatchmakingData = localStorage.getItem('matchmakingData');
-            if (savedMatchmakingData) {
-                matchmakingData = JSON.parse(savedMatchmakingData);
-                document.getElementById('matchingRoom').style.display = 'block';
-                loadRoomUsers();
-            }
-            
-            // Tải tin nhắn từ localStorage
-            const savedMessages = localStorage.getItem('messages');
-            if (savedMessages) {
-                messages = JSON.parse(savedMessages);
-            }
-        });
-
-        // Thêm gói VIP theo tuần vào modal premium
+        // Cập nhật modal premium
         function updatePremiumModal() {
-            const premiumPlans = document.querySelector('.premium-plans');
+            const premiumPlans = document.getElementById('premiumPlans');
             premiumPlans.innerHTML = `
                 <div class="premium-plan">
                     <h3>Gói Theo Tuần</h3>
@@ -589,8 +1948,142 @@
             `;
         }
 
-        // Cập nhật modal premium khi trang load
-        setTimeout(updatePremiumModal, 100);
+        // Kết nối WebSocket khi trang load
+        window.addEventListener('load', function() {
+            loadUserProfile();
+            loadFriends();
+            loadSuggestedUsers();
+            connectWebSocket();
+            updatePremiumModal();
+            
+            // Kiểm tra xem có thông tin ghép đôi đã lưu không
+            const savedMatchmakingData = localStorage.getItem('matchmakingData');
+            if (savedMatchmakingData) {
+                matchmakingData = JSON.parse(savedMatchmakingData);
+                document.getElementById('matchingRoom').style.display = 'block';
+                loadRoomUsers();
+            }
+            
+            // Tải tin nhắn từ localStorage
+            const savedMessages = localStorage.getItem('messages');
+            if (savedMessages) {
+                messages = JSON.parse(savedMessages);
+            }
+            
+            // Kiểm tra và áp dụng hạn chế tính năng
+            checkFeatureRestrictions();
+        });
+
+        // Xử lý form ghép đôi
+        document.getElementById('matchmakingForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const age = document.getElementById('age').value;
+            const gender = document.getElementById('gender').value;
+            const income = document.getElementById('income').value;
+            const location = document.getElementById('location').value;
+            const preferredGender = document.getElementById('preferredGender').value;
+            const preferredIncome = document.getElementById('preferredIncome').value;
+            const preferredLocation = document.getElementById('preferredLocation').value;
+            
+            if (!age || !gender || !income || !location || !preferredGender) {
+                showNotification('Vui lòng điền đầy đủ thông tin', true);
+                return;
+            }
+            
+            // Lưu thông tin thu nhập để kiểm tra hạn chế
+            currentUserIncome = income;
+            currentUser.income = income;
+            localStorage.setItem('user', JSON.stringify(currentUser));
+            
+            matchmakingData = {
+                age,
+                gender,
+                income,
+                location,
+                preferredGender,
+                preferredIncome,
+                preferredLocation,
+                userId: currentUser.id
+            };
+            
+            // Cập nhật thông tin profile
+            document.getElementById('profileBio').textContent = `${age} tuổi, ${gender === 'male' ? 'Nam' : gender === 'female' ? 'Nữ' : 'Khác'}`;
+            document.getElementById('profileLocation').querySelector('span').textContent = getLocationName(location);
+            document.getElementById('profileIncome').querySelector('span').textContent = getIncomeRange(income);
+            
+            // Lưu thông tin vào localStorage
+            localStorage.setItem('matchmakingData', JSON.stringify(matchmakingData));
+            
+            // Đóng modal
+            document.getElementById('matchmakingModal').classList.remove('show');
+            
+            // Kiểm tra và áp dụng hạn chế tính năng
+            checkFeatureRestrictions();
+            
+            // Tham gia phòng ghép đôi
+            joinMatchingRoom();
+        });
+
+        // Hàm lấy tên khu vực
+        function getLocationName(locationCode) {
+            const locations = {
+                'hanoi': 'Hà Nội',
+                'hcm': 'TP. Hồ Chí Minh',
+                'danang': 'Đà Nẵng',
+                'other': 'Khác'
+            };
+            return locations[locationCode] || 'Chưa cập nhật';
+        }
+        
+        // Hàm lấy thông tin thu nhập
+        function getIncomeRange(incomeCode) {
+            const incomes = {
+                '0-5': 'Dưới 5 triệu',
+                '5-10': '5 - 10 triệu',
+                '10-20': '10 - 20 triệu',
+                '20-30': '20 - 30 triệu',
+                '30+': 'Trên 30 triệu'
+            };
+            return incomes[incomeCode] || 'Chưa cập nhật';
+        }
+
+        // Hiển thị thông báo
+        function showNotification(message, isError = false) {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notificationText');
+            
+            notificationText.textContent = message;
+            
+            if (isError) {
+                notification.classList.add('error');
+                notification.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + notification.innerHTML;
+            } else {
+                notification.classList.remove('error');
+                notification.innerHTML = '<i class="fas fa-check-circle"></i> ' + notification.innerHTML;
+            }
+            
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Đăng xuất
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+                localStorage.removeItem('user');
+                localStorage.removeItem('token');
+                localStorage.removeItem('matchmakingData');
+                localStorage.removeItem('isVip');
+                window.location.href = 'login.html';
+            }
+        });
+
+        // Các hàm khác giữ nguyên từ code gốc...
+        // [Các hàm khác như updateUserAvatar, generateMockUsers, generateMockFriends, v.v...]
+        
     </script>
 </body>
 </html>
