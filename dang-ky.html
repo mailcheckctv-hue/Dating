@@ -159,6 +159,19 @@
             margin-right: 10px;
         }
 
+        .test-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
@@ -167,6 +180,10 @@
             .form-row {
                 flex-direction: column;
                 gap: 0;
+            }
+            .test-btn {
+                bottom: 10px;
+                right: 10px;
             }
         }
     </style>
@@ -250,22 +267,89 @@
         </div>
     </div>
 
-    <script>
-        // URL API - Tự động detect môi trường
-        function getApiBaseUrl() {
-            // Nếu đang chạy trên localhost (development)
-            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                return 'http://localhost:10000';
-            }
-            // Nếu đang chạy trên production
-            return 'https://dating-bixm.onrender.com';
-        }
+    <button class="test-btn" id="testBtn">Test Kết Nối Server</button>
 
-        const API_BASE_URL = getApiBaseUrl();
+    <script>
+        // URL API - Sử dụng URL chính xác của bạn
+        const API_BASE_URL = 'https://dating-bixm.onrender.com';
         console.log('API Base URL:', API_BASE_URL);
 
+        // Hiển thị thông báo
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = 'message ' + type;
+            messageEl.style.display = 'block';
+            
+            if (type === 'error') {
+                // Giữ thông báo lỗi hiển thị lâu hơn
+                setTimeout(() => {
+                    messageEl.style.display = 'none';
+                }, 10000);
+            } else {
+                setTimeout(() => {
+                    messageEl.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        // Reset button trạng thái
+        function resetButton() {
+            const submitBtn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const btnLoading = document.getElementById('btnLoading');
+            
+            submitBtn.disabled = false;
+            btnText.textContent = 'Đăng ký';
+            btnLoading.style.display = 'none';
+        }
+
+        // Test kết nối server
+        async function testConnection() {
+            try {
+                showMessage('🔄 Đang kiểm tra kết nối server...', 'success');
+                
+                // Sử dụng fetch với timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                
+                const response = await fetch(API_BASE_URL + '/api/health', {
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Kết nối server thành công:', data);
+                
+                showMessage('✅ Kết nối server thành công! Status: ' + data.status, 'success');
+                return true;
+            } catch (error) {
+                console.error('Lỗi kết nối:', error);
+                
+                if (error.name === 'AbortError') {
+                    showMessage('❌ Server không phản hồi sau 10 giây. Có thể server đang tắt hoặc có vấn đề kết nối.', 'error');
+                } else {
+                    showMessage('❌ Lỗi kết nối: ' + error.message, 'error');
+                }
+                return false;
+            }
+        }
+
+        // Xử lý form đăng ký
         document.getElementById('registerForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+            
+            // Kiểm tra kết nối trước khi đăng ký
+            const isConnected = await testConnection();
+            if (!isConnected) {
+                resetButton();
+                return;
+            }
             
             // Hiển thị trạng thái loading
             const submitBtn = document.getElementById('submitBtn');
@@ -344,45 +428,16 @@
             }
         });
 
-        function showMessage(text, type) {
-            const messageEl = document.getElementById('message');
-            messageEl.textContent = text;
-            messageEl.className = 'message ' + type;
-            messageEl.style.display = 'block';
+        // Nút test kết nối
+        document.getElementById('testBtn').addEventListener('click', testConnection);
 
-            // Tự động ẩn thông báo sau 5 giây
-            setTimeout(() => {
-                messageEl.style.display = 'none';
-            }, 5000);
-        }
-
-        function resetButton() {
-            const submitBtn = document.getElementById('submitBtn');
-            const btnText = document.getElementById('btnText');
-            const btnLoading = document.getElementById('btnLoading');
-            
-            submitBtn.disabled = false;
-            btnText.textContent = 'Đăng ký';
-            btnLoading.style.display = 'none';
-        }
-
-        // Kiểm tra kết nối server khi trang load
+        // Tự động test kết nối khi trang load
         window.addEventListener('load', async () => {
-            try {
-                const response = await fetch(API_BASE_URL + '/api/health');
-                const data = await response.json();
-                console.log('Kết nối server thành công:', data);
-                
-                if (data.status === 'OK') {
-                    showMessage('✅ Kết nối server thành công!', 'success');
-                    setTimeout(() => {
-                        document.getElementById('message').style.display = 'none';
-                    }, 3000);
-                }
-            } catch (error) {
-                console.warn('Không thể kết nối đến server:', error);
-                showMessage('⚠️ Không thể kết nối đến server. Vui lòng thử lại sau.', 'error');
-            }
+            // Hiển thị thông báo đang kiểm tra
+            showMessage('🔄 Đang kiểm tra kết nối server...', 'success');
+            
+            // Test kết nối sau 1 giây
+            setTimeout(testConnection, 1000);
         });
     </script>
 </body>
