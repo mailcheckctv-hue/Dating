@@ -222,6 +222,7 @@
             font-size: 20px;
             cursor: pointer;
             transition: transform 0.3s;
+            border: none;
         }
         
         .social-btn:hover {
@@ -279,6 +280,68 @@
             z-index: 1000;
         }
 
+        /* Modal quên mật khẩu */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: #fff;
+            border-radius: 12px;
+            padding: 25px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #777;
+        }
+        
+        .modal-title {
+            margin-bottom: 20px;
+            text-align: center;
+            color: #e91e63;
+        }
+        
+        .modal-step {
+            display: none;
+        }
+        
+        .modal-step.active {
+            display: block;
+        }
+        
+        .resend-code {
+            margin-top: 10px;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .resend-code a {
+            color: #e91e63;
+            text-decoration: none;
+        }
+        
+        .resend-code a:hover {
+            text-decoration: underline;
+        }
+
         @media (max-width: 480px) {
             .container {
                 padding: 15px;
@@ -293,6 +356,10 @@
                 right: 10px;
                 padding: 8px 12px;
                 font-size: 12px;
+            }
+            
+            .modal-content {
+                padding: 20px;
             }
         }
     </style>
@@ -329,7 +396,7 @@
                 </div>
                 
                 <div class="forgot-password">
-                    <a href="#">Quên mật khẩu?</a>
+                    <a href="#" id="forgotPasswordLink">Quên mật khẩu?</a>
                 </div>
                 
                 <button type="submit" class="login-btn" id="loginBtn">
@@ -343,9 +410,9 @@
                 
                 <div class="social-login">
                     <div class="social-buttons">
-                        <div class="social-btn fb-btn">f</div>
-                        <div class="social-btn gg-btn">g</div>
-                        <div class="social-btn zl-btn">z</div>
+                        <button class="social-btn fb-btn" id="facebookLogin">f</button>
+                        <button class="social-btn gg-btn" id="googleLogin">g</button>
+                        <button class="social-btn zl-btn" id="zaloLogin">z</button>
                     </div>
                 </div>
                 
@@ -360,7 +427,89 @@
         </div>
     </div>
 
+    <!-- Modal quên mật khẩu -->
+    <div class="modal" id="forgotPasswordModal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeModal">&times;</span>
+            <h2 class="modal-title">Quên mật khẩu</h2>
+            
+            <!-- Bước 1: Nhập email -->
+            <div class="modal-step active" id="step1">
+                <div class="form-group">
+                    <label for="resetEmail">Email đăng ký</label>
+                    <input type="email" id="resetEmail" placeholder="Nhập email của bạn" required>
+                </div>
+                <button class="login-btn" id="sendCodeBtn">Gửi mã xác nhận</button>
+            </div>
+            
+            <!-- Bước 2: Nhập mã xác nhận -->
+            <div class="modal-step" id="step2">
+                <p>Mã xác nhận đã được gửi đến email: <strong id="emailDisplay"></strong></p>
+                <div class="form-group">
+                    <label for="verificationCode">Mã xác nhận</label>
+                    <input type="text" id="verificationCode" placeholder="Nhập mã xác nhận" required>
+                </div>
+                <div class="resend-code">
+                    Không nhận được mã? <a href="#" id="resendCode">Gửi lại</a>
+                </div>
+                <button class="login-btn" id="verifyCodeBtn">Xác nhận</button>
+            </div>
+            
+            <!-- Bước 3: Đặt mật khẩu mới -->
+            <div class="modal-step" id="step3">
+                <div class="form-group">
+                    <label for="newPassword">Mật khẩu mới</label>
+                    <input type="password" id="newPassword" placeholder="Nhập mật khẩu mới" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Xác nhận mật khẩu</label>
+                    <input type="password" id="confirmPassword" placeholder="Nhập lại mật khẩu" required>
+                </div>
+                <button class="login-btn" id="resetPasswordBtn">Đặt lại mật khẩu</button>
+            </div>
+        </div>
+    </div>
+
     <button class="test-btn" id="testBtn">Test Kết Nối Server</button>
+
+    <!-- SDK cho đăng nhập MXH -->
+    <script>
+        // Facebook SDK
+        window.fbAsyncInit = function() {
+            FB.init({
+                appId: 'YOUR_FACEBOOK_APP_ID',
+                cookie: true,
+                xfbml: true,
+                version: 'v19.0'
+            });
+        };
+
+        (function(d, s, id){
+            var js, fjs = d.getElementsByTagName(s)[0];
+            if (d.getElementById(id)) {return;}
+            js = d.createElement(s); js.id = id;
+            js.src = "https://connect.facebook.net/vi_VN/sdk.js";
+            fjs.parentNode.insertBefore(js, fjs);
+        }(document, 'script', 'facebook-jssdk'));
+
+        // Google SDK
+        function loadGoogleSDK() {
+            const script = document.createElement('script');
+            script.src = 'https://accounts.google.com/gsi/client';
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        }
+
+        // Zalo SDK
+        function loadZaloSDK() {
+            const script = document.createElement('script');
+            script.src = 'https://sp.zalo.me/plugins/sdk.js';
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        }
+    </script>
 
     <script>
         // URL API - Sử dụng URL chính xác của bạn
@@ -431,6 +580,283 @@
                 return false;
             }
         }
+
+        // Xử lý modal quên mật khẩu
+        const forgotPasswordModal = document.getElementById('forgotPasswordModal');
+        const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+        const closeModal = document.getElementById('closeModal');
+        const steps = document.querySelectorAll('.modal-step');
+        let currentStep = 1;
+        let resetEmail = '';
+
+        // Mở modal quên mật khẩu
+        forgotPasswordLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            forgotPasswordModal.style.display = 'flex';
+        });
+
+        // Đóng modal
+        closeModal.addEventListener('click', function() {
+            forgotPasswordModal.style.display = 'none';
+            resetSteps();
+        });
+
+        // Đóng modal khi click bên ngoài
+        window.addEventListener('click', function(e) {
+            if (e.target === forgotPasswordModal) {
+                forgotPasswordModal.style.display = 'none';
+                resetSteps();
+            }
+        });
+
+        // Reset các bước về ban đầu
+        function resetSteps() {
+            currentStep = 1;
+            steps.forEach(step => step.classList.remove('active'));
+            document.getElementById('step1').classList.add('active');
+            document.getElementById('resetEmail').value = '';
+            document.getElementById('verificationCode').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+        }
+
+        // Chuyển đến bước tiếp theo
+        function goToStep(stepNumber) {
+            currentStep = stepNumber;
+            steps.forEach(step => step.classList.remove('active'));
+            document.getElementById(`step${stepNumber}`).classList.add('active');
+        }
+
+        // Gửi mã xác nhận
+        document.getElementById('sendCodeBtn').addEventListener('click', async function() {
+            resetEmail = document.getElementById('resetEmail').value.trim();
+            
+            if (!resetEmail) {
+                showMessage('errorMessage', 'Vui lòng nhập email!', true);
+                return;
+            }
+            
+            try {
+                const response = await fetch(API_BASE_URL + '/api/forgot-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email: resetEmail })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('emailDisplay').textContent = resetEmail;
+                    goToStep(2);
+                } else {
+                    showMessage('errorMessage', data.message || 'Có lỗi xảy ra khi gửi mã xác nhận', true);
+                }
+            } catch (error) {
+                console.error('Lỗi gửi mã xác nhận:', error);
+                showMessage('errorMessage', 'Có lỗi xảy ra khi gửi mã xác nhận', true);
+            }
+        });
+
+        // Gửi lại mã xác nhận
+        document.getElementById('resendCode').addEventListener('click', async function(e) {
+            e.preventDefault();
+            
+            try {
+                const response = await fetch(API_BASE_URL + '/api/forgot-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email: resetEmail })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('successMessage', 'Đã gửi lại mã xác nhận', false);
+                } else {
+                    showMessage('errorMessage', data.message || 'Có lỗi xảy ra khi gửi lại mã', true);
+                }
+            } catch (error) {
+                console.error('Lỗi gửi lại mã xác nhận:', error);
+                showMessage('errorMessage', 'Có lỗi xảy ra khi gửi lại mã', true);
+            }
+        });
+
+        // Xác nhận mã
+        document.getElementById('verifyCodeBtn').addEventListener('click', async function() {
+            const code = document.getElementById('verificationCode').value.trim();
+            
+            if (!code) {
+                showMessage('errorMessage', 'Vui lòng nhập mã xác nhận!', true);
+                return;
+            }
+            
+            try {
+                const response = await fetch(API_BASE_URL + '/api/verify-reset-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email: resetEmail, code: code })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    goToStep(3);
+                } else {
+                    showMessage('errorMessage', data.message || 'Mã xác nhận không đúng', true);
+                }
+            } catch (error) {
+                console.error('Lỗi xác nhận mã:', error);
+                showMessage('errorMessage', 'Có lỗi xảy ra khi xác nhận mã', true);
+            }
+        });
+
+        // Đặt lại mật khẩu
+        document.getElementById('resetPasswordBtn').addEventListener('click', async function() {
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (!newPassword || !confirmPassword) {
+                showMessage('errorMessage', 'Vui lòng nhập đầy đủ thông tin!', true);
+                return;
+            }
+            
+            if (newPassword !== confirmPassword) {
+                showMessage('errorMessage', 'Mật khẩu xác nhận không khớp!', true);
+                return;
+            }
+            
+            try {
+                const response = await fetch(API_BASE_URL + '/api/reset-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email: resetEmail, password: newPassword })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('successMessage', 'Đặt lại mật khẩu thành công!', false);
+                    setTimeout(() => {
+                        forgotPasswordModal.style.display = 'none';
+                        resetSteps();
+                    }, 2000);
+                } else {
+                    showMessage('errorMessage', data.message || 'Có lỗi xảy ra khi đặt lại mật khẩu', true);
+                }
+            } catch (error) {
+                console.error('Lỗi đặt lại mật khẩu:', error);
+                showMessage('errorMessage', 'Có lỗi xảy ra khi đặt lại mật khẩu', true);
+            }
+        });
+
+        // Đăng nhập bằng Facebook
+        document.getElementById('facebookLogin').addEventListener('click', function() {
+            FB.login(function(response) {
+                if (response.authResponse) {
+                    // Gửi token đến server để xác thực
+                    fetch(API_BASE_URL + '/api/auth/facebook', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ accessToken: response.authResponse.accessToken })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.token) {
+                            localStorage.setItem('token', data.token);
+                            localStorage.setItem('user', JSON.stringify(data.user));
+                            window.location.href = 'trang-chu.html';
+                        } else {
+                            showMessage('errorMessage', 'Đăng nhập bằng Facebook thất bại', true);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Lỗi đăng nhập Facebook:', error);
+                        showMessage('errorMessage', 'Có lỗi xảy ra khi đăng nhập bằng Facebook', true);
+                    });
+                } else {
+                    showMessage('errorMessage', 'Đăng nhập bằng Facebook đã bị hủy', true);
+                }
+            }, {scope: 'email,public_profile'});
+        });
+
+        // Đăng nhập bằng Google
+        document.getElementById('googleLogin').addEventListener('click', function() {
+            // Khởi tạo Google Sign-In
+            google.accounts.id.initialize({
+                client_id: 'YOUR_GOOGLE_CLIENT_ID',
+                callback: handleGoogleResponse
+            });
+            
+            google.accounts.id.prompt();
+        });
+
+        function handleGoogleResponse(response) {
+            // Gửi credential đến server để xác thực
+            fetch(API_BASE_URL + '/api/auth/google', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ credential: response.credential })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.token) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    window.location.href = 'trang-chu.html';
+                } else {
+                    showMessage('errorMessage', 'Đăng nhập bằng Google thất bại', true);
+                }
+            })
+            .catch(error => {
+                console.error('Lỗi đăng nhập Google:', error);
+                showMessage('errorMessage', 'Có lỗi xảy ra khi đăng nhập bằng Google', true);
+            });
+        }
+
+        // Đăng nhập bằng Zalo
+        document.getElementById('zaloLogin').addEventListener('click', function() {
+            // Zalo Login implementation
+            Zalo.login(function(response) {
+                if (response.authResponse) {
+                    // Gửi access token đến server để xác thực
+                    fetch(API_BASE_URL + '/api/auth/zalo', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ accessToken: response.authResponse.accessToken })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.token) {
+                            localStorage.setItem('token', data.token);
+                            localStorage.setItem('user', JSON.stringify(data.user));
+                            window.location.href = 'trang-chu.html';
+                        } else {
+                            showMessage('errorMessage', 'Đăng nhập bằng Zalo thất bại', true);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Lỗi đăng nhập Zalo:', error);
+                        showMessage('errorMessage', 'Có lỗi xảy ra khi đăng nhập bằng Zalo', true);
+                    });
+                } else {
+                    showMessage('errorMessage', 'Đăng nhập bằng Zalo đã bị hủy', true);
+                }
+            });
+        });
 
         // ✅ Xử lý sự kiện submit form đăng nhập
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
@@ -523,6 +949,10 @@
                 window.location.href = 'trang-chu.html';
                 return;
             }
+            
+            // Tải các SDK đăng nhập MXH
+            loadGoogleSDK();
+            loadZaloSDK();
             
             // Hiển thị thông báo đang kiểm tra
             showMessage('warningMessage', '🔄 Đang kiểm tra kết nối server...', false);
