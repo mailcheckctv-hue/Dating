@@ -87,6 +87,18 @@
             object-fit: cover;
         }
         
+        .vip-badge {
+            background: linear-gradient(to right, #FFD700, #FFA500);
+            color: #000;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
         .logout-btn {
             background-color: rgba(255, 255, 255, 0.2);
             border: none;
@@ -157,6 +169,22 @@
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
             object-fit: cover;
             position: relative;
+        }
+        
+        .vip-indicator {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: linear-gradient(to right, #FFD700, #FFA500);
+            color: #000;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            border: 2px solid white;
         }
         
         .change-avatar-btn {
@@ -258,6 +286,71 @@
         
         .content {
             flex-grow: 1;
+        }
+        
+        .premium-banner {
+            background: linear-gradient(to right, #FFD700, #FFA500);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            color: #000;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .premium-banner h2 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+        
+        .premium-banner p {
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        
+        .upgrade-btn {
+            background: #000;
+            color: #FFD700;
+            border: none;
+            border-radius: 20px;
+            padding: 10px 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .upgrade-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .matchmaking-section {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .matchmaking-btn {
+            background: linear-gradient(to right, #e91e63, #ff4e8c);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 15px 30px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(233, 30, 99, 0.3);
+        }
+        
+        .matchmaking-btn:hover {
+            transform: scale(1.05);
         }
         
         .post-box {
@@ -391,177 +484,36 @@
             transform: scale(1.05);
         }
         
-        .matchmaking-btn {
+        .view-profile-btn {
             background: linear-gradient(to right, #4267b2, #5b7cbf);
             color: white;
             border: none;
             border-radius: 20px;
-            padding: 10px 20px;
-            font-size: 14px;
+            padding: 6px 15px;
+            font-size: 12px;
             cursor: pointer;
             transition: transform 0.2s;
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin: 20px auto;
-            font-weight: 600;
+            gap: 5px;
         }
         
-        .matchmaking-btn:hover {
+        .view-profile-btn:hover {
             transform: scale(1.05);
         }
         
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 15px 20px;
-            border-radius: 8px;
-            background-color: #4caf50;
-            color: white;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transform: translateX(100%);
-            transition: transform 0.3s ease-out;
+        .vip-feature {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(to right, #FFD700, #FFA500);
+            color: #000;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: bold;
         }
         
-        .notification.show {
-            transform: translateX(0);
-        }
-        
-        .notification.error {
-            background-color: #f44336;
-        }
-        
-        .loader {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        .loading-section {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 40px;
-        }
-        
-        /* Modal styles */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s, visibility 0.3s;
-        }
-        
-        .modal-overlay.show {
-            opacity: 1;
-            visibility: visible;
-        }
-        
-        .modal {
-            background-color: white;
-            border-radius: 15px;
-            width: 90%;
-            max-width: 500px;
-            padding: 25px;
-            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
-            transform: translateY(-20px);
-            transition: transform 0.3s;
-        }
-        
-        .modal-overlay.show .modal {
-            transform: translateY(0);
-        }
-        
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .modal-header h2 {
-            color: #e91e63;
-            font-size: 22px;
-        }
-        
-        .close-modal {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #999;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #333;
-        }
-        
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
-        }
-        
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: #e91e63;
-        }
-        
-        .submit-btn {
-            background: linear-gradient(to right, #e91e63, #ff4e8c);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 12px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            width: 100%;
-            font-weight: 600;
-            transition: transform 0.2s;
-        }
-        
-        .submit-btn:hover {
-            transform: translateY(-2px);
-        }
-        
-        /* Matching room styles */
         .matching-room {
             background-color: #fff;
             border-radius: 15px;
@@ -661,6 +613,235 @@
             align-items: center;
             gap: 5px;
             margin: 0 auto;
+        }
+        
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal {
+            background-color: white;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            padding: 25px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+            transform: translateY(-20px);
+            transition: transform 0.3s;
+        }
+        
+        .modal-overlay.show .modal {
+            transform: translateY(0);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .modal-header h2 {
+            color: #e91e63;
+            font-size: 22px;
+        }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            flex: 1;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #e91e63;
+        }
+        
+        .submit-btn {
+            background: linear-gradient(to right, #e91e63, #ff4e8c);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        /* Premium modal styles */
+        .premium-plans {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .premium-plan {
+            flex: 1;
+            border: 1px solid #eee;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.3s;
+            cursor: pointer;
+        }
+        
+        .premium-plan:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .premium-plan.recommended {
+            border: 2px solid #FFD700;
+            position: relative;
+        }
+        
+        .recommended-badge {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #FFD700;
+            color: #000;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .plan-price {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #e91e63;
+        }
+        
+        .plan-features {
+            list-style: none;
+            text-align: left;
+            margin: 15px 0;
+        }
+        
+        .plan-features li {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .plan-features li i {
+            color: #4caf50;
+        }
+        
+        /* User profile modal */
+        .profile-modal-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .profile-modal-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(to right, #e91e63, #ff4e8c);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            border: 3px solid white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            object-fit: cover;
+        }
+        
+        .profile-details {
+            width: 100%;
+        }
+        
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+        
+        .detail-label {
+            font-weight: 500;
+            color: #666;
+        }
+        
+        .detail-value {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .income-high {
+            color: #e91e63;
         }
         
         /* Chat styles */
@@ -763,42 +944,50 @@
             cursor: pointer;
         }
         
-        /* Upload modal styles */
-        .upload-options {
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            background-color: #4caf50;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
             display: flex;
-            justify-content: space-around;
-            margin: 20px 0;
-        }
-        
-        .upload-option {
-            display: flex;
-            flex-direction: column;
             align-items: center;
-            cursor: pointer;
-            padding: 15px;
-            border-radius: 10px;
-            transition: background-color 0.3s;
+            gap: 10px;
+            transform: translateX(100%);
+            transition: transform 0.3s ease-out;
         }
         
-        .upload-option:hover {
-            background-color: #f9f9f9;
+        .notification.show {
+            transform: translateX(0);
         }
         
-        .upload-option i {
-            font-size: 24px;
-            margin-bottom: 10px;
-            color: #e91e63;
+        .notification.error {
+            background-color: #f44336;
         }
         
-        .preview-container {
-            margin: 20px 0;
-            text-align: center;
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
         }
         
-        .preview-image {
-            max-width: 100%;
-            max-height: 300px;
-            border-radius: 10px;
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
         }
         
         .hidden {
@@ -833,6 +1022,15 @@
             
             .mobile-menu-btn {
                 display: block;
+            }
+            
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+            
+            .premium-plans {
+                flex-direction: column;
             }
             
             .user-grid {
@@ -871,6 +1069,9 @@
         </div>
         
         <div class="user-menu">
+            <div class="vip-badge" id="vipBadge" style="display: none;">
+                <i class="fas fa-crown"></i> VIP
+            </div>
             <div class="user-avatar" id="userAvatar">U</div>
             <button class="logout-btn" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Đăng xuất</button>
         </div>
@@ -881,6 +1082,9 @@
             <div class="profile-card">
                 <div class="profile-header">
                     <div class="profile-avatar" id="profileAvatar">U</div>
+                    <div class="vip-indicator" id="vipIndicator" style="display: none;">
+                        <i class="fas fa-crown"></i>
+                    </div>
                     <button class="change-avatar-btn" id="changeAvatarBtn">
                         <i class="fas fa-camera"></i>
                     </button>
@@ -909,16 +1113,26 @@
         </div>
         
         <div class="content">
+            <!-- Banner nâng cấp VIP -->
+            <div class="premium-banner" id="premiumBanner">
+                <h2><i class="fas fa-crown"></i> Nâng cấp tài khoản VIP</h2>
+                <p>Tận hưởng trải nghiệm hẹn hò cao cấp với nhiều tính năng đặc biệt</p>
+                <button class="upgrade-btn" id="upgradeBtn">Nâng cấp ngay</button>
+            </div>
+            
+            <!-- Nút tìm đối tượng phù hợp - đã được di chuyển lên trên -->
+            <div class="matchmaking-section">
+                <button class="matchmaking-btn" id="matchmakingBtn">
+                    <i class="fas fa-heart"></i> Tìm đối tượng phù hợp
+                </button>
+            </div>
+            
             <div class="post-box">
                 <div class="post-input">
                     <div class="post-input-avatar" id="postAvatar">U</div>
                     <div class="post-input-field" id="postInput">Bạn đang nghĩ gì?</div>
                 </div>
             </div>
-            
-            <button class="matchmaking-btn" id="matchmakingBtn">
-                <i class="fas fa-heart"></i> Tìm đối tượng phù hợp
-            </button>
             
             <div class="matching-room" id="matchingRoom" style="display: none;">
                 <div class="room-header">
@@ -951,64 +1165,70 @@
                 <button class="close-modal" id="closeModal">&times;</button>
             </div>
             <form id="matchmakingForm">
-                <div class="form-group">
-                    <label for="age">Độ tuổi của bạn</label>
-                    <input type="number" id="age" min="18" max="100" required>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="age">Độ tuổi của bạn</label>
+                        <input type="number" id="age" min="18" max="100" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="gender">Giới tính</label>
+                        <select id="gender" required>
+                            <option value="">Chọn giới tính</option>
+                            <option value="male">Nam</option>
+                            <option value="female">Nữ</option>
+                            <option value="other">Khác</option>
+                        </select>
+                    </div>
                 </div>
                 
-                <div class="form-group">
-                    <label for="gender">Giới tính</label>
-                    <select id="gender" required>
-                        <option value="">Chọn giới tính</option>
-                        <option value="male">Nam</option>
-                        <option value="female">Nữ</option>
-                        <option value="other">Khác</option>
-                    </select>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="income">Thu nhập (triệu VNĐ/tháng)</label>
+                        <select id="income" required>
+                            <option value="">Chọn mức thu nhập</option>
+                            <option value="0-5">Dưới 5 triệu</option>
+                            <option value="5-10">5 - 10 triệu</option>
+                            <option value="10-20">10 - 20 triệu</option>
+                            <option value="20-30">20 - 30 triệu</option>
+                            <option value="30+">Trên 30 triệu</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="location">Khu vực</label>
+                        <select id="location" required>
+                            <option value="">Chọn khu vực</option>
+                            <option value="hanoi">Hà Nội</option>
+                            <option value="hcm">TP. Hồ Chí Minh</option>
+                            <option value="danang">Đà Nẵng</option>
+                            <option value="other">Khác</option>
+                        </select>
+                    </div>
                 </div>
                 
-                <div class="form-group">
-                    <label for="income">Thu nhập (triệu VNĐ/tháng)</label>
-                    <select id="income" required>
-                        <option value="">Chọn mức thu nhập</option>
-                        <option value="0-5">Dưới 5 triệu</option>
-                        <option value="5-10">5 - 10 triệu</option>
-                        <option value="10-20">10 - 20 triệu</option>
-                        <option value="20-30">20 - 30 triệu</option>
-                        <option value="30+">Trên 30 triệu</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="location">Khu vực</label>
-                    <select id="location" required>
-                        <option value="">Chọn khu vực</option>
-                        <option value="hanoi">Hà Nội</option>
-                        <option value="hcm">TP. Hồ Chí Minh</option>
-                        <option value="danang">Đà Nẵng</option>
-                        <option value="other">Khác</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="preferredGender">Bạn muốn tìm</label>
-                    <select id="preferredGender" required>
-                        <option value="">Chọn giới tính</option>
-                        <option value="male">Nam</option>
-                        <option value="female">Nữ</option>
-                        <option value="any">Không yêu cầu</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="preferredIncome">Thu nhập mong muốn</label>
-                    <select id="preferredIncome">
-                        <option value="any">Không yêu cầu</option>
-                        <option value="0-5">Dưới 5 triệu</option>
-                        <option value="5-10">5 - 10 triệu</option>
-                        <option value="10-20">10 - 20 triệu</option>
-                        <option value="20-30">20 - 30 triệu</option>
-                        <option value="30+">Trên 30 triệu</option>
-                    </select>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="preferredGender">Bạn muốn tìm</label>
+                        <select id="preferredGender" required>
+                            <option value="">Chọn giới tính</option>
+                            <option value="male">Nam</option>
+                            <option value="female">Nữ</option>
+                            <option value="any">Không yêu cầu</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="preferredIncome">Thu nhập mong muốn</label>
+                        <select id="preferredIncome">
+                            <option value="any">Không yêu cầu</option>
+                            <option value="0-5">Dưới 5 triệu</option>
+                            <option value="5-10">5 - 10 triệu</option>
+                            <option value="10-20">10 - 20 triệu</option>
+                            <option value="20-30">20 - 30 triệu</option>
+                            <option value="30+">Trên 30 triệu</option>
+                        </select>
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -1027,59 +1247,90 @@
         </div>
     </div>
     
-    <!-- Modal tải ảnh lên -->
-    <div class="modal-overlay" id="uploadModal">
+    <!-- Modal nâng cấp VIP -->
+    <div class="modal-overlay" id="premiumModal">
         <div class="modal">
             <div class="modal-header">
-                <h2>Tải ảnh lên</h2>
-                <button class="close-modal" id="closeUploadModal">&times;</button>
+                <h2>Nâng cấp tài khoản VIP</h2>
+                <button class="close-modal" id="closePremiumModal">&times;</button>
             </div>
-            <div class="upload-options">
-                <div class="upload-option" id="uploadFromDevice">
-                    <i class="fas fa-upload"></i>
-                    <span>Tải lên</span>
+            
+            <div class="premium-plans">
+                <div class="premium-plan">
+                    <h3>Gói Basic</h3>
+                    <div class="plan-price">199.000đ<span>/tháng</span></div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check"></i> Xem profile chi tiết</li>
+                        <li><i class="fas fa-check"></i> Nhắn tin không giới hạn</li>
+                        <li><i class="fas fa-times"></i> Ưu tiên hiển thị</li>
+                        <li><i class="fas fa-times"></i> Gợi ý đối tượng cao cấp</li>
+                    </ul>
+                    <button class="submit-btn" onclick="upgradeToVip('basic')">Chọn gói</button>
                 </div>
-                <div class="upload-option" id="takePhoto">
-                    <i class="fas fa-camera"></i>
-                    <span>Chụp ảnh</span>
-                </div>
-                <div class="upload-option" id="recordVideo">
-                    <i class="fas fa-video"></i>
-                    <span>Quay video</span>
+                
+                <div class="premium-plan recommended">
+                    <div class="recommended-badge">Đề xuất</div>
+                    <h3>Gói Premium</h3>
+                    <div class="plan-price">499.000đ<span>/tháng</span></div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check"></i> Tất cả tính năng Basic</li>
+                        <li><i class="fas fa-check"></i> Ưu tiên hiển thị</li>
+                        <li><i class="fas fa-check"></i> Gợi ý đối tượng cao cấp</li>
+                        <li><i class="fas fa-check"></i> Hồ sơ được xếp hạng cao</li>
+                    </ul>
+                    <button class="submit-btn" onclick="upgradeToVip('premium')">Chọn gói</button>
                 </div>
             </div>
-            <div class="preview-container hidden" id="previewContainer">
-                <img src="" alt="Preview" class="preview-image" id="previewImage">
-                <video controls class="preview-image hidden" id="previewVideo"></video>
-            </div>
-            <input type="file" accept="image/*,video/*" class="hidden" id="fileInput">
-            <button class="submit-btn hidden" id="confirmUpload">Xác nhận</button>
         </div>
     </div>
     
-    <!-- Modal đăng bài -->
-    <div class="modal-overlay" id="postModal">
+    <!-- Modal xem profile người dùng -->
+    <div class="modal-overlay" id="profileModal">
         <div class="modal">
             <div class="modal-header">
-                <h2>Tạo bài viết</h2>
-                <button class="close-modal" id="closePostModal">&times;</button>
+                <h2>Thông tin người dùng</h2>
+                <button class="close-modal" id="closeProfileModal">&times;</button>
             </div>
-            <form id="postForm">
-                <div class="form-group">
-                    <textarea placeholder="Bạn đang nghĩ gì?" id="postContent" rows="4"></textarea>
-                </div>
-                <div class="preview-container hidden" id="postPreviewContainer">
-                    <img src="" alt="Post preview" class="preview-image" id="postPreviewImage">
-                </div>
-                <div class="upload-options">
-                    <div class="upload-option" id="addImageToPost">
-                        <i class="fas fa-image"></i>
-                        <span>Thêm ảnh</span>
+            
+            <div class="profile-modal-content">
+                <div class="profile-modal-avatar" id="profileModalAvatar">U</div>
+                
+                <div class="profile-details">
+                    <div class="detail-item">
+                        <span class="detail-label">Tên:</span>
+                        <span class="detail-value" id="profileModalName">Người dùng</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Tuổi:</span>
+                        <span class="detail-value" id="profileModalAge">Chưa cập nhật</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Giới tính:</span>
+                        <span class="detail-value" id="profileModalGender">Chưa cập nhật</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Thu nhập:</span>
+                        <span class="detail-value" id="profileModalIncome">Chưa cập nhật</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Khu vực:</span>
+                        <span class="detail-value" id="profileModalLocation">Chưa cập nhật</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Sở thích:</span>
+                        <span class="detail-value" id="profileModalInterests">Chưa cập nhật</span>
                     </div>
                 </div>
-                <input type="file" accept="image/*" class="hidden" id="postImageInput">
-                <button type="submit" class="submit-btn">Đăng</button>
-            </form>
+                
+                <div class="user-card-actions" style="margin-top: 20px;">
+                    <button class="add-friend-btn" id="profileModalAddFriend">
+                        <i class="fas fa-user-plus"></i> Kết bạn
+                    </button>
+                    <button class="chat-btn" id="profileModalChat">
+                        <i class="fas fa-comment"></i> Nhắn tin
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -1120,6 +1371,8 @@
         let friends = [];
         let chatWithUser = null;
         let messages = {};
+        let isVip = localStorage.getItem('isVip') === 'true';
+        let suggestedUsers = [];
         
         // Hiển thị thông tin user
         function updateUserAvatar() {
@@ -1136,6 +1389,13 @@
                 document.getElementById('userAvatar').textContent = avatar;
                 document.getElementById('profileAvatar').textContent = avatar;
                 document.getElementById('postAvatar').textContent = avatar;
+            }
+            
+            // Hiển thị badge VIP nếu có
+            if (isVip) {
+                document.getElementById('vipBadge').style.display = 'flex';
+                document.getElementById('vipIndicator').style.display = 'flex';
+                document.getElementById('premiumBanner').style.display = 'none';
             }
         }
         
@@ -1157,9 +1417,24 @@
             document.getElementById('matchmakingModal').classList.add('show');
         });
         
+        // Mở modal nâng cấp VIP
+        document.getElementById('upgradeBtn').addEventListener('click', function() {
+            document.getElementById('premiumModal').classList.add('show');
+        });
+        
         // Đóng modal
         document.getElementById('closeModal').addEventListener('click', function() {
             document.getElementById('matchmakingModal').classList.remove('show');
+        });
+        
+        // Đóng modal premium
+        document.getElementById('closePremiumModal').addEventListener('click', function() {
+            document.getElementById('premiumModal').classList.remove('show');
+        });
+        
+        // Đóng modal profile
+        document.getElementById('closeProfileModal').addEventListener('click', function() {
+            document.getElementById('profileModal').classList.remove('show');
         });
         
         // Mở modal đổi avatar
@@ -1300,7 +1575,7 @@
             };
             
             // Cập nhật thông tin profile
-            document.getElementById('profileBio').textContent = `${age} tuổi, ${gender === 'male' ? 'Nam' : 'Nữ'}`;
+            document.getElementById('profileBio').textContent = `${age} tuổi, ${gender === 'male' ? 'Nam' : gender === 'female' ? 'Nữ' : 'Khác'}`;
             document.getElementById('profileLocation').querySelector('span').textContent = getLocationName(location);
             document.getElementById('profileIncome').querySelector('span').textContent = getIncomeRange(income);
             
@@ -1361,7 +1636,7 @@
         async function loadRoomUsers() {
             try {
                 // Giả lập API - trong thực tế sẽ gọi API thật
-                const response = await fetch('http://localhost:3000/api/matching-users', {
+                const response = await fetch('https://dating-bixm.onrender.com/api/matching-users', {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -1436,6 +1711,7 @@
         function startChat(userId) {
             const user = roomUsers.find(u => u.id === userId) || 
                          friends.find(u => u.id === userId) ||
+                         suggestedUsers.find(u => u.id === userId) ||
                          { id: userId, username: 'Người dùng' };
             
             chatWithUser = user;
@@ -1554,7 +1830,7 @@
         // Lấy thông tin chi tiết user
         async function loadUserProfile() {
             try {
-                const response = await fetch(`http://localhost:3000/api/user/${currentUser.id}`, {
+                const response = await fetch(`https://dating-bixm.onrender.com/api/user/${currentUser.id}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -1599,7 +1875,7 @@
         // Lấy danh sách bạn bè
         async function loadFriends() {
             try {
-                const response = await fetch(`http://localhost:3000/api/user/${currentUser.id}/friends`, {
+                const response = await fetch(`https://dating-bixm.onrender.com/api/user/${currentUser.id}/friends`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -1671,7 +1947,7 @@
                     </div>
                 `;
                 
-                const response = await fetch('http://localhost:3000/api/users', {
+                const response = await fetch('https://dating-bixm.onrender.com/api/users', {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -1680,6 +1956,7 @@
                 if (response.ok) {
                     const users = await response.json();
                     suggestedUsersContainer.innerHTML = '';
+                    suggestedUsers = users;
                     
                     // Lọc bỏ user hiện tại và bạn bè
                     const otherUsers = users.filter(user => 
@@ -1687,18 +1964,44 @@
                         !friends.some(friend => friend.id === user.id)
                     );
                     
+                    // Sắp xếp ưu tiên người dùng VIP và thu nhập cao
+                    otherUsers.sort((a, b) => {
+                        // Ưu tiên người dùng VIP
+                        if (a.isVip && !b.isVip) return -1;
+                        if (!a.isVip && b.isVip) return 1;
+                        
+                        // Sau đó ưu tiên thu nhập cao
+                        const incomeOrder = {'30+': 5, '20-30': 4, '10-20': 3, '5-10': 2, '0-5': 1};
+                        const aIncome = incomeOrder[a.income] || 0;
+                        const bIncome = incomeOrder[b.income] || 0;
+                        
+                        return bIncome - aIncome;
+                    });
+                    
                     // Hiển thị tối đa 6 user
                     otherUsers.slice(0, 6).forEach(user => {
                         const userCard = document.createElement('div');
                         userCard.className = 'user-card';
+                        
+                        // Thêm badge VIP nếu là user VIP
+                        const vipBadge = user.isVip ? '<div class="vip-feature"><i class="fas fa-crown"></i> VIP</div>' : '';
+                        
+                        // Thêm class cho thu nhập cao
+                        const incomeClass = (user.income === '20-30' || user.income === '30+') ? 'income-high' : '';
+                        
                         userCard.innerHTML = `
+                            ${vipBadge}
                             <div class="user-card-avatar">${user.username.charAt(0).toUpperCase()}</div>
                             <h4>${user.username}</h4>
-                            <p>${user.profile?.age ? user.profile.age + ' tuổi' : 'Chưa cập nhật'}</p>
-                            <p>${user.profile?.location ? getLocationName(user.profile.location) : 'Chưa cập nhật'}</p>
+                            <p>${user.age ? user.age + ' tuổi' : 'Chưa cập nhật'}</p>
+                            <p class="${incomeClass}">${user.income ? getIncomeRange(user.income) : 'Chưa cập nhật'}</p>
+                            <p>${user.location ? getLocationName(user.location) : 'Chưa cập nhật'}</p>
                             <div class="user-card-actions">
                                 <button class="add-friend-btn" onclick="addFriend(${user.id})">
                                     <i class="fas fa-user-plus"></i> Kết bạn
+                                </button>
+                                <button class="view-profile-btn" onclick="viewProfile(${user.id})">
+                                    <i class="fas fa-eye"></i> Xem
                                 </button>
                             </div>
                         `;
@@ -1713,6 +2016,53 @@
                 document.getElementById('suggestedUsers').innerHTML = '<p>Lỗi kết nối, vui lòng thử lại</p>';
                 showNotification('Lỗi kết nối khi tải danh sách', true);
             }
+        }
+        
+        // Xem profile người dùng
+        function viewProfile(userId) {
+            if (!isVip) {
+                showNotification('Vui lòng nâng cấp VIP để xem thông tin chi tiết', true);
+                document.getElementById('premiumModal').classList.add('show');
+                return;
+            }
+            
+            const user = suggestedUsers.find(u => u.id === userId) || 
+                         roomUsers.find(u => u.id === userId) ||
+                         friends.find(u => u.id === userId);
+            
+            if (!user) {
+                showNotification('Không tìm thấy thông tin người dùng', true);
+                return;
+            }
+            
+            // Hiển thị thông tin trong modal
+            document.getElementById('profileModalAvatar').textContent = user.username.charAt(0).toUpperCase();
+            document.getElementById('profileModalName').textContent = user.username;
+            document.getElementById('profileModalAge').textContent = user.age ? `${user.age} tuổi` : 'Chưa cập nhật';
+            document.getElementById('profileModalGender').textContent = user.gender ? 
+                (user.gender === 'male' ? 'Nam' : user.gender === 'female' ? 'Nữ' : 'Khác') : 'Chưa cập nhật';
+            
+            // Highlight thu nhập cao
+            const incomeElement = document.getElementById('profileModalIncome');
+            incomeElement.textContent = user.income ? getIncomeRange(user.income) : 'Chưa cập nhật';
+            if (user.income === '20-30' || user.income === '30+') {
+                incomeElement.classList.add('income-high');
+            } else {
+                incomeElement.classList.remove('income-high');
+            }
+            
+            document.getElementById('profileModalLocation').textContent = user.location ? getLocationName(user.location) : 'Chưa cập nhật';
+            document.getElementById('profileModalInterests').textContent = user.interests ? user.interests.join(', ') : 'Chưa cập nhật';
+            
+            // Cập nhật sự kiện cho nút
+            document.getElementById('profileModalAddFriend').onclick = function() { addFriend(userId); };
+            document.getElementById('profileModalChat').onclick = function() { 
+                startChat(userId);
+                document.getElementById('profileModal').classList.remove('show');
+            };
+            
+            // Hiển thị modal
+            document.getElementById('profileModal').classList.add('show');
         }
         
         // Hàm kết bạn
@@ -1738,6 +2088,24 @@
                 console.error('Lỗi gửi lời mời kết bạn:', error);
                 showNotification('Có lỗi xảy ra khi gửi lời mời', true);
             }
+        }
+        
+        // Nâng cấp VIP
+        function upgradeToVip(plan) {
+            showNotification(`Đang nâng cấp lên gói ${plan === 'basic' ? 'Basic' : 'Premium'}...`);
+            
+            setTimeout(() => {
+                isVip = true;
+                localStorage.setItem('isVip', 'true');
+                
+                // Cập nhật giao diện
+                document.getElementById('vipBadge').style.display = 'flex';
+                document.getElementById('vipIndicator').style.display = 'flex';
+                document.getElementById('premiumBanner').style.display = 'none';
+                document.getElementById('premiumModal').classList.remove('show');
+                
+                showNotification(`Nâng cấp VIP thành công! Chào mừng bạn đến với gói ${plan === 'basic' ? 'Basic' : 'Premium'}`);
+            }, 1500);
         }
         
         // Hiển thị thông báo
@@ -1768,6 +2136,7 @@
                 localStorage.removeItem('user');
                 localStorage.removeItem('token');
                 localStorage.removeItem('matchmakingData');
+                localStorage.removeItem('isVip');
                 window.location.href = 'login.html';
             }
         });
