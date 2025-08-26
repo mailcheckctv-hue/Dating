@@ -19,6 +19,7 @@
             align-items: center;
             min-height: 100vh;
             color: #333;
+            padding: 20px;
         }
         
         .container {
@@ -146,12 +147,33 @@
             cursor: pointer;
             margin-bottom: 20px;
             transition: all 0.3s;
+            position: relative;
         }
         
-        .login-btn:hover {
+        .login-btn:hover:not(:disabled) {
             background: linear-gradient(to right, #d81b60, #880e4f);
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .login-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
         
         .divider {
@@ -244,6 +266,19 @@
             color: #777;
         }
         
+        .test-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
         @media (max-width: 480px) {
             .container {
                 padding: 15px;
@@ -251,6 +286,13 @@
             
             .login-card {
                 padding: 20px;
+            }
+            
+            .test-btn {
+                bottom: 10px;
+                right: 10px;
+                padding: 8px 12px;
+                font-size: 12px;
             }
         }
     </style>
@@ -269,6 +311,10 @@
         <div class="error-message" id="errorMessage">
             <strong>Lỗi!</strong> <span id="errorText"></span>
         </div>
+
+        <div class="warning-message" id="warningMessage">
+            <strong>Thông báo:</strong> Đang kiểm tra kết nối server...
+        </div>
         
         <div class="login-card" id="loginCard">
             <form id="loginForm">
@@ -286,7 +332,10 @@
                     <a href="#">Quên mật khẩu?</a>
                 </div>
                 
-                <button type="submit" class="login-btn">Đăng nhập</button>
+                <button type="submit" class="login-btn" id="loginBtn">
+                    <span id="btnText">Đăng nhập</span>
+                    <span id="btnLoading" class="loading" style="display: none;"></span>
+                </button>
                 
                 <div class="divider">
                     Hoặc đăng nhập bằng
@@ -307,78 +356,78 @@
         </div>
         
         <div class="footer">
-            © 2023 Dating - Mãi kết nối bạn bè
+            © 2024 Dating - Mãi kết nối bạn bè
         </div>
     </div>
 
+    <button class="test-btn" id="testBtn">Test Kết Nối Server</button>
+
     <script>
-        // ✅ Hàm kiểm tra trạng thái server
-        async function checkServerStatus() {
-            try {
-                const response = await fetch('/api/health');
-                const data = await response.json();
-                
-                if (data.usingFallback) {
-                    const warningDiv = document.createElement('div');
-                    warningDiv.className = 'warning-message';
-                    warningDiv.innerHTML = `
-                        <strong>⚠️ Chế độ dự phòng:</strong> 
-                        Ứng dụng đang chạy không kết nối database. 
-                        Dữ liệu sẽ không được lưu trữ vĩnh viễn.
-                        <br><strong>Tài khoản test:</strong> demo1 / 123456
-                    `;
-                    
-                    const loginCard = document.getElementById('loginCard');
-                    if (loginCard) {
-                        loginCard.insertBefore(warningDiv, loginCard.firstChild);
-                    }
-                }
-            } catch (error) {
-                console.log('Không thể kiểm tra trạng thái server');
+        // URL API - Sử dụng URL chính xác của bạn
+        const API_BASE_URL = 'https://dating-bixm.onrender.com';
+        console.log('API Base URL:', API_BASE_URL);
+
+        // Hiển thị thông báo
+        function showMessage(elementId, text, isError = false) {
+            const messageEl = document.getElementById(elementId);
+            messageEl.innerHTML = isError ? `<strong>Lỗi!</strong> ${text}` : `<strong>Thành công!</strong> ${text}`;
+            messageEl.style.display = 'block';
+            
+            if (isError) {
+                // Giữ thông báo lỗi hiển thị lâu hơn
+                setTimeout(() => {
+                    messageEl.style.display = 'none';
+                }, 10000);
+            } else {
+                setTimeout(() => {
+                    messageEl.style.display = 'none';
+                }, 5000);
             }
         }
 
-        // ✅ Kiểm tra trạng thái server và login khi trang load
-        document.addEventListener('DOMContentLoaded', function() {
-            checkServerStatus(); // Kiểm tra trạng thái server
+        // Reset button trạng thái
+        function resetButton() {
+            const loginBtn = document.getElementById('loginBtn');
+            const btnText = document.getElementById('btnText');
+            const btnLoading = document.getElementById('btnLoading');
             
-            const token = localStorage.getItem('token');
-            const user = localStorage.getItem('user');
-            
-            // Nếu đã đăng nhập, chuyển hướng đến trang chủ
-            if (token && user) {
-                checkAuthStatus();
-            }
-        });
+            loginBtn.disabled = false;
+            btnText.textContent = 'Đăng nhập';
+            btnLoading.style.display = 'none';
+        }
 
-        // ✅ Kiểm tra trạng thái đăng nhập
-        async function checkAuthStatus() {
-            const token = localStorage.getItem('token');
-            
-            if (!token) return false;
-            
+        // Test kết nối server
+        async function testConnection() {
             try {
-                const response = await fetch('/api/check-auth', {
-                    headers: { 
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
+                showMessage('warningMessage', '🔄 Đang kiểm tra kết nối server...', false);
+                
+                // Sử dụng fetch với timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                
+                const response = await fetch(API_BASE_URL + '/api/health', {
+                    signal: controller.signal
                 });
                 
-                const data = await response.json();
+                clearTimeout(timeoutId);
                 
-                if (data.authenticated) {
-                    window.location.href = 'trang-chu.html';
-                    return true;
-                } else {
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
-                    return false;
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
+                
+                const data = await response.json();
+                console.log('Kết nối server thành công:', data);
+                
+                showMessage('warningMessage', '✅ Kết nối server thành công! Status: ' + data.status, false);
+                return true;
             } catch (error) {
-                console.error('Lỗi kiểm tra đăng nhập:', error);
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
+                console.error('Lỗi kết nối:', error);
+                
+                if (error.name === 'AbortError') {
+                    showMessage('warningMessage', '❌ Server không phản hồi sau 10 giây. Có thể server đang tắt hoặc có vấn đề kết nối.', true);
+                } else {
+                    showMessage('warningMessage', '❌ Lỗi kết nối: ' + error.message, true);
+                }
                 return false;
             }
         }
@@ -387,29 +436,51 @@
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
+            // Hiển thị trạng thái loading
+            const loginBtn = document.getElementById('loginBtn');
+            const btnText = document.getElementById('btnText');
+            const btnLoading = document.getElementById('btnLoading');
             
-            // Ẩn thông báo lỗi cũ
+            loginBtn.disabled = true;
+            btnText.textContent = 'Đang xử lý...';
+            btnLoading.style.display = 'inline-block';
+
+            // Ẩn thông báo cũ
             document.getElementById('errorMessage').style.display = 'none';
             document.getElementById('successMessage').style.display = 'none';
             
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            
             if (!username || !password) {
-                showError('Vui lòng nhập đầy đủ thông tin đăng nhập!');
+                showMessage('errorMessage', 'Vui lòng nhập đầy đủ thông tin đăng nhập!', true);
+                resetButton();
                 return;
             }
             
             try {
-                const response = await fetch('/api/login', {
+                console.log('Đang gửi request đăng nhập đến:', API_BASE_URL + '/api/login');
+                
+                // Sử dụng fetch với timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
+                
+                const response = await fetch(API_BASE_URL + '/api/login', {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify({ username, password }),
+                    signal: controller.signal
                 });
                 
-                const data = await response.json();
+                clearTimeout(timeoutId);
                 
+                console.log('Response status:', response.status);
+                
+                const data = await response.json();
+                console.log('Response data:', data);
+
                 if (response.ok) {
                     // Lưu token và thông tin user
                     localStorage.setItem('token', data.token);
@@ -424,24 +495,41 @@
                         window.location.href = 'trang-chu.html';
                     }, 1500);
                 } else {
-                    showError('Đăng nhập thất bại: ' + (data.message || 'Tên đăng nhập hoặc mật khẩu không đúng'));
+                    showMessage('errorMessage', 'Đăng nhập thất bại: ' + (data.message || 'Tên đăng nhập hoặc mật khẩu không đúng'), true);
+                    resetButton();
                 }
             } catch (error) {
                 console.error('Lỗi đăng nhập:', error);
-                showError('Có lỗi xảy ra khi kết nối đến server. Vui lòng thử lại.');
+                
+                if (error.name === 'AbortError') {
+                    showMessage('errorMessage', 'Server không phản hồi sau 15 giây. Vui lòng thử lại sau.', true);
+                } else {
+                    showMessage('errorMessage', 'Có lỗi xảy ra khi kết nối đến server: ' + error.message, true);
+                }
+                resetButton();
             }
         });
-        
-        // ✅ Hiển thị thông báo lỗi
-        function showError(message) {
-            document.getElementById('errorText').textContent = message;
-            document.getElementById('errorMessage').style.display = 'block';
+
+        // Nút test kết nối
+        document.getElementById('testBtn').addEventListener('click', testConnection);
+
+        // Tự động test kết nối khi trang load
+        window.addEventListener('load', async () => {
+            // Kiểm tra nếu đã đăng nhập
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user');
             
-            // Tự động ẩn thông báo lỗi sau 5 giây
-            setTimeout(() => {
-                document.getElementById('errorMessage').style.display = 'none';
-            }, 5000);
-        }
+            if (token && user) {
+                window.location.href = 'trang-chu.html';
+                return;
+            }
+            
+            // Hiển thị thông báo đang kiểm tra
+            showMessage('warningMessage', '🔄 Đang kiểm tra kết nối server...', false);
+            
+            // Test kết nối
+            setTimeout(testConnection, 1000);
+        });
     </script>
 </body>
 </html>
