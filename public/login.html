@@ -941,13 +941,35 @@
 
         // Tự động test kết nối khi trang load
         window.addEventListener('load', async () => {
-            // Kiểm tra nếu đã đăng nhập
+            // Kiểm tra nếu đã đăng nhập - CHỈ chuyển hướng nếu token hợp lệ
             const token = localStorage.getItem('token');
             const user = localStorage.getItem('user');
             
+            // Nếu có token, kiểm tra tính hợp lệ trước khi chuyển hướng
             if (token && user) {
-                window.location.href = 'trang-chu.html';
-                return;
+                try {
+                    // Kiểm tra token có hợp lệ không bằng cách gọi API
+                    const response = await fetch(API_BASE_URL + '/api/verify-token', {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': 'Bearer ' + token
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        window.location.href = 'trang-chu.html';
+                        return;
+                    } else {
+                        // Token không hợp lệ, xóa khỏi localStorage
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user');
+                    }
+                } catch (error) {
+                    console.error('Lỗi xác thực token:', error);
+                    // Xóa token nếu có lỗi
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                }
             }
             
             // Tải các SDK đăng nhập MXH

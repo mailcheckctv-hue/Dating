@@ -1588,7 +1588,27 @@
         let currentUser = null;
         let isLoggedIn = false;
         let matchmakingInterval = null;
-        
+        <script>
+    // Biến toàn cục
+    let currentUser = null;
+    let isLoggedIn = false;
+    let matchmakingInterval = null;
+    
+    // ============ THÊM PHẦN NÀY VÀO ĐẦU SCRIPT ============
+    // Kiểm tra đăng nhập khi trang chủ tải
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    
+    if (!token || !user) {
+        // Nếu chưa đăng nhập, chuyển hướng về trang đăng nhập
+        window.location.href = 'login.html';
+    }
+    // ============ KẾT THÚC PHẦN THÊM ============
+    
+    // DOM Elements
+    const loginModal = document.getElementById('loginModal');
+    // ... phần còn lại của code hiện tại ...
+
         // DOM Elements
         const loginModal = document.getElementById('loginModal');
         const registerModal = document.getElementById('registerModal');
@@ -1905,16 +1925,18 @@
         }
         
         // Xử lý đăng xuất
-        function handleLogout() {
-            if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
-                currentUser = null;
-                isLoggedIn = false;
-                localStorage.removeItem('currentUser');
-                
-                // Ẩn các phần tử cần đăng nhập
-                document.querySelectorAll('.user-avatar, .profile-avatar').forEach(avatar => {
-                    avatar.textContent = 'U';
-                });
+          // Xử lý đăng xuất
+    function handleLogout() {
+        if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+            // Xóa token và thông tin user
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('currentUser');
+            
+            // Chuyển hướng về trang đăng nhập
+            window.location.href = 'login.html';
+        }
+    }
                 
                 document.getElementById('profileName').textContent = 'User Name';
                 document.getElementById('profileAgeLocation').textContent = '25 tuổi, Hà Nội';

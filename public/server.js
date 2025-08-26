@@ -115,6 +115,33 @@ app.get('/api/test', (req, res) => {
   });
 });
 
+// Verify token endpoint
+app.get('/api/verify-token', async (req, res) => {
+  try {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ valid: false, message: 'Token không hợp lệ' });
+    }
+    
+    const token = authHeader.substring(7);
+    
+    // Xác thực token
+    jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key', (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ valid: false, message: 'Token không hợp lệ hoặc đã hết hạn' });
+      }
+      
+      res.json({ valid: true, userId: decoded.userId });
+    });
+  } catch (error) {
+    console.error('Verify token error:', error);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.status(500).json({ valid: false, message: 'Lỗi server', error: error.message });
+  }
+});
+
 // Register endpoint
 app.post('/api/register', async (req, res) => {
   try {
@@ -376,7 +403,7 @@ app.post('/api/reset-password', async (req, res) => {
       if (userIndex !== -1) {
         users[userIndex].password = hashedPassword;
       } else {
-        return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+        return res.status(404).json({ message: 'Không tìm thấy người dùng' );
       }
     }
     
@@ -536,6 +563,11 @@ app.get('/trang-chu', (req, res) => {
 
 // Route cho tất cả các requests khác - serve file tĩnh
 app.get('*', (req, res) => {
+  // Ưu tiên trả về trang đăng nhập cho route gốc
+  if (req.path === '/' || req.path === '') {
+    return res.sendFile(path.join(__dirname, 'public', 'login.html'));
+  }
+  
   const filePath = path.join(__dirname, 'public', req.path);
   
   // Kiểm tra nếu file tồn tại
