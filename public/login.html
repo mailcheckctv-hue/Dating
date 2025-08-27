@@ -1,58 +1,53 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
   <title>Đăng nhập</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    body { font-family: Arial, sans-serif; background: #f6f6f6; display: flex; justify-content: center; align-items: center; height: 100vh; }
-    .container { background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 300px; text-align: center; }
-    h2 { margin-bottom: 20px; }
-    input, select { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 5px; }
-    button { width: 100%; padding: 10px; background: #ff4b5c; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
-    button:hover { background: #e04352; }
-    .link { margin-top: 10px; display: flex; justify-content: space-between; font-size: 14px; }
-    .link a { text-decoration: none; color: #007bff; }
+    body {font-family: Arial, sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; background:#f8f9fa;}
+    .container {background:#fff; padding:30px; border-radius:10px; box-shadow:0 4px 10px rgba(0,0,0,0.1); width:300px; text-align:center;}
+    h2 {margin-bottom:20px;}
+    input, select {width:100%; padding:10px; margin:10px 0; border:1px solid #ccc; border-radius:5px;}
+    button {width:100%; padding:10px; background:#e83e6b; color:#fff; border:none; border-radius:5px; cursor:pointer;}
+    button:hover {background:#c72f58;}
+    a {display:block; margin-top:10px; font-size:14px; color:#007bff; text-decoration:none;}
   </style>
 </head>
 <body>
   <div class="container">
     <h2>Đăng nhập</h2>
-    <form id="loginForm">
-      <input type="email" id="email" placeholder="Email" required />
-      <input type="password" id="password" placeholder="Mật khẩu" required />
-      <button type="submit">Đăng nhập</button>
-    </form>
-    <div class="link">
-      <a href="dang-ky.html">Đăng ký</a>
-      <a href="#">Quên mật khẩu?</a>
-    </div>
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="password" id="password" placeholder="Mật khẩu" required>
+    <button onclick="login()">Đăng nhập</button>
+    <a href="dang-ky.html">Đăng ký</a> | <a href="#">Quên mật khẩu?</a>
   </div>
 
   <script>
-    document.getElementById("loginForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
+    const API_BASE = window.location.origin;
+
+    async function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
 
       try {
-        const res = await fetch("/api/login", {
+        const res = await fetch(`${API_BASE}/api/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password })
         });
+
         const data = await res.json();
-        if (data.token) {
+        if (res.ok) {
           localStorage.setItem("token", data.token);
-          alert("Đăng nhập thành công!");
           window.location.href = "trang-chu.html";
         } else {
-          alert(data.error || "Đăng nhập thất bại!");
+          alert(data.message || "Đăng nhập thất bại!");
         }
       } catch (err) {
         alert("Lỗi kết nối server!");
       }
-    });
+    }
   </script>
 </body>
 </html>
