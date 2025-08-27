@@ -1,56 +1,57 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Đăng ký - Dating App</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đăng ký</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f6f6f6; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    .container { background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 300px; text-align: center; }
+    h2 { margin-bottom: 20px; }
+    input, select { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 5px; }
+    button { width: 100%; padding: 10px; background: #ff4b5c; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
+    button:hover { background: #e04352; }
+    .link { margin-top: 10px; text-align: center; font-size: 14px; }
+    .link a { text-decoration: none; color: #007bff; }
+  </style>
 </head>
 <body>
-  <h2>Đăng ký tài khoản</h2>
-  <form id="registerForm">
-    <input id="username" placeholder="Tên đăng nhập" required><br>
-    <input id="email" type="email" placeholder="Email" required><br>
-    <input id="password" type="password" placeholder="Mật khẩu" required><br>
-    <input id="confirmPassword" type="password" placeholder="Xác nhận mật khẩu" required><br>
-    <button type="submit">Đăng ký</button>
-  </form>
-
-  <p id="msg"></p>
-  <p>Đã có tài khoản? <a href="login.html">Đăng nhập ngay</a></p>
+  <div class="container">
+    <h2>Đăng ký</h2>
+    <form id="registerForm">
+      <input type="text" id="username" placeholder="Tên người dùng" required />
+      <input type="email" id="email" placeholder="Email" required />
+      <input type="password" id="password" placeholder="Mật khẩu" required />
+      <select id="gender">
+        <option value="Nam">Nam</option>
+        <option value="Nữ">Nữ</option>
+      </select>
+      <button type="submit">Đăng ký</button>
+    </form>
+    <div class="link">
+      <a href="login.html">Đăng nhập</a>
+    </div>
+  </div>
 
   <script>
-    const API_BASE_URL = window.location.origin;
-
-    document.getElementById("registerForm").addEventListener("submit", async e => {
+    document.getElementById("registerForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const username = document.getElementById("username").value.trim();
-      const email = document.getElementById("email").value.trim();
+      const username = document.getElementById("username").value;
+      const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
-      const confirmPassword = document.getElementById("confirmPassword").value;
-
-      if (password !== confirmPassword) {
-        document.getElementById("msg").textContent = "❌ Mật khẩu xác nhận không khớp!";
-        return;
-      }
+      const gender = document.getElementById("gender").value;
 
       try {
-        const res = await fetch(API_BASE_URL + "/api/register", {
+        const res = await fetch("/api/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, email, password })
+          body: JSON.stringify({ username, email, password, gender })
         });
-
         const data = await res.json();
-        if (res.ok) {
-          // Lưu token + user và chuyển hướng
-          localStorage.setItem("token", data.token);
-          localStorage.setItem("user", JSON.stringify(data.user));
-          window.location.href = "trang-chu.html";
-        } else {
-          document.getElementById("msg").textContent = "❌ " + data.message;
-        }
+        alert(data.message || "Đăng ký thành công!");
+        window.location.href = "login.html";
       } catch (err) {
-        document.getElementById("msg").textContent = "❌ Lỗi server!";
+        alert("Lỗi kết nối server!");
       }
     });
   </script>
