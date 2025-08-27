@@ -7,12 +7,8 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
-const WebSocket = require('ws');
-const http = require('http');
 
 const app = express();
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
 const PORT = process.env.PORT || 10000;
 const HOST = '0.0.0.0';
 
@@ -106,29 +102,9 @@ const MessageSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-const NotificationSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  type: { type: String, required: true }, // 'friend_request', 'message', 'vip_approved', 'admin'
-  content: { type: String, required: true },
-  isRead: { type: Boolean, default: false },
-  relatedId: mongoose.Schema.Types.ObjectId, // ID of related user/post/message
-  createdAt: { type: Date, default: Date.now }
-});
-
-const VIPRequestSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  planType: { type: String, enum: ['week', 'basic', 'premium'], required: true },
-  amount: { type: Number, required: true },
-  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
-  paymentProof: String, // URL to payment proof image
-  createdAt: { type: Date, default: Date.now }
-});
-
 const User = mongoose.model('User', UserSchema);
 const Post = mongoose.model('Post', PostSchema);
 const Message = mongoose.model('Message', MessageSchema);
-const Notification = mongoose.model('Notification', NotificationSchema);
-const VIPRequest = mongoose.model('VIPRequest', VIPRequestSchema);
 
 // ==================== FALLBACK DATA ====================
 let users = [];
@@ -139,54 +115,9 @@ const transporter = nodemailer.createTransporter({
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER || 'mailcheckctv@gmail.com',
-    pass: process.env.EMAIL_PASS || 'your_email_password'
+    pass: process.env.EMAIL_PASS || 'your_email_password_here'
   }
 });
-
-// ==================== WEBSOCKET CONNECTIONS ====================
-const clients = new Map();
-
-wss.on('connection', (ws, req) => {
-  const urlParams = new URLSearchParams(req.url.split('?')[1]);
-  const userId = urlParams.get('userId');
-  
-  if (userId) {
-    clients.set(userId, ws);
-    console.log(`User ${userId} connected via WebSocket`);
-  }
-  
-  ws.on('message', (message) => {
-    try {
-      const data = JSON.parse(message);
-      
-      if (data.type === 'ping') {
-        ws.send(JSON.stringify({ type: 'pong' }));
-      }
-      
-      // Handle other message types as needed
-    } catch (error) {
-      console.error('WebSocket message error:', error);
-    }
-  });
-  
-  ws.on('close', () => {
-    if (userId) {
-      clients.delete(userId);
-      console.log(`User ${userId} disconnected from WebSocket`);
-    }
-  });
-});
-
-// Function to send notification via WebSocket
-function sendNotification(userId, notification) {
-  const client = clients.get(userId);
-  if (client && client.readyState === WebSocket.OPEN) {
-    client.send(JSON.stringify({
-      type: 'notification',
-      data: notification
-    }));
-  }
-}
 
 // ==================== RESET PASSWORD HANDLING ====================
 const resetCodes = new Map();
@@ -198,26 +129,27 @@ function generateResetCode() {
 function sendResetCode(email, code) {
   console.log(`Mã xác nhận cho ${email}: ${code}`);
   
-  // Send email with reset code
-  const mailOptions = {
-    from: process.env.EMAIL_USER || 'mailcheckctv@gmail.com',
-    to: email,
-    subject: 'Mã xác nhận đặt lại mật khẩu - LoveConnect',
-    html: `
-      <h2>Mã xác nhận đặt lại mật khẩu</h2>
-      <p>Mã xác nhận của bạn là: <strong>${code}</strong></p>
-      <p>Mã này có hiệu lực trong 15 phút.</p>
-      <p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
-    `
-  };
-  
-  transporter.sendMail(mailOptions, (error, info) => {
-    if (error) {
-      console.error('Error sending email:', error);
-    } else {
-      console.log('Email sent:', info.response);
-    }
-  });
+  // Gửi email thật nếu có cấu hình
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Mã xác nhận đặt lại mật khẩu - LoveConnect',
+      html: `
+        <h2>Mã xác nhận đặt lại mật khẩu</h2>
+        <p>Mã xác nhận của bạn là: <strong>${code}</strong></p>
+        <p>Mã này có hiệu lực trong 15 phút.</p>
+      `
+    };
+    
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error('Lỗi gửi email:', error);
+      } else {
+        console.log('Email đã gửi:', info.response);
+      }
+    });
+  }
   
   return true;
 }
@@ -257,7 +189,6 @@ app.get('/api/verify-token', async (req, res) => {
     
     const token = authHeader.substring(7);
     
-    // Xác thực token
     jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key', (err, decoded) => {
       if (err) {
         return res.status(401).json({ valid: false, message: 'Token không hợp lệ hoặc đã hết hạn' });
@@ -478,14 +409,11 @@ app.post('/api/forgot-password', async (req, res) => {
       return res.status(404).json({ message: 'Email không tồn tại trong hệ thống' });
     }
     
-    // Tạo mã xác nhận
     const resetCode = generateResetCode();
-    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 phút
+    const expiresAt = Date.now() + 15 * 60 * 1000;
     
-    // Lưu mã xác nhận
     resetCodes.set(email, { code: resetCode, expiresAt });
     
-    // Gửi mã
     const sent = sendResetCode(email, resetCode);
     
     if (sent) {
@@ -529,7 +457,6 @@ app.post('/api/verify-reset-code', async (req, res) => {
       return res.status(400).json({ message: 'Mã xác nhận không đúng' });
     }
     
-    // Mã hợp lệ
     res.json({ message: 'Mã xác nhận hợp lệ' });
   } catch (error) {
     console.error('Verify code error:', error);
@@ -549,20 +476,16 @@ app.post('/api/reset-password', async (req, res) => {
       return res.status(400).json({ message: 'Vui lòng cung cấp email và mật khẩu mới' });
     }
     
-    // Kiểm tra xem email có mã reset hợp lệ không
     const resetData = resetCodes.get(email);
     if (!resetData) {
       return res.status(400).json({ message: 'Vui lòng yêu cầu mã xác nhận trước' });
     }
     
-    // Xóa mã reset đã sử dụng
     resetCodes.delete(email);
     
-    // Mã hóa mật khẩu mới
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     
-    // Cập nhật mật khẩu trong database
     if (mongoose.connection.readyState === 1) {
       const result = await User.updateOne(
         { email },
@@ -598,7 +521,6 @@ app.get('/api/users', async (req, res) => {
       const users = await User.find({}, { password: 0 });
       res.json(users);
     } else {
-      // Trả về dữ liệu giả nếu không kết nối được MongoDB
       const mockUsers = [
         { id: 1, username: 'Anh', age: 25, gender: 'female', income: '10-20', location: 'hanoi', isVip: true },
         { id: 2, username: 'Bình', age: 28, gender: 'male', income: '20-30', location: 'hcm', isVip: false },
@@ -631,7 +553,6 @@ app.get('/api/user/:id', async (req, res) => {
         return res.status(404).json({ message: 'Không tìm thấy người dùng' });
       }
       
-      // Get additional stats
       const friendsCount = user.friends ? user.friends.length : 0;
       const matchesCount = user.matches ? user.matches.length : 0;
       const postsCount = await Post.countDocuments({ userId: user._id });
@@ -643,7 +564,6 @@ app.get('/api/user/:id', async (req, res) => {
         postsCount
       });
     } else {
-      // Trả về dữ liệu giả nếu không kết nối được MongoDB
       const mockUser = {
         id: userId,
         username: 'Người dùng ' + userId,
@@ -678,7 +598,6 @@ app.put('/api/user/:id', async (req, res) => {
     const userId = req.params.id;
     const updateData = req.body;
     
-    // Check authentication
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ message: 'Token không hợp lệ' });
@@ -704,7 +623,6 @@ app.put('/api/user/:id', async (req, res) => {
       
       res.json({ message: 'Cập nhật thông tin thành công', user });
     } else {
-      // Fallback mode
       const userIndex = users.findIndex(u => u.id == userId);
       if (userIndex === -1) {
         return res.status(404).json({ message: 'Không tìm thấy người dùng' });
@@ -734,7 +652,6 @@ app.get('/api/user/:id/friends', async (req, res) => {
       }
       res.json(user.friends);
     } else {
-      // Trả về dữ liệu giả nếu không kết nối được MongoDB
       const mockFriends = [
         { id: 1, username: 'Anh', profile: { avatar: null } },
         { id: 2, username: 'Bình', profile: { avatar: null } },
@@ -760,7 +677,6 @@ app.get('/api/matching-users', async (req, res) => {
       const users = await User.find({}, { password: 0 }).limit(8);
       res.json(users);
     } else {
-      // Trả về dữ liệu giả nếu không kết nối được MongoDB
       const mockUsers = [
         { id: 1, username: 'Anh', age: 25, gender: 'female', income: '10-20', location: 'hanoi', bio: 'Yêu thích du lịch và ẩm thực' },
         { id: 2, username: 'Bình', age: 28, gender: 'male', income: '20-30', location: 'hcm', bio: 'Đam mê thể thao và âm nhạc' },
@@ -801,7 +717,6 @@ app.get('/api/posts', async (req, res) => {
       
       res.json(posts);
     } else {
-      // Trả về dữ liệu giả nếu không kết nối được MongoDB
       const mockPosts = [
         {
           id: 1,
@@ -819,15 +734,6 @@ app.get('/api/posts', async (req, res) => {
           createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000),
           likes: 32,
           comments: 8
-        },
-        {
-          id: 3,
-          userId: { id: 1, username: 'Anh', profile: { avatar: null } },
-          content: 'Chia sẻ khoảnh khắc đáng yêu của mình tại bãi biển Nha Trang 😍',
-          image: 'https://picsum.photos/600/400?random=2',
-          createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-          likes: 78,
-          comments: 12
         }
       ];
       res.json(mockPosts);
@@ -863,7 +769,6 @@ app.post('/api/posts', async (req, res) => {
       
       res.status(201).json({ message: 'Đăng bài thành công', post: newPost });
     } else {
-      // Fallback mode
       const newPost = {
         id: nextId++,
         userId: { id: userId, username: 'User' + userId, profile: { avatar: null } },
@@ -908,7 +813,6 @@ app.get('/api/messages', async (req, res) => {
       
       res.json(messages);
     } else {
-      // Trả về dữ liệu giả nếu không kết nối được MongoDB
       const mockMessages = [
         {
           id: 1,
@@ -923,13 +827,6 @@ app.get('/api/messages', async (req, res) => {
           receiver: { id: friendId, username: 'User' + friendId, profile: { avatar: null } },
           content: 'Mình khỏe, cảm ơn bạn! Còn bạn?',
           createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000 + 60000)
-        },
-        {
-          id: 3,
-          sender: { id: friendId, username: 'User' + friendId, profile: { avatar: null } },
-          receiver: { id: userId, username: 'User' + userId, profile: { avatar: null } },
-          content: 'Mình cũng khỏe. Bạn đang làm gì vậy?',
-          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000 + 120000)
         }
       ];
       res.json(mockMessages);
@@ -963,16 +860,8 @@ app.post('/api/messages', async (req, res) => {
       await newMessage.populate('sender', 'username profile');
       await newMessage.populate('receiver', 'username profile');
       
-      // Send notification via WebSocket
-      sendNotification(receiver, {
-        type: 'message',
-        content: `Bạn có tin nhắn mới từ ${newMessage.sender.username}`,
-        relatedId: sender
-      });
-      
       res.status(201).json({ message: 'Gửi tin nhắn thành công', message: newMessage });
     } else {
-      // Fallback mode
       const newMessage = {
         id: nextId++,
         sender: { id: sender, username: 'User' + sender, profile: { avatar: null } },
@@ -1009,28 +898,18 @@ app.post('/api/friends', async (req, res) => {
         return res.status(404).json({ message: 'Không tìm thấy người dùng' });
       }
       
-      // Check if already friends
       if (user.friends.includes(friendId)) {
         return res.status(400).json({ message: 'Đã là bạn bè' });
       }
       
-      // Add to friends list
       user.friends.push(friendId);
       friend.friends.push(userId);
       
       await user.save();
       await friend.save();
       
-      // Send notification
-      sendNotification(friendId, {
-        type: 'friend_request',
-        content: `${user.username} đã gửi lời mời kết bạn`,
-        relatedId: userId
-      });
-      
       res.json({ message: 'Kết bạn thành công' });
     } else {
-      // Fallback mode
       res.json({ message: 'Kết bạn thành công (fallback mode)' });
     }
   } catch (error) {
@@ -1040,91 +919,28 @@ app.post('/api/friends', async (req, res) => {
   }
 });
 
-// Get notifications endpoint
-app.get('/api/notifications', async (req, res) => {
-  try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    
-    const { userId } = req.query;
-    
-    if (!userId) {
-      return res.status(400).json({ message: 'Thiếu thông tin userId' });
-    }
-    
-    if (mongoose.connection.readyState === 1) {
-      const notifications = await Notification.find({ userId })
-        .sort({ createdAt: -1 })
-        .limit(20);
-      
-      res.json(notifications);
-    } else {
-      // Trả về dữ liệu giả nếu không kết nối được MongoDB
-      const mockNotifications = [
-        {
-          id: 1,
-          type: 'friend_request',
-          content: 'Anh đã gửi lời mời kết bạn',
-          isRead: false,
-          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
-        },
-        {
-          id: 2,
-          type: 'message',
-          content: 'Bình đã gửi cho bạn một tin nhắn',
-          isRead: true,
-          createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000)
-        },
-        {
-          id: 3,
-          type: 'admin',
-          content: 'Tài khoản VIP của bạn đã được kích hoạt',
-          isRead: false,
-          createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000)
-        }
-      ];
-      res.json(mockNotifications);
-    }
-  } catch (error) {
-    console.error('Get notifications error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.status(500).json({ message: 'Lỗi server', error: error.message });
-  }
-});
-
-// Create VIP request endpoint
+// Send VIP request endpoint
 app.post('/api/vip-request', async (req, res) => {
   try {
     res.setHeader('Access-Control-Allow-Origin', '*');
     
-    const { userId, planType, amount, paymentProof } = req.body;
+    const { userId, planType, amount } = req.body;
     
     if (!userId || !planType || !amount) {
       return res.status(400).json({ message: 'Thiếu thông tin userId, planType hoặc amount' });
     }
     
-    if (mongoose.connection.readyState === 1) {
-      const vipRequest = new VIPRequest({
-        userId,
-        planType,
-        amount,
-        paymentProof
-      });
-      
-      await vipRequest.save();
-      
-      // Send email to admin
-      const user = await User.findById(userId);
+    // Send email to admin
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
       const mailOptions = {
-        from: process.env.EMAIL_USER || 'mailcheckctv@gmail.com',
+        from: process.env.EMAIL_USER,
         to: 'mailcheckctv@gmail.com',
         subject: 'Yêu cầu nâng cấp VIP mới - LoveConnect',
         html: `
           <h2>Yêu cầu nâng cấp VIP mới</h2>
-          <p><strong>Người dùng:</strong> ${user.username} (${user.email})</p>
           <p><strong>Gói:</strong> ${planType}</p>
           <p><strong>Số tiền:</strong> ${amount.toLocaleString('vi-VN')} VNĐ</p>
-          ${paymentProof ? `<p><strong>Ảnh chứng minh:</strong> <a href="${paymentProof}">Xem ảnh</a></p>` : ''}
-          <p>Vui lòng kiểm tra và xác nhận yêu cầu này trong trang quản trị.</p>
+          <p>Vui lòng kiểm tra và xác nhận yêu cầu này.</p>
         `
       };
       
@@ -1135,137 +951,11 @@ app.post('/api/vip-request', async (req, res) => {
           console.log('Email sent:', info.response);
         }
       });
-      
-      res.status(201).json({ message: 'Gửi yêu cầu nâng cấp VIP thành công' });
-    } else {
-      // Fallback mode
-      res.status(201).json({ message: 'Gửi yêu cầu nâng cấp VIP thành công (fallback mode)' });
     }
+    
+    res.status(201).json({ message: 'Gửi yêu cầu nâng cấp VIP thành công' });
   } catch (error) {
     console.error('VIP request error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.status(500).json({ message: 'Lỗi server', error: error.message });
-  }
-});
-
-// Get VIP requests endpoint (admin only)
-app.get('/api/vip-requests', async (req, res) => {
-  try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    
-    // Check admin authentication
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Token không hợp lệ' });
-    }
-    
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key');
-    
-    if (!decoded.isAdmin) {
-      return res.status(403).json({ message: 'Chỉ admin mới có quyền truy cập' });
-    }
-    
-    if (mongoose.connection.readyState === 1) {
-      const requests = await VIPRequest.find()
-        .populate('userId', 'username email')
-        .sort({ createdAt: -1 });
-      
-      res.json(requests);
-    } else {
-      // Fallback mode
-      const mockRequests = [
-        {
-          id: 1,
-          userId: { id: 1, username: 'user1', email: 'user1@example.com' },
-          planType: 'premium',
-          amount: 499000,
-          status: 'pending',
-          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
-        },
-        {
-          id: 2,
-          userId: { id: 2, username: 'user2', email: 'user2@example.com' },
-          planType: 'basic',
-          amount: 199000,
-          status: 'approved',
-          createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000)
-        }
-      ];
-      res.json(mockRequests);
-    }
-  } catch (error) {
-    console.error('Get VIP requests error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.status(500).json({ message: 'Lỗi server', error: error.message });
-  }
-});
-
-// Update VIP request status endpoint (admin only)
-app.put('/api/vip-request/:id', async (req, res) => {
-  try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    
-    const requestId = req.params.id;
-    const { status } = req.body;
-    
-    // Check admin authentication
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Token không hợp lệ' });
-    }
-    
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key');
-    
-    if (!decoded.isAdmin) {
-      return res.status(403).json({ message: 'Chỉ admin mới có quyền thực hiện' });
-    }
-    
-    if (mongoose.connection.readyState === 1) {
-      const vipRequest = await VIPRequest.findById(requestId).populate('userId');
-      
-      if (!vipRequest) {
-        return res.status(404).json({ message: 'Không tìm thấy yêu cầu' });
-      }
-      
-      vipRequest.status = status;
-      await vipRequest.save();
-      
-      if (status === 'approved') {
-        // Update user VIP status
-        const user = await User.findById(vipRequest.userId._id);
-        user.isVip = true;
-        user.vipType = vipRequest.planType;
-        
-        // Set expiry date based on plan type
-        const expiryDate = new Date();
-        if (vipRequest.planType === 'week') {
-          expiryDate.setDate(expiryDate.getDate() + 7);
-        } else if (vipRequest.planType === 'basic') {
-          expiryDate.setMonth(expiryDate.getMonth() + 1);
-        } else if (vipRequest.planType === 'premium') {
-          expiryDate.setMonth(expiryDate.getMonth() + 1);
-        }
-        
-        user.vipExpiry = expiryDate;
-        await user.save();
-        
-        // Send notification to user
-        sendNotification(user._id.toString(), {
-          type: 'vip_approved',
-          content: `Tài khoản VIP ${vipRequest.planType} của bạn đã được kích hoạt`,
-          relatedId: user._id
-        });
-      }
-      
-      res.json({ message: 'Cập nhật trạng thái yêu cầu thành công' });
-    } else {
-      // Fallback mode
-      res.json({ message: 'Cập nhật trạng thái yêu cầu thành công (fallback mode)' });
-    }
-  } catch (error) {
-    console.error('Update VIP request error:', error);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
@@ -1282,24 +972,16 @@ app.post('/api/support', async (req, res) => {
       return res.status(400).json({ message: 'Thiếu thông tin userId hoặc message' });
     }
     
-    if (mongoose.connection.readyState === 1) {
-      const user = await User.findById(userId);
-      
-      if (!user) {
-        return res.status(404).json({ message: 'Không tìm thấy người dùng' });
-      }
-      
-      // Send email to support
+    // Send email to support
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
       const mailOptions = {
-        from: process.env.EMAIL_USER || 'mailcheckctv@gmail.com',
+        from: process.env.EMAIL_USER,
         to: 'mailcheckctv@gmail.com',
         subject: 'Tin nhắn hỗ trợ mới - LoveConnect',
         html: `
           <h2>Tin nhắn hỗ trợ mới</h2>
-          <p><strong>Người dùng:</strong> ${user.username} (${user.email})</p>
           <p><strong>Nội dung:</strong></p>
           <p>${message}</p>
-          <p>Vui lòng phản hồi tin nhắn này trong thời gian sớm nhất.</p>
         `
       };
       
@@ -1310,12 +992,9 @@ app.post('/api/support', async (req, res) => {
           console.log('Email sent:', info.response);
         }
       });
-      
-      res.json({ message: 'Gửi tin nhắn hỗ trợ thành công' });
-    } else {
-      // Fallback mode
-      res.json({ message: 'Gửi tin nhắn hỗ trợ thành công (fallback mode)' });
     }
+    
+    res.json({ message: 'Gửi tin nhắn hỗ trợ thành công' });
   } catch (error) {
     console.error('Support message error:', error);
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -1334,9 +1013,8 @@ app.post('/api/upload', async (req, res) => {
       return res.status(400).json({ message: 'Không có dữ liệu ảnh' });
     }
     
-    // In a real application, you would upload to cloud storage like AWS S3, Cloudinary, etc.
-    // For this demo, we'll just return a mock URL
-    const imageUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${Date.now()}`;
+    // Simulate upload - in real app, upload to cloud storage
+    const imageUrl = `data:image/jpeg;base64,${image}`;
     
     res.json({ url: imageUrl, message: 'Tải ảnh lên thành công' });
   } catch (error) {
@@ -1346,13 +1024,11 @@ app.post('/api/upload', async (req, res) => {
   }
 });
 
-// ==================== STATIC ROUTES - FIX QUAN TRỌNG ====================
-// Route cho trang chính
+// ==================== STATIC ROUTES ====================
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-// Route cho các trang cụ thể
 app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
@@ -1369,22 +1045,17 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// Route cho tất cả các requests khác - serve file tĩnh
 app.get('*', (req, res) => {
-  // Ưu tiên trả về trang đăng nhập cho route gốc
   if (req.path === '/' || req.path === '') {
     return res.sendFile(path.join(__dirname, 'public', 'login.html'));
   }
   
   const filePath = path.join(__dirname, 'public', req.path);
   
-  // Kiểm tra nếu file tồn tại
   fs.access(filePath, fs.constants.F_OK, (err) => {
     if (err) {
-      // Nếu file không tồn tại, trả về login.html
       res.sendFile(path.join(__dirname, 'public', 'login.html'));
     } else {
-      // Nếu file tồn tại, serve file đó
       res.sendFile(filePath);
     }
   });
@@ -1398,12 +1069,11 @@ app.use((err, req, res, next) => {
 });
 
 // ==================== START SERVER ====================
-server.listen(PORT, HOST, () => {
+app.listen(PORT, HOST, () => {
   console.log(`=== SERVER DATING APP ===`);
   console.log(`🚀 Server đang chạy trên ${HOST}:${PORT}`);
   console.log(`🌍 Môi trường: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 Kết nối MongoDB: ${mongoose.connection.readyState === 1 ? '✅ Thành công' : '❌ Thất bại'}`);
   console.log(`📁 Phục vụ file tĩnh từ: ${path.join(__dirname, 'public')}`);
-  console.log(`🔌 WebSocket server đang chạy`);
   console.log(`================================`);
 });
