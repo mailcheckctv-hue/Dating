@@ -1,281 +1,222 @@
-/**
- * LoveConnect - Full server.js
- * Features: Auth (JWT), Users, Posts (upload), Suggested users,
- * WebSocket chat, Static hosting for /public, healthcheck, VIP stub.
- */
-require('dotenv').config();
+
 const path = require('path');
 const fs = require('fs');
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const multer = require('multer');
-const http = require('http');
-const WebSocket = require('ws');
+const dotenv = require('dotenv');
+dotenv.config();
 
 const app = express();
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+const http = require('http').createServer(app);
+const { Server } = require('socket.io');
+const io = new Server(http, { cors: { origin: "*", methods: ["GET","POST"] } });
 
-// ---------- ENV & Mongo ----------
-const PORT = process.env.PORT || 10000;
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_please_change';
-const MONGO = process.env.MONGODB_URI || process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/loveconnect';
-
-mongoose
-  .connect(MONGO, { dbName: 'loveconnect' })
-  .then(() => console.log('MongoDB connected'))
-  .catch((err) => console.error('Mongo error:', err.message));
-
-// ---------- Middlewares ----------
 app.use(cors());
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ensure /uploads exists
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+app.use('/uploads', express.static(uploadsDir));
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Multer storage
+const MONGODB_URI = process.env.MONGODB_URI;
+mongoose.connect(MONGODB_URI, { })
+  .then(()=>console.log('MongoDB connected'))
+  .catch(err=>console.error('MongoDB error:', err.message));
+
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname || '');
-    cb(null, unique + ext);
-  }
+  destination: (req, file, cb) => cb(null, uploadsDir),
+  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g,'_'))
 });
 const upload = multer({ storage });
 
-// ---------- Schemas ----------
 const userSchema = new mongoose.Schema({
-  username: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  gender: { type: String, enum: ['Nam', 'Nữ', 'Khác'], default: 'Khác' },
-  avatarUrl: String,
-  location: String,
-  income: String,
-  vip: { type: String, enum: ['none', 'vip-week', 'basic', 'premium'], default: 'none' },
+  name: String,
+  email: { type: String, unique: true },
+  password: String,
+  gender: { type: String, enum: ['Nam','Nữ','Khác'], default: 'Khác' },
+  avatar: String,
+  location: { type: String, default: 'Việt Nam' },
+  role: { type: String, enum: ['user','admin'], default: 'user' },
+  blocked: { type: Boolean, default: false },
 }, { timestamps: true });
 
 const postSchema = new mongoose.Schema({
-  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   content: String,
-  fileUrl: String,
-  fileName: String,
-  likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-}, { timestamps: true });
+  image: String,
+  createdAt: { type: Date, default: Date.now }
+});
 
 const messageSchema = new mongoose.Schema({
-  sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  content: String,
+  from: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  to: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  text: String,
   fileUrl: String,
-  fileName: String,
-  read: { type: Boolean, default: false },
-}, { timestamps: true });
+  type: { type: String, enum: ['text', 'image', 'file'], default: 'text' },
+  createdAt: { type: Date, default: Date.now },
+  read: { type: Boolean, default: false }
+});
+
+const friendRequestSchema = new mongoose.Schema({
+  from: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  to: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  status: { type: String, enum: ['pending','accepted','rejected'], default: 'pending' },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const friendshipSchema = new mongoose.Schema({
+  user1: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  user2: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  createdAt: { type: Date, default: Date.now }
+});
 
 const User = mongoose.model('User', userSchema);
 const Post = mongoose.model('Post', postSchema);
 const Message = mongoose.model('Message', messageSchema);
+const FriendRequest = mongoose.model('FriendRequest', friendRequestSchema);
+const Friendship = mongoose.model('Friendship', friendshipSchema);
 
-// ---------- Helpers ----------
-function signToken(user) {
-  return jwt.sign({ id: user._id, email: user.email, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret';
+function signToken(user){ return jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '7d' }); }
+function auth(req,res,next){
+  const hdr = req.headers.authorization || '';
+  const token = hdr.startsWith('Bearer ') ? hdr.slice(7) : null;
+  if(!token) return res.status(401).json({ error:'No token' });
+  try { req.user = jwt.verify(token, JWT_SECRET); next(); }
+  catch(e){ return res.status(401).json({ error:'Invalid token' }); }
 }
-function auth(req, res, next) {
-  const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.substring(7) : null;
-  if (!token) return res.status(401).json({ message: 'Missing token' });
-  try {
-    req.user = jwt.verify(token, JWT_SECRET);
-    next();
-  } catch (e) {
-    return res.status(401).json({ message: 'Invalid token' });
-  }
-}
+function adminOnly(req,res,next){ if(req.user?.role!=='admin') return res.status(403).json({ error:'Admin only' }); next(); }
 
-// ---------- Static ----------
-const publicDir = path.join(__dirname, 'public');
-app.use('/uploads', express.static(uploadDir));
-if (fs.existsSync(publicDir)) {
-  app.use(express.static(publicDir));
-}
-
-// ---------- Healthcheck ----------
-app.get('/healthz', (req, res) => res.json({ ok: true }));
-
-// ---------- Auth Routes ----------
-app.post('/api/register', async (req, res) => {
-  try {
-    const { username, email, password, gender } = req.body;
-    if (!username || !email || !password) return res.status(400).json({ message: 'Thiếu dữ liệu' });
-    const existed = await User.findOne({ email });
-    if (existed) return res.status(400).json({ message: 'Email đã tồn tại' });
-    const hash = await bcrypt.hash(password, 10);
-    const user = await User.create({ username, email, password: hash, gender });
-    const token = signToken(user);
-    res.json({ token, user: { id: user._id, username: user.username, email: user.email } });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: 'Lỗi máy chủ' });
-  }
+const onlineUsers = new Map();
+io.on('connection', (socket) => {
+  socket.on('auth', (token) => {
+    try{ const user = jwt.verify(token, JWT_SECRET); socket.userId=user.id; onlineUsers.set(user.id, socket.id); io.emit('presence',{userId:user.id,online:true}); }catch(e){}
+  });
+  socket.on('disconnect', ()=>{ if(socket.userId){ onlineUsers.delete(socket.userId); io.emit('presence',{userId:socket.userId,online:false}); } });
 });
 
-app.post('/api/login', async (req, res) => {
-  try {
+app.get('/api/health', (req,res)=>res.json({ ok:true }));
+
+app.post('/api/auth/register', async (req,res)=>{
+  try{
+    const { name, email, password, gender } = req.body;
+    const exists = await User.findOne({ email });
+    if(exists) return res.status(400).json({ error:'Email đã tồn tại' });
+    const hash = await bcrypt.hash(password, 10);
+    const user = await User.create({ name, email, password: hash, gender });
+    const token = signToken(user);
+    res.json({ token, user: { id: user._id, name, email, gender, role: user.role } });
+  }catch(e){ res.status(500).json({ error:'Đăng ký thất bại' }); }
+});
+
+app.post('/api/auth/login', async (req,res)=>{
+  try{
     const { email, password } = req.body;
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: 'Email hoặc mật khẩu không đúng' });
+    if(!user) return res.status(400).json({ error:'Sai thông tin đăng nhập' });
+    if(user.blocked) return res.status(403).json({ error:'Tài khoản đã bị chặn' });
     const ok = await bcrypt.compare(password, user.password);
-    if (!ok) return res.status(400).json({ message: 'Email hoặc mật khẩu không đúng' });
+    if(!ok) return res.status(400).json({ error:'Sai thông tin đăng nhập' });
     const token = signToken(user);
-    res.json({ token, user: { id: user._id, username: user.username, email: user.email } });
-  } catch (e) {
-    res.status(500).json({ message: 'Lỗi máy chủ' });
-  }
+    res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar } });
+  }catch(e){ res.status(500).json({ error:'Đăng nhập thất bại' }); }
 });
 
-// ---------- Profile ----------
-app.get('/api/profile', auth, async (req, res) => {
-  const me = await User.findById(req.user.id).lean();
-  res.json(me);
+app.get('/api/profile', auth, async (req,res)=>{ const u = await User.findById(req.user.id).lean(); res.json(u); });
+
+app.post('/api/users/avatar', auth, upload.single('avatar'), async (req,res)=>{
+  const url = req.file ? `/uploads/${req.file.filename}` : null;
+  await User.findByIdAndUpdate(req.user.id, { avatar: url });
+  res.json({ avatar: url });
 });
 
-// ---------- Upload (file/image) ----------
-app.post('/api/upload', auth, upload.single('file'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ message: 'Chưa có file' });
-  const fileUrl = `/uploads/${req.file.filename}`;
-  res.json({ fileUrl, fileName: req.file.originalname || req.file.filename });
-});
-
-// ---------- Posts ----------
-app.get('/api/posts', auth, async (req, res) => {
-  const posts = await Post.find().sort({ createdAt: -1 }).limit(50).populate('author', 'username avatarUrl').lean();
-  res.json(posts);
-});
-
-app.post('/api/posts', auth, upload.single('file'), async (req, res) => {
-  try {
-    let fileUrl, fileName;
-    if (req.file) {
-      fileUrl = `/uploads/${req.file.filename}`;
-      fileName = req.file.originalname || req.file.filename;
-    } else if (req.body.fileUrl) {
-      fileUrl = req.body.fileUrl;
-      fileName = req.body.fileName;
-    }
-    const post = await Post.create({
-      author: req.user.id,
-      content: req.body.content || '',
-      fileUrl, fileName
-    });
-    const populated = await post.populate('author', 'username avatarUrl');
-    res.json(populated);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: 'Không tạo được bài viết' });
-  }
-});
-
-// ---------- Suggested users ----------
-app.get('/api/users/suggested', auth, async (req, res) => {
-  const users = await User.find({ _id: { $ne: req.user.id } }).select('username avatarUrl gender location').limit(12).lean();
+app.get('/api/users/suggested', auth, async (req,res)=>{
+  const users = await User.find({ _id: { $ne: req.user.id }}).select('name avatar location gender').limit(12);
   res.json(users);
 });
 
-// ---------- Messages (REST for history) ----------
-app.get('/api/messages/:otherId', auth, async (req, res) => {
-  const other = req.params.otherId;
-  const msgs = await Message.find({
-    $or: [
-      { sender: req.user.id, receiver: other },
-      { sender: other, receiver: req.user.id }
-    ]
-  }).sort({ createdAt: 1 }).lean();
+app.post('/api/posts', auth, upload.single('image'), async (req,res)=>{
+  const post = await Post.create({ userId: req.user.id, content: req.body.content || '', image: req.file ? `/uploads/${req.file.filename}` : null });
+  const populated = await Post.findById(post._id).populate('userId','name avatar email');
+  res.json(populated);
+});
+app.get('/api/posts', auth, async (req,res)=>{
+  const posts = await Post.find().sort({ createdAt: -1 }).limit(50).populate('userId','name avatar email');
+  res.json(posts);
+});
+
+async function areFriends(a,b){
+  const f = await Friendship.findOne({ $or: [{user1:a,user2:b},{user1:b,user2:a}] });
+  return !!f;
+}
+app.post('/api/friends/request', auth, async (req,res)=>{
+  const { to } = req.body;
+  if(await areFriends(req.user.id,to)) return res.status(400).json({ error:'Đã là bạn bè' });
+  const exists = await FriendRequest.findOne({ from:req.user.id, to, status:'pending' });
+  if(exists) return res.status(400).json({ error:'Đã gửi lời mời' });
+  const fr = await FriendRequest.create({ from:req.user.id, to });
+  res.json(fr);
+});
+app.post('/api/friends/accept', auth, async (req,res)=>{
+  const { requestId } = req.body;
+  const fr = await FriendRequest.findById(requestId);
+  if(!fr || String(fr.to)!==req.user.id) return res.status(400).json({ error:'Không hợp lệ' });
+  fr.status = 'accepted'; await fr.save();
+  await Friendship.create({ user1: fr.from, user2: fr.to });
+  res.json({ ok:true });
+});
+app.get('/api/friends/list', auth, async (req,res)=>{
+  const f1 = await Friendship.find({ user1:req.user.id }).populate('user2','name avatar email');
+  const f2 = await Friendship.find({ user2:req.user.id }).populate('user1','name avatar email');
+  const list = f1.map(x=>x.user2).concat(f2.map(x=>x.user1));
+  res.json(list);
+});
+
+app.get('/api/messages/unread-count', auth, async (req,res)=>{
+  const cnt = await Message.countDocuments({ to: req.user.id, read:false });
+  res.json({ count: cnt });
+});
+app.get('/api/messages/thread', auth, async (req,res)=>{
+  const { userId } = req.query;
+  const msgs = await Message.find({ $or:[{from:req.user.id,to:userId},{from:userId,to:req.user.id}] }).sort({ createdAt:1 });
   res.json(msgs);
 });
-
-// ---------- VIP Stub ----------
-app.post('/api/upgrade-vip', auth, async (req, res) => {
-  const { plan } = req.body;
-  await User.findByIdAndUpdate(req.user.id, { vip: plan || 'vip-week' });
-  res.json({ success: true });
+app.post('/api/messages/send', auth, upload.single('file'), async (req,res)=>{
+  const { to, text, type } = req.body;
+  const friends = await areFriends(req.user.id, to);
+  if(!friends) return res.status(403).json({ error:'Chỉ nhắn khi đã là bạn bè' });
+  const msg = await Message.create({ from: req.user.id, to, text: text || '', type: req.file ? (type || 'file') : (type || 'text'), fileUrl: req.file ? `/uploads/${req.file.filename}` : null });
+  const receiverSocket = onlineUsers.get(String(to));
+  if(receiverSocket){ io.to(receiverSocket).emit('message:new', msg); }
+  res.json(msg);
 });
 
-// ---------- Default routes ----------
-app.get('/', (req, res) => {
-  // serve login if public exists; otherwise simple text
-  const loginPath = path.join(publicDir, 'login.html');
-  if (fs.existsSync(loginPath)) return res.sendFile(loginPath);
-  res.send('LoveConnect API is running.');
+app.get('/api/admin/messages', auth, (req,res,next)=>{ if(req.user?.role!=='admin') return res.status(403).json({error:'Admin only'}); next(); }, async (req,res)=>{
+  const msgs = await Message.find().sort({ createdAt:-1 }).limit(200); res.json(msgs);
+});
+app.post('/api/admin/block/:userId', auth, async (req,res)=>{
+  if(req.user?.role!=='admin') return res.status(403).json({error:'Admin only'});
+  await User.findByIdAndUpdate(req.params.userId, { blocked: true }); res.json({ ok:true });
+});
+app.post('/api/admin/unblock/:userId', auth, async (req,res)=>{
+  if(req.user?.role!=='admin') return res.status(403).json({error:'Admin only'});
+  await User.findByIdAndUpdate(req.params.userId, { blocked: false }); res.json({ ok:true });
+});
+app.delete('/api/admin/users/:userId', auth, async (req,res)=>{
+  if(req.user?.role!=='admin') return res.status(403).json({error:'Admin only'});
+  await User.findByIdAndDelete(req.params.userId); res.json({ ok:true });
 });
 
-// ---------- WebSocket ----------
-const clients = new Map(); // userId -> ws
+app.get('/', (req,res)=> res.sendFile(path.join(__dirname,'public','login.html')));
+app.get('/login.html', (req,res)=> res.sendFile(path.join(__dirname,'public','login.html')));
+app.get('/dang-ky.html', (req,res)=> res.sendFile(path.join(__dirname,'public','dang-ky.html')));
+app.get('/trang-chu.html', (req,res)=> res.sendFile(path.join(__dirname,'public','trang-chu.html')));
 
-function wsAuth(token) {
-  try {
-    return jwt.verify(token, JWT_SECRET);
-  } catch {
-    return null;
-  }
-}
-
-wss.on('connection', (socket, req) => {
-  // token from query ?token=...
-  const params = new URLSearchParams((req.url || '').split('?')[1]);
-  const token = params.get('token');
-  const user = wsAuth(token);
-  if (!user) {
-    socket.close();
-    return;
-  }
-  clients.set(user.id, socket);
-
-  socket.on('message', async (msg) => {
-    try {
-      const data = JSON.parse(msg.toString());
-      if (data.type === 'message') {
-        const payload = {
-          sender: user.id,
-          receiver: data.receiverId,
-          content: data.content || '',
-          fileUrl: data.fileUrl,
-          fileName: data.fileName
-        };
-        const saved = await Message.create(payload);
-        const sendObj = {
-          type: 'message',
-          _id: saved._id,
-          sender: { _id: user.id, username: user.username },
-          receiver: data.receiverId,
-          content: payload.content,
-          fileUrl: payload.fileUrl,
-          fileName: payload.fileName,
-          createdAt: saved.createdAt
-        };
-        // send to receiver if online
-        const rc = clients.get(data.receiverId);
-        if (rc && rc.readyState === WebSocket.OPEN) rc.send(JSON.stringify(sendObj));
-        // echo back to sender
-        if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(sendObj));
-      }
-    } catch (e) {
-      console.error('WS error', e.message);
-    }
-  });
-
-  socket.on('close', () => {
-    clients.delete(user.id);
-  });
-});
-
-server.listen(PORT, () => {
-  console.log('Server running on port', PORT);
-});
+const PORT = process.env.PORT || 5000;
+http.listen(PORT, ()=> console.log('Server running on port', PORT));
