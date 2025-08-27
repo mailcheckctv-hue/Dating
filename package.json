@@ -1,6 +1,7 @@
 {
-  "name": "loveconnect-app",
+  "name": "loveconnect-full",
   "version": "1.0.0",
+  "description": "LoveConnect - Dating App (Express + MongoDB + Socket.IO)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
