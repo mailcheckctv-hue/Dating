@@ -6,8 +6,13 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const nodemailer = require('nodemailer');
+const WebSocket = require('ws');
+const http = require('http');
 
 const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 const PORT = process.env.PORT || 10000;
 const HOST = '0.0.0.0';
 
@@ -37,12 +42,12 @@ app.use(cors({
 
 app.options('*', cors());
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // SERVING STATIC FILES - FIX QUAN TRỌNG
 app.use(express.static(path.join(__dirname, 'public'), {
-  index: 'login.html', // Mặc định là login.html
+  index: 'login.html',
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html')) {
       res.setHeader('Content-Type', 'text/html; charset=UTF-8');
@@ -67,17 +72,121 @@ const UserSchema = new mongoose.Schema({
     gender: { type: String, enum: ['Nam', 'Nữ', 'Khác'] },
     bio: String,
     interests: [String],
-    avatar: String
+    avatar: String,
+    location: String,
+    income: String
   },
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  matches: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  isVip: { type: Boolean, default: false },
+  vipType: { type: String, enum: ['none', 'week', 'basic', 'premium'], default: 'none' },
+  vipExpiry: Date,
+  createdAt: { type: Date, default: Date.now }
+});
+
+const PostSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  content: String,
+  image: String,
+  video: String,
+  likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  comments: [{
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    content: String,
+    createdAt: { type: Date, default: Date.now }
+  }],
+  createdAt: { type: Date, default: Date.now }
+});
+
+const MessageSchema = new mongoose.Schema({
+  sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  content: { type: String, required: true },
+  isRead: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const NotificationSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  type: { type: String, required: true }, // 'friend_request', 'message', 'vip_approved', 'admin'
+  content: { type: String, required: true },
+  isRead: { type: Boolean, default: false },
+  relatedId: mongoose.Schema.Types.ObjectId, // ID of related user/post/message
+  createdAt: { type: Date, default: Date.now }
+});
+
+const VIPRequestSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  planType: { type: String, enum: ['week', 'basic', 'premium'], required: true },
+  amount: { type: Number, required: true },
+  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+  paymentProof: String, // URL to payment proof image
   createdAt: { type: Date, default: Date.now }
 });
 
 const User = mongoose.model('User', UserSchema);
+const Post = mongoose.model('Post', PostSchema);
+const Message = mongoose.model('Message', MessageSchema);
+const Notification = mongoose.model('Notification', NotificationSchema);
+const VIPRequest = mongoose.model('VIPRequest', VIPRequestSchema);
 
 // ==================== FALLBACK DATA ====================
 let users = [];
 let nextId = 1;
+
+// ==================== EMAIL CONFIGURATION ====================
+const transporter = nodemailer.createTransporter({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER || 'mailcheckctv@gmail.com',
+    pass: process.env.EMAIL_PASS || 'your_email_password'
+  }
+});
+
+// ==================== WEBSOCKET CONNECTIONS ====================
+const clients = new Map();
+
+wss.on('connection', (ws, req) => {
+  const urlParams = new URLSearchParams(req.url.split('?')[1]);
+  const userId = urlParams.get('userId');
+  
+  if (userId) {
+    clients.set(userId, ws);
+    console.log(`User ${userId} connected via WebSocket`);
+  }
+  
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message);
+      
+      if (data.type === 'ping') {
+        ws.send(JSON.stringify({ type: 'pong' }));
+      }
+      
+      // Handle other message types as needed
+    } catch (error) {
+      console.error('WebSocket message error:', error);
+    }
+  });
+  
+  ws.on('close', () => {
+    if (userId) {
+      clients.delete(userId);
+      console.log(`User ${userId} disconnected from WebSocket`);
+    }
+  });
+});
+
+// Function to send notification via WebSocket
+function sendNotification(userId, notification) {
+  const client = clients.get(userId);
+  if (client && client.readyState === WebSocket.OPEN) {
+    client.send(JSON.stringify({
+      type: 'notification',
+      data: notification
+    }));
+  }
+}
 
 // ==================== RESET PASSWORD HANDLING ====================
 const resetCodes = new Map();
@@ -88,7 +197,28 @@ function generateResetCode() {
 
 function sendResetCode(email, code) {
   console.log(`Mã xác nhận cho ${email}: ${code}`);
-  // Trong thực tế, bạn sẽ tích hợp service gửi email ở đây
+  
+  // Send email with reset code
+  const mailOptions = {
+    from: process.env.EMAIL_USER || 'mailcheckctv@gmail.com',
+    to: email,
+    subject: 'Mã xác nhận đặt lại mật khẩu - LoveConnect',
+    html: `
+      <h2>Mã xác nhận đặt lại mật khẩu</h2>
+      <p>Mã xác nhận của bạn là: <strong>${code}</strong></p>
+      <p>Mã này có hiệu lực trong 15 phút.</p>
+      <p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
+    `
+  };
+  
+  transporter.sendMail(mailOptions, (error, info) => {
+    if (error) {
+      console.error('Error sending email:', error);
+    } else {
+      console.log('Email sent:', info.response);
+    }
+  });
+  
   return true;
 }
 
@@ -173,7 +303,8 @@ app.post('/api/register', async (req, res) => {
         email,
         password: hashedPassword,
         profile: profile || {},
-        friends: []
+        friends: [],
+        matches: []
       });
       
       await newUser.save();
@@ -191,7 +322,8 @@ app.post('/api/register', async (req, res) => {
           id: newUser._id,
           username: newUser.username,
           email: newUser.email,
-          profile: newUser.profile
+          profile: newUser.profile,
+          isVip: newUser.isVip
         }
       });
     } else {
@@ -202,6 +334,8 @@ app.post('/api/register', async (req, res) => {
         password: hashedPassword,
         profile: profile || {},
         friends: [],
+        matches: [],
+        isVip: false,
         createdAt: new Date()
       };
       
@@ -220,7 +354,8 @@ app.post('/api/register', async (req, res) => {
           id: newUser.id,
           username: newUser.username,
           email: newUser.email,
-          profile: newUser.profile
+          profile: newUser.profile,
+          isVip: newUser.isVip
         }
       });
     }
@@ -271,12 +406,51 @@ app.post('/api/login', async (req, res) => {
         id: mongoose.connection.readyState === 1 ? user._id : user.id, 
         username: user.username,
         email: user.email,
-        profile: user.profile
+        profile: user.profile,
+        isVip: user.isVip
       },
       message: 'Đăng nhập thành công'
     });
   } catch (error) {
     console.error('Login error:', error);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
+// Admin login endpoint
+app.post('/api/admin/login', async (req, res) => {
+  try {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Vui lòng điền đầy đủ thông tin' });
+    }
+    
+    // Check admin credentials
+    if (username === 'Admin_CFC' && password === '687969') {
+      const token = jwt.sign(
+        { userId: 'admin', isAdmin: true }, 
+        process.env.JWT_SECRET || 'fallback_secret_key', 
+        { expiresIn: '24h' }
+      );
+      
+      res.json({ 
+        token, 
+        user: { 
+          id: 'admin',
+          username: 'Admin_CFC',
+          isAdmin: true
+        },
+        message: 'Đăng nhập admin thành công'
+      });
+    } else {
+      res.status(401).json({ message: 'Thông tin đăng nhập admin không đúng' });
+    }
+  } catch (error) {
+    console.error('Admin login error:', error);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
@@ -311,7 +485,7 @@ app.post('/api/forgot-password', async (req, res) => {
     // Lưu mã xác nhận
     resetCodes.set(email, { code: resetCode, expiresAt });
     
-    // Gửi mã (mô phỏng)
+    // Gửi mã
     const sent = sendResetCode(email, resetCode);
     
     if (sent) {
@@ -403,7 +577,7 @@ app.post('/api/reset-password', async (req, res) => {
       if (userIndex !== -1) {
         users[userIndex].password = hashedPassword;
       } else {
-        return res.status(404).json({ message: 'Không tìm thấy người dùng' );
+        return res.status(404).json({ message: 'Không tìm thấy người dùng' });
       }
     }
     
@@ -456,7 +630,18 @@ app.get('/api/user/:id', async (req, res) => {
       if (!user) {
         return res.status(404).json({ message: 'Không tìm thấy người dùng' });
       }
-      res.json(user);
+      
+      // Get additional stats
+      const friendsCount = user.friends ? user.friends.length : 0;
+      const matchesCount = user.matches ? user.matches.length : 0;
+      const postsCount = await Post.countDocuments({ userId: user._id });
+      
+      res.json({
+        ...user.toObject(),
+        friendsCount,
+        matchesCount,
+        postsCount
+      });
     } else {
       // Trả về dữ liệu giả nếu không kết nối được MongoDB
       const mockUser = {
@@ -467,8 +652,11 @@ app.get('/api/user/:id', async (req, res) => {
           age: Math.floor(Math.random() * 15) + 20,
           gender: ['male', 'female'][Math.floor(Math.random() * 2)],
           bio: 'Rất vui được làm quen!',
-          interests: ['Du lịch', 'Âm nhạc', 'Thể thao']
+          interests: ['Du lịch', 'Âm nhạc', 'Thể thao'],
+          location: ['hanoi', 'hcm', 'danang'][Math.floor(Math.random() * 3)],
+          income: ['0-5', '5-10', '10-20', '20-30', '30+'][Math.floor(Math.random() * 5)]
         },
+        isVip: Math.random() > 0.5,
         friendsCount: Math.floor(Math.random() * 50),
         matchesCount: Math.floor(Math.random() * 20),
         postsCount: Math.floor(Math.random() * 10)
@@ -482,6 +670,56 @@ app.get('/api/user/:id', async (req, res) => {
   }
 });
 
+// Update user profile endpoint
+app.put('/api/user/:id', async (req, res) => {
+  try {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    const userId = req.params.id;
+    const updateData = req.body;
+    
+    // Check authentication
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Token không hợp lệ' });
+    }
+    
+    const token = authHeader.substring(7);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key');
+    
+    if (decoded.userId !== userId && !decoded.isAdmin) {
+      return res.status(403).json({ message: 'Không có quyền cập nhật thông tin người dùng này' });
+    }
+    
+    if (mongoose.connection.readyState === 1) {
+      const user = await User.findByIdAndUpdate(
+        userId,
+        { $set: updateData },
+        { new: true, select: { password: 0 } }
+      );
+      
+      if (!user) {
+        return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+      }
+      
+      res.json({ message: 'Cập nhật thông tin thành công', user });
+    } else {
+      // Fallback mode
+      const userIndex = users.findIndex(u => u.id == userId);
+      if (userIndex === -1) {
+        return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+      }
+      
+      users[userIndex] = { ...users[userIndex], ...updateData };
+      res.json({ message: 'Cập nhật thông tin thành công (fallback mode)', user: users[userIndex] });
+    }
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
 // Get user friends endpoint
 app.get('/api/user/:id/friends', async (req, res) => {
   try {
@@ -490,7 +728,7 @@ app.get('/api/user/:id/friends', async (req, res) => {
     const userId = req.params.id;
     
     if (mongoose.connection.readyState === 1) {
-      const user = await User.findById(userId).populate('friends', 'username profileImage');
+      const user = await User.findById(userId).populate('friends', 'username profile avatar');
       if (!user) {
         return res.status(404).json({ message: 'Không tìm thấy người dùng' });
       }
@@ -498,11 +736,11 @@ app.get('/api/user/:id/friends', async (req, res) => {
     } else {
       // Trả về dữ liệu giả nếu không kết nối được MongoDB
       const mockFriends = [
-        { id: 1, username: 'Anh', profileImage: null },
-        { id: 2, username: 'Bình', profileImage: null },
-        { id: 3, username: 'Chi', profileImage: null },
-        { id: 4, username: 'Dũng', profileImage: null },
-        { id: 5, username: 'Giang', profileImage: null }
+        { id: 1, username: 'Anh', profile: { avatar: null } },
+        { id: 2, username: 'Bình', profile: { avatar: null } },
+        { id: 3, username: 'Chi', profile: { avatar: null } },
+        { id: 4, username: 'Dũng', profile: { avatar: null } },
+        { id: 5, username: 'Giang', profile: { avatar: null } }
       ];
       res.json(mockFriends);
     }
@@ -542,6 +780,572 @@ app.get('/api/matching-users', async (req, res) => {
   }
 });
 
+// Get posts endpoint
+app.get('/api/posts', async (req, res) => {
+  try {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    const { userId, page = 1, limit = 10 } = req.query;
+    
+    if (mongoose.connection.readyState === 1) {
+      let query = {};
+      if (userId) {
+        query.userId = userId;
+      }
+      
+      const posts = await Post.find(query)
+        .populate('userId', 'username profile')
+        .sort({ createdAt: -1 })
+        .limit(limit * 1)
+        .skip((page - 1) * limit);
+      
+      res.json(posts);
+    } else {
+      // Trả về dữ liệu giả nếu không kết nối được MongoDB
+      const mockPosts = [
+        {
+          id: 1,
+          userId: { id: 2, username: 'Bình', profile: { avatar: null } },
+          content: 'Hôm nay thời tiết thật đẹp, ai rảnh đi cà phê không?',
+          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+          likes: 15,
+          comments: 5
+        },
+        {
+          id: 2,
+          userId: { id: 4, username: 'Dũng', profile: { avatar: null } },
+          content: 'Vừa hoàn thành xong dự án mới, cảm thấy thật hạnh phúc!',
+          image: 'https://picsum.photos/600/400?random=1',
+          createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000),
+          likes: 32,
+          comments: 8
+        },
+        {
+          id: 3,
+          userId: { id: 1, username: 'Anh', profile: { avatar: null } },
+          content: 'Chia sẻ khoảnh khắc đáng yêu của mình tại bãi biển Nha Trang 😍',
+          image: 'https://picsum.photos/600/400?random=2',
+          createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          likes: 78,
+          comments: 12
+        }
+      ];
+      res.json(mockPosts);
+    }
+  } catch (error) {
+    console.error('Get posts error:', error);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
+// Create post endpoint
+app.post('/api/posts', async (req, res) => {
+  try {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    const { userId, content, image, video } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ message: 'Thiếu thông tin userId' });
+    }
+    
+    if (mongoose.connection.readyState === 1) {
+      const newPost = new Post({
+        userId,
+        content,
+        image,
+        video
+      });
+      
+      await newPost.save();
+      await newPost.populate('userId', 'username profile');
+      
+      res.status(201).json({ message: 'Đăng bài thành công', post: newPost });
+    } else {
+      // Fallback mode
+      const newPost = {
+        id: nextId++,
+        userId: { id: userId, username: 'User' + userId, profile: { avatar: null } },
+        content,
+        image,
+        video,
+        likes: 0,
+        comments: [],
+        createdAt: new Date()
+      };
+      
+      res.status(201).json({ message: 'Đăng bài thành công (fallback mode)', post: newPost });
+    }
+  } catch (error) {
+    console.error('Create post error:', error);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
+// Get messages between users endpoint
+app.get('/api/messages', async (req, res) => {
+  try {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    const { userId, friendId } = req.query;
+    
+    if (!userId || !friendId) {
+      return res.status(400).json({ message: 'Thiếu thông tin userId hoặc friendId' });
+    }
+    
+    if (mongoose.connection.readyState === 1) {
+      const messages = await Message.find({
+        $or: [
+          { sender: userId, receiver: friendId },
+          { sender: friendId, receiver: userId }
+        ]
+      })
+      .populate('sender', 'username profile')
+      .populate('receiver', 'username profile')
+      .sort({ createdAt: 1 });
+      
+      res.json(messages);
+    } else {
+      // Trả về dữ liệu giả nếu không kết nối được MongoDB
+      const mockMessages = [
+        {
+          id: 1,
+          sender: { id: friendId, username: 'User' + friendId, profile: { avatar: null } },
+          receiver: { id: userId, username: 'User' + userId, profile: { avatar: null } },
+          content: 'Xin chào! Bạn có khỏe không?',
+          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
+        },
+        {
+          id: 2,
+          sender: { id: userId, username: 'User' + userId, profile: { avatar: null } },
+          receiver: { id: friendId, username: 'User' + friendId, profile: { avatar: null } },
+          content: 'Mình khỏe, cảm ơn bạn! Còn bạn?',
+          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000 + 60000)
+        },
+        {
+          id: 3,
+          sender: { id: friendId, username: 'User' + friendId, profile: { avatar: null } },
+          receiver: { id: userId, username: 'User' + userId, profile: { avatar: null } },
+          content: 'Mình cũng khỏe. Bạn đang làm gì vậy?',
+          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000 + 120000)
+        }
+      ];
+      res.json(mockMessages);
+    }
+  } catch (error) {
+    console.error('Get messages error:', error);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
+// Send message endpoint
+app.post('/api/messages', async (req, res) => {
+  try {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    const { sender, receiver, content } = req.body;
+    
+    if (!sender || !receiver || !content) {
+      return res.status(400).json({ message: 'Thiếu thông tin sender, receiver hoặc content' });
+    }
+    
+    if (mongoose.connection.readyState === 1) {
+      const newMessage = new Message({
+        sender,
+        receiver,
+        content
+      });
+      
+      await newMessage.save();
+      await newMessage.populate('sender', 'username profile');
+      await newMessage.populate('receiver', 'username profile');
+      
+      // Send notification via WebSocket
+      sendNotification(receiver, {
+        type: 'message',
+        content: `Bạn có tin nhắn mới từ ${newMessage.sender.username}`,
+        relatedId: sender
+      });
+      
+      res.status(201).json({ message: 'Gửi tin nhắn thành công', message: newMessage });
+    } else {
+      // Fallback mode
+      const newMessage = {
+        id: nextId++,
+        sender: { id: sender, username: 'User' + sender, profile: { avatar: null } },
+        receiver: { id: receiver, username: 'User' + receiver, profile: { avatar: null } },
+        content,
+        createdAt: new Date()
+      };
+      
+      res.status(201).json({ message: 'Gửi tin nhắn thành công (fallback mode)', message: newMessage });
+    }
+  } catch (error) {
+    console.error('Send message error:', error);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
+// Add friend endpoint
+app.post('/api/friends', async (req, res) => {
+  try {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    const { userId, friendId } = req.body;
+    
+    if (!userId || !friendId) {
+      return res.status(400).json({ message: 'Thiếu thông tin userId hoặc friendId' });
+    }
+    
+    if (mongoose.connection.readyState === 1) {
+      const user = await User.findById(userId);
+      const friend = await User.findById(friendId);
+      
+      if (!user || !friend) {
+        return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+      }
+      
+      // Check if already friends
+      if (user.friends.includes(friendId)) {
+        return res.status(400).json({ message: 'Đã là bạn bè' });
+      }
+      
+      // Add to friends list
+      user.friends.push(friendId);
+      friend.friends.push(userId);
+      
+      await user.save();
+      await friend.save();
+      
+      // Send notification
+      sendNotification(friendId, {
+        type: 'friend_request',
+        content: `${user.username} đã gửi lời mời kết bạn`,
+        relatedId: userId
+      });
+      
+      res.json({ message: 'Kết bạn thành công' });
+    } else {
+      // Fallback mode
+      res.json({ message: 'Kết bạn thành công (fallback mode)' });
+    }
+  } catch (error) {
+    console.error('Add friend error:', error);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
+// Get notifications endpoint
+app.get('/api/notifications', async (req, res) => {
+  try {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    const { userId } = req.query;
+    
+    if (!userId) {
+      return res.status(400).json({ message: 'Thiếu thông tin userId' });
+    }
+    
+    if (mongoose.connection.readyState === 1) {
+      const notifications = await Notification.find({ userId })
+        .sort({ createdAt: -1 })
+        .limit(20);
+      
+      res.json(notifications);
+    } else {
+      // Trả về dữ liệu giả nếu không kết nối được MongoDB
+      const mockNotifications = [
+        {
+          id: 1,
+          type: 'friend_request',
+          content: 'Anh đã gửi lời mời kết bạn',
+          isRead: false,
+          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
+        },
+        {
+          id: 2,
+          type: 'message',
+          content: 'Bình đã gửi cho bạn một tin nhắn',
+          isRead: true,
+          createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000)
+        },
+        {
+          id: 3,
+          type: 'admin',
+          content: 'Tài khoản VIP của bạn đã được kích hoạt',
+          isRead: false,
+          createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000)
+        }
+      ];
+      res.json(mockNotifications);
+    }
+  } catch (error) {
+    console.error('Get notifications error:', error);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
+// Create VIP request endpoint
+app.post('/api/vip-request', async (req, res) => {
+  try {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    const { userId, planType, amount, paymentProof } = req.body;
+    
+    if (!userId || !planType || !amount) {
+      return res.status(400).json({ message: 'Thiếu thông tin userId, planType hoặc amount' });
+    }
+    
+    if (mongoose.connection.readyState === 1) {
+      const vipRequest = new VIPRequest({
+        userId,
+        planType,
+        amount,
+        paymentProof
+      });
+      
+      await vipRequest.save();
+      
+      // Send email to admin
+      const user = await User.findById(userId);
+      const mailOptions = {
+        from: process.env.EMAIL_USER || 'mailcheckctv@gmail.com',
+        to: 'mailcheckctv@gmail.com',
+        subject: 'Yêu cầu nâng cấp VIP mới - LoveConnect',
+        html: `
+          <h2>Yêu cầu nâng cấp VIP mới</h2>
+          <p><strong>Người dùng:</strong> ${user.username} (${user.email})</p>
+          <p><strong>Gói:</strong> ${planType}</p>
+          <p><strong>Số tiền:</strong> ${amount.toLocaleString('vi-VN')} VNĐ</p>
+          ${paymentProof ? `<p><strong>Ảnh chứng minh:</strong> <a href="${paymentProof}">Xem ảnh</a></p>` : ''}
+          <p>Vui lòng kiểm tra và xác nhận yêu cầu này trong trang quản trị.</p>
+        `
+      };
+      
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.error('Error sending email:', error);
+        } else {
+          console.log('Email sent:', info.response);
+        }
+      });
+      
+      res.status(201).json({ message: 'Gửi yêu cầu nâng cấp VIP thành công' });
+    } else {
+      // Fallback mode
+      res.status(201).json({ message: 'Gửi yêu cầu nâng cấp VIP thành công (fallback mode)' });
+    }
+  } catch (error) {
+    console.error('VIP request error:', error);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
+// Get VIP requests endpoint (admin only)
+app.get('/api/vip-requests', async (req, res) => {
+  try {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    // Check admin authentication
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Token không hợp lệ' });
+    }
+    
+    const token = authHeader.substring(7);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key');
+    
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ message: 'Chỉ admin mới có quyền truy cập' });
+    }
+    
+    if (mongoose.connection.readyState === 1) {
+      const requests = await VIPRequest.find()
+        .populate('userId', 'username email')
+        .sort({ createdAt: -1 });
+      
+      res.json(requests);
+    } else {
+      // Fallback mode
+      const mockRequests = [
+        {
+          id: 1,
+          userId: { id: 1, username: 'user1', email: 'user1@example.com' },
+          planType: 'premium',
+          amount: 499000,
+          status: 'pending',
+          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
+        },
+        {
+          id: 2,
+          userId: { id: 2, username: 'user2', email: 'user2@example.com' },
+          planType: 'basic',
+          amount: 199000,
+          status: 'approved',
+          createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000)
+        }
+      ];
+      res.json(mockRequests);
+    }
+  } catch (error) {
+    console.error('Get VIP requests error:', error);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
+// Update VIP request status endpoint (admin only)
+app.put('/api/vip-request/:id', async (req, res) => {
+  try {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    const requestId = req.params.id;
+    const { status } = req.body;
+    
+    // Check admin authentication
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Token không hợp lệ' });
+    }
+    
+    const token = authHeader.substring(7);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key');
+    
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ message: 'Chỉ admin mới có quyền thực hiện' });
+    }
+    
+    if (mongoose.connection.readyState === 1) {
+      const vipRequest = await VIPRequest.findById(requestId).populate('userId');
+      
+      if (!vipRequest) {
+        return res.status(404).json({ message: 'Không tìm thấy yêu cầu' });
+      }
+      
+      vipRequest.status = status;
+      await vipRequest.save();
+      
+      if (status === 'approved') {
+        // Update user VIP status
+        const user = await User.findById(vipRequest.userId._id);
+        user.isVip = true;
+        user.vipType = vipRequest.planType;
+        
+        // Set expiry date based on plan type
+        const expiryDate = new Date();
+        if (vipRequest.planType === 'week') {
+          expiryDate.setDate(expiryDate.getDate() + 7);
+        } else if (vipRequest.planType === 'basic') {
+          expiryDate.setMonth(expiryDate.getMonth() + 1);
+        } else if (vipRequest.planType === 'premium') {
+          expiryDate.setMonth(expiryDate.getMonth() + 1);
+        }
+        
+        user.vipExpiry = expiryDate;
+        await user.save();
+        
+        // Send notification to user
+        sendNotification(user._id.toString(), {
+          type: 'vip_approved',
+          content: `Tài khoản VIP ${vipRequest.planType} của bạn đã được kích hoạt`,
+          relatedId: user._id
+        });
+      }
+      
+      res.json({ message: 'Cập nhật trạng thái yêu cầu thành công' });
+    } else {
+      // Fallback mode
+      res.json({ message: 'Cập nhật trạng thái yêu cầu thành công (fallback mode)' });
+    }
+  } catch (error) {
+    console.error('Update VIP request error:', error);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
+// Send support message endpoint
+app.post('/api/support', async (req, res) => {
+  try {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    const { userId, message } = req.body;
+    
+    if (!userId || !message) {
+      return res.status(400).json({ message: 'Thiếu thông tin userId hoặc message' });
+    }
+    
+    if (mongoose.connection.readyState === 1) {
+      const user = await User.findById(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+      }
+      
+      // Send email to support
+      const mailOptions = {
+        from: process.env.EMAIL_USER || 'mailcheckctv@gmail.com',
+        to: 'mailcheckctv@gmail.com',
+        subject: 'Tin nhắn hỗ trợ mới - LoveConnect',
+        html: `
+          <h2>Tin nhắn hỗ trợ mới</h2>
+          <p><strong>Người dùng:</strong> ${user.username} (${user.email})</p>
+          <p><strong>Nội dung:</strong></p>
+          <p>${message}</p>
+          <p>Vui lòng phản hồi tin nhắn này trong thời gian sớm nhất.</p>
+        `
+      };
+      
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.error('Error sending email:', error);
+        } else {
+          console.log('Email sent:', info.response);
+        }
+      });
+      
+      res.json({ message: 'Gửi tin nhắn hỗ trợ thành công' });
+    } else {
+      // Fallback mode
+      res.json({ message: 'Gửi tin nhắn hỗ trợ thành công (fallback mode)' });
+    }
+  } catch (error) {
+    console.error('Support message error:', error);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
+// Upload image endpoint
+app.post('/api/upload', async (req, res) => {
+  try {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    const { image, type = 'avatar' } = req.body;
+    
+    if (!image) {
+      return res.status(400).json({ message: 'Không có dữ liệu ảnh' });
+    }
+    
+    // In a real application, you would upload to cloud storage like AWS S3, Cloudinary, etc.
+    // For this demo, we'll just return a mock URL
+    const imageUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${Date.now()}`;
+    
+    res.json({ url: imageUrl, message: 'Tải ảnh lên thành công' });
+  } catch (error) {
+    console.error('Upload image error:', error);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
 // ==================== STATIC ROUTES - FIX QUAN TRỌNG ====================
 // Route cho trang chính
 app.get('/', (req, res) => {
@@ -559,6 +1363,10 @@ app.get('/dang-ky', (req, res) => {
 
 app.get('/trang-chu', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'trang-chu.html'));
+});
+
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
 // Route cho tất cả các requests khác - serve file tĩnh
@@ -590,11 +1398,12 @@ app.use((err, req, res, next) => {
 });
 
 // ==================== START SERVER ====================
-app.listen(PORT, HOST, () => {
+server.listen(PORT, HOST, () => {
   console.log(`=== SERVER DATING APP ===`);
   console.log(`🚀 Server đang chạy trên ${HOST}:${PORT}`);
   console.log(`🌍 Môi trường: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 Kết nối MongoDB: ${mongoose.connection.readyState === 1 ? '✅ Thành công' : '❌ Thất bại'}`);
   console.log(`📁 Phục vụ file tĩnh từ: ${path.join(__dirname, 'public')}`);
+  console.log(`🔌 WebSocket server đang chạy`);
   console.log(`================================`);
 });
