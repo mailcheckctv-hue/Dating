@@ -3,10 +3,134 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Trang chủ - Dating App</title>
+  <title>Dating App - Trang chủ</title>
+  <style>
+    body { margin:0; font-family: Arial, sans-serif; display:flex; flex-direction:column; height:100vh; }
+    header { background:#ff4d6d; color:white; padding:10px; text-align:center; font-weight:bold; }
+    main { flex:1; display:flex; }
+    aside { width:25%; border-right:1px solid #ddd; overflow-y:auto; padding:10px; }
+    section { flex:1; display:flex; flex-direction:column; }
+    #messages { flex:1; padding:10px; overflow-y:auto; background:#f9f9f9; }
+    #chatForm { display:flex; padding:10px; border-top:1px solid #ddd; }
+    #chatForm input[type=text] { flex:1; padding:8px; border:1px solid #ccc; border-radius:5px; }
+    #chatForm button, #chatForm input[type=file] { margin-left:5px; }
+    .msg { margin:5px 0; padding:8px; border-radius:8px; max-width:70%; }
+    .me { background:#d1ffd6; align-self:flex-end; }
+    .other { background:white; align-self:flex-start; border:1px solid #ddd; }
+    .post { border:1px solid #ccc; border-radius:6px; margin:10px 0; padding:8px; background:white; }
+    .vip { border:2px solid gold; padding:10px; margin:10px 0; border-radius:8px; background:#fffbe6; }
+    .suggest { background:#eef; padding:8px; margin:5px 0; border-radius:6px; }
+  </style>
 </head>
 <body>
-  <h2>LoveConnect - Trang chủ</h2>
-  <div id="chat"></div>
+  <header>
+    LoveConnect - Trang chủ
+    <div id="adminNotice"></div>
+  </header>
+  <main>
+    <aside>
+      <h3>Gợi ý kết bạn</h3>
+      <div id="suggestions"></div>
+      <h3>Nâng cấp VIP</h3>
+      <div class="vip">
+        <p><b>VIP Week</b>: 50.000đ/tuần</p>
+        <p><b>Basic</b>: 199.000đ/tháng</p>
+        <p><b>Premium</b>: 499.000đ/tháng</p>
+        <p>Thanh toán VCB: 1059173949 - Nguyễn Thanh Duy</p>
+        <img src="qr.png" alt="QR Code" width="120"/>
+        <button onclick="confirmVip()">Đã thanh toán</button>
+      </div>
+    </aside>
+    <section>
+      <div id="posts"></div>
+      <div id="messages"></div>
+      <form id="chatForm">
+        <input type="text" id="chatInput" placeholder="Nhập tin nhắn..." />
+        <input type="file" id="fileInput" />
+        <button type="submit">Gửi</button>
+      </form>
+    </section>
+  </main>
+<script>
+const token = localStorage.getItem('token');
+let ws;
+
+function initWS(){
+  ws = new WebSocket(`ws://${location.host}/?token=${token}`);
+  ws.onmessage = e => {
+    const data = JSON.parse(e.data);
+    if(data.type==='message'){
+      addMessage(data.message);
+    }
+  }
+}
+
+function addMessage(msg){
+  const div = document.createElement('div');
+  div.className = 'msg ' + (msg.sender===getUserId()?'me':'other');
+  div.innerHTML = msg.content || '';
+
+  if(msg.image){
+    div.innerHTML += `<br><img src="${msg.image}" width="120"/>`;
+  }
+  if(msg.fileUrl){
+    div.innerHTML += `<br><a href="${msg.fileUrl}" target="_blank">📎 ${msg.fileName}</a>`;
+  }
+  document.getElementById('messages').appendChild(div);
+}
+
+function getUserId(){
+  const payload = JSON.parse(atob(token.split('.')[1]));
+  return payload.id;
+}
+
+document.getElementById('chatForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const text = document.getElementById('chatInput').value;
+  const file = document.getElementById('fileInput').files[0];
+  let fileUrl, fileName;
+  if(file){
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/upload',{method:'POST',headers:{Authorization:token},body:formData});
+    const data = await res.json();
+    fileUrl = data.fileUrl;
+    fileName = data.fileName;
+  }
+  ws.send(JSON.stringify({type:'message', receiverId:'someUserId', content:text, fileUrl, fileName}));
+  document.getElementById('chatInput').value='';
+  document.getElementById('fileInput').value=null;
+});
+
+async function loadSuggestions(){
+  const res = await fetch('/api/users/suggested',{headers:{Authorization:token}});
+  const users = await res.json();
+  const box = document.getElementById('suggestions');
+  box.innerHTML='';
+  users.forEach(u=>{
+    box.innerHTML += `<div class='suggest'>${u.username}</div>`;
+  });
+}
+async function loadPosts(){
+  const res = await fetch('/api/posts',{headers:{Authorization:token}});
+  const posts = await res.json();
+  const box = document.getElementById('posts');
+  box.innerHTML = posts.map(p=>
+    `<div class='post'><b>${p.userId}</b><br>${p.content||''}
+      ${p.image?`<br><img src="${p.image}" width="150"/>`:''}
+      ${p.video?`<br><video src="${p.video}" controls width="200"></video>`:''}
+    </div>`
+  ).join('');
+}
+
+function confirmVip(){
+  alert('Thông tin VIP đã gửi đến admin. Bạn sẽ được kích hoạt sau khi duyệt.');
+  fetch('/api/upgrade-vip',{method:'POST',headers:{Authorization:token,'Content-Type':'application/json'},body:JSON.stringify({package:'VIP Week'})});
+}
+
+initWS();
+loadSuggestions();
+loadPosts();
+</script>
 </body>
 </html>
