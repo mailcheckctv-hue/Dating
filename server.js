@@ -6,8 +6,12 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const WebSocket = require('ws');
+const http = require('http');
 
 const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 const PORT = process.env.PORT || 10000;
 const HOST = '0.0.0.0';
 
@@ -66,31 +70,176 @@ const UserSchema = new mongoose.Schema({
     age: Number,
     gender: { type: String, enum: ['Nam', 'Nữ', 'Khác'] },
     bio: String,
+    location: String,
+    income: String,
     interests: [String],
     avatar: String
   },
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  matches: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  isVip: { type: Boolean, default: false },
+  vipExpiration: Date,
+  createdAt: { type: Date, default: Date.now }
+});
+
+const PostSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  content: String,
+  image: String,
+  video: String,
+  likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  comments: [{
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    content: String,
+    createdAt: { type: Date, default: Date.now }
+  }],
+  createdAt: { type: Date, default: Date.now }
+});
+
+const MessageSchema = new mongoose.Schema({
+  sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  content: String,
+  isRead: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
 
 const User = mongoose.model('User', UserSchema);
+const Post = mongoose.model('Post', PostSchema);
+const Message = mongoose.model('Message', MessageSchema);
 
-// ==================== FALLBACK DATA ====================
-let users = [];
-let nextId = 1;
+// ==================== WEBSOCKET FOR REAL-TIME COMMUNICATION ====================
+const activeUsers = new Map();
 
-// ==================== RESET PASSWORD HANDLING ====================
-const resetCodes = new Map();
+wss.on('connection', (ws, req) => {
+  console.log('🔗 New WebSocket connection');
+  
+  ws.on('message', (data) => {
+    try {
+      const message = JSON.parse(data);
+      
+      switch (message.type) {
+        case 'auth':
+          // Lưu thông tin user với WebSocket connection
+          activeUsers.set(message.userId, ws);
+          ws.userId = message.userId;
+          console.log(`User ${message.userId} authenticated via WebSocket`);
+          break;
+          
+        case 'message':
+          // Xử lý tin nhắn real-time
+          handleRealTimeMessage(message, ws);
+          break;
+          
+        case 'typing':
+          // Xử lý thông báo đang nhập
+          handleTypingIndicator(message, ws);
+          break;
+          
+        case 'online':
+          // Cập nhật trạng thái online
+          broadcastOnlineStatus(message.userId, true);
+          break;
+      }
+    } catch (error) {
+      console.error('WebSocket message error:', error);
+    }
+  });
+  
+  ws.on('close', () => {
+    if (ws.userId) {
+      activeUsers.delete(ws.userId);
+      broadcastOnlineStatus(ws.userId, false);
+      console.log(`User ${ws.userId} disconnected from WebSocket`);
+    }
+  });
+});
 
-function generateResetCode() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+function handleRealTimeMessage(message, ws) {
+  // Lưu tin nhắn vào database
+  const newMessage = new Message({
+    sender: message.senderId,
+    receiver: message.receiverId,
+    content: message.content
+  });
+  
+  newMessage.save()
+    .then(savedMessage => {
+      // Gửi tin nhắn đến người nhận nếu online
+      const receiverWs = activeUsers.get(message.receiverId);
+      if (receiverWs) {
+        receiverWs.send(JSON.stringify({
+          type: 'message',
+          message: {
+            id: savedMessage._id,
+            sender: message.senderId,
+            content: message.content,
+            createdAt: savedMessage.createdAt
+          }
+        }));
+      }
+      
+      // Xác nhận cho người gửi
+      ws.send(JSON.stringify({
+        type: 'message_sent',
+        messageId: savedMessage._id
+      }));
+    })
+    .catch(error => {
+      console.error('Error saving message:', error);
+    });
 }
 
-function sendResetCode(email, code) {
-  console.log(`Mã xác nhận cho ${email}: ${code}`);
-  // Trong thực tế, bạn sẽ tích hợp service gửi email ở đây
-  return true;
+function handleTypingIndicator(message, ws) {
+  const receiverWs = activeUsers.get(message.receiverId);
+  if (receiverWs) {
+    receiverWs.send(JSON.stringify({
+      type: 'typing',
+      senderId: message.senderId,
+      isTyping: message.isTyping
+    }));
+  }
 }
+
+function broadcastOnlineStatus(userId, isOnline) {
+  // Gửi thông báo trạng thái online đến tất cả bạn bè
+  User.findById(userId)
+    .then(user => {
+      if (user && user.friends.length > 0) {
+        user.friends.forEach(friendId => {
+          const friendWs = activeUsers.get(friendId.toString());
+          if (friendWs) {
+            friendWs.send(JSON.stringify({
+              type: 'online_status',
+              userId: userId,
+              isOnline: isOnline
+            }));
+          }
+        });
+      }
+    })
+    .catch(error => {
+      console.error('Error broadcasting online status:', error);
+    });
+}
+
+// ==================== AUTHENTICATION MIDDLEWARE ====================
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    return res.status(401).json({ message: 'Token truy cập không tồn tại' });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key', (err, user) => {
+    if (err) {
+      return res.status(403).json({ message: 'Token không hợp lệ' });
+    }
+    req.user = user;
+    next();
+  });
+};
 
 // ==================== API ROUTES ====================
 
@@ -129,8 +278,6 @@ app.post('/api/register', async (req, res) => {
     let existingUser;
     if (mongoose.connection.readyState === 1) {
       existingUser = await User.findOne({ $or: [{ username }, { email }] });
-    } else {
-      existingUser = users.find(u => u.username === username || u.email === email);
     }
     
     if (existingUser) {
@@ -146,7 +293,8 @@ app.post('/api/register', async (req, res) => {
         email,
         password: hashedPassword,
         profile: profile || {},
-        friends: []
+        friends: [],
+        matches: []
       });
       
       await newUser.save();
@@ -168,34 +316,7 @@ app.post('/api/register', async (req, res) => {
         }
       });
     } else {
-      const newUser = {
-        id: nextId++,
-        username,
-        email,
-        password: hashedPassword,
-        profile: profile || {},
-        friends: [],
-        createdAt: new Date()
-      };
-      
-      users.push(newUser);
-      
-      const token = jwt.sign(
-        { userId: newUser.id }, 
-        process.env.JWT_SECRET || 'fallback_secret_key', 
-        { expiresIn: '24h' }
-      );
-      
-      res.status(201).json({ 
-        message: 'Đăng ký thành công (fallback mode)',
-        token,
-        user: {
-          id: newUser.id,
-          username: newUser.username,
-          email: newUser.email,
-          profile: newUser.profile
-        }
-      });
+      res.status(500).json({ message: 'Không thể kết nối đến database' });
     }
   } catch (error) {
     console.error('Register error:', error);
@@ -221,11 +342,6 @@ app.post('/api/login', async (req, res) => {
       if (user && !(await bcrypt.compare(password, user.password))) {
         user = null;
       }
-    } else {
-      user = users.find(u => u.username === username || u.email === username);
-      if (user && !(await bcrypt.compare(password, user.password))) {
-        user = null;
-      }
     }
     
     if (!user) {
@@ -233,7 +349,7 @@ app.post('/api/login', async (req, res) => {
     }
     
     const token = jwt.sign(
-      { userId: mongoose.connection.readyState === 1 ? user._id : user.id }, 
+      { userId: user._id }, 
       process.env.JWT_SECRET || 'fallback_secret_key', 
       { expiresIn: '24h' }
     );
@@ -241,10 +357,13 @@ app.post('/api/login', async (req, res) => {
     res.json({ 
       token, 
       user: { 
-        id: mongoose.connection.readyState === 1 ? user._id : user.id, 
+        id: user._id, 
         username: user.username,
         email: user.email,
-        profile: user.profile
+        profile: user.profile,
+        isVip: user.isVip,
+        friends: user.friends,
+        matches: user.matches
       },
       message: 'Đăng nhập thành công'
     });
@@ -255,262 +374,317 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Forgot password endpoint
-app.post('/api/forgot-password', async (req, res) => {
+// Get current user profile
+app.get('/api/profile', authenticateToken, async (req, res) => {
   try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    
-    const { email } = req.body;
-    
-    if (!email) {
-      return res.status(400).json({ message: 'Vui lòng cung cấp email' });
-    }
-    
-    let user;
-    if (mongoose.connection.readyState === 1) {
-      user = await User.findOne({ email });
-    } else {
-      user = users.find(u => u.email === email);
-    }
+    const user = await User.findById(req.user.userId)
+      .populate('friends', 'username profile')
+      .populate('matches', 'username profile');
     
     if (!user) {
-      return res.status(404).json({ message: 'Email không tồn tại trong hệ thống' });
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
     }
     
-    // Tạo mã xác nhận
-    const resetCode = generateResetCode();
-    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 phút
-    
-    // Lưu mã xác nhận
-    resetCodes.set(email, { code: resetCode, expiresAt });
-    
-    // Gửi mã (mô phỏng)
-    const sent = sendResetCode(email, resetCode);
-    
-    if (sent) {
-      res.json({ 
-        message: 'Mã xác nhận đã được gửi đến email của bạn',
-        expiresIn: '15 phút'
-      });
-    } else {
-      res.status(500).json({ message: 'Không thể gửi mã xác nhận' });
-    }
+    res.json({
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      profile: user.profile,
+      isVip: user.isVip,
+      friends: user.friends,
+      matches: user.matches,
+      createdAt: user.createdAt
+    });
   } catch (error) {
-    console.error('Forgot password error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    console.error('Profile error:', error);
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 });
 
-// Verify reset code endpoint
-app.post('/api/verify-reset-code', async (req, res) => {
+// Update user profile
+app.put('/api/profile', authenticateToken, async (req, res) => {
   try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    const { profile } = req.body;
     
-    const { email, code } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      { $set: { profile } },
+      { new: true }
+    );
     
-    if (!email || !code) {
-      return res.status(400).json({ message: 'Vui lòng cung cấp email và mã xác nhận' });
+    if (!user) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
     }
     
-    const resetData = resetCodes.get(email);
-    
-    if (!resetData) {
-      return res.status(400).json({ message: 'Mã xác nhận không hợp lệ hoặc đã hết hạn' });
-    }
-    
-    if (resetData.expiresAt < Date.now()) {
-      resetCodes.delete(email);
-      return res.status(400).json({ message: 'Mã xác nhận đã hết hạn' });
-    }
-    
-    if (resetData.code !== code) {
-      return res.status(400).json({ message: 'Mã xác nhận không đúng' });
-    }
-    
-    // Mã hợp lệ
-    res.json({ message: 'Mã xác nhận hợp lệ' });
+    res.json({
+      message: 'Cập nhật thông tin thành công',
+      profile: user.profile
+    });
   } catch (error) {
-    console.error('Verify code error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    console.error('Update profile error:', error);
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 });
 
-// Reset password endpoint
-app.post('/api/reset-password', async (req, res) => {
+// Get suggested users
+app.get('/api/users/suggested', authenticateToken, async (req, res) => {
   try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    const currentUser = await User.findById(req.user.userId);
     
-    const { email, password } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Vui lòng cung cấp email và mật khẩu mới' });
-    }
-    
-    // Kiểm tra xem email có mã reset hợp lệ không
-    const resetData = resetCodes.get(email);
-    if (!resetData) {
-      return res.status(400).json({ message: 'Vui lòng yêu cầu mã xác nhận trước' });
-    }
-    
-    // Xóa mã reset đã sử dụng
-    resetCodes.delete(email);
-    
-    // Mã hóa mật khẩu mới
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-    
-    // Cập nhật mật khẩu trong database
-    if (mongoose.connection.readyState === 1) {
-      const result = await User.updateOne(
-        { email },
-        { $set: { password: hashedPassword } }
-      );
-      
-      if (result.modifiedCount === 0) {
-        return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+    // Lấy người dùng không phải là bạn bè và không phải là chính mình
+    const suggestedUsers = await User.find({
+      _id: { 
+        $ne: currentUser._id, 
+        $nin: currentUser.friends 
       }
-    } else {
-      const userIndex = users.findIndex(u => u.email === email);
-      if (userIndex !== -1) {
-        users[userIndex].password = hashedPassword;
-      } else {
-        return res.status(404).json({ message: 'Không tìm thấy người dùng' });
-      }
-    }
+    })
+    .limit(10)
+    .select('username profile');
     
-    res.json({ message: 'Đặt lại mật khẩu thành công' });
+    res.json(suggestedUsers);
   } catch (error) {
-    console.error('Reset password error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    console.error('Suggested users error:', error);
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 });
 
-// Get all users endpoint
-app.get('/api/users', async (req, res) => {
+// Get user by ID
+app.get('/api/users/:id', authenticateToken, async (req, res) => {
   try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    const user = await User.findById(req.params.id)
+      .select('username profile isVip');
     
-    if (mongoose.connection.readyState === 1) {
-      const users = await User.find({}, { password: 0 });
-      res.json(users);
-    } else {
-      // Trả về dữ liệu giả nếu không kết nối được MongoDB
-      const mockUsers = [
-        { id: 1, username: 'Anh', age: 25, gender: 'female', income: '10-20', location: 'hanoi', isVip: true },
-        { id: 2, username: 'Bình', age: 28, gender: 'male', income: '20-30', location: 'hcm', isVip: false },
-        { id: 3, username: 'Chi', age: 23, gender: 'female', income: '5-10', location: 'danang', isVip: false },
-        { id: 4, username: 'Dũng', age: 30, gender: 'male', income: '30+', location: 'hanoi', isVip: true },
-        { id: 5, username: 'Giang', age: 26, gender: 'female', income: '10-20', location: 'hcm', isVip: false },
-        { id: 6, username: 'Huy', age: 32, gender: 'male', income: '20-30', location: 'danang', isVip: true },
-        { id: 7, username: 'Linh', age: 24, gender: 'female', income: '5-10', location: 'hanoi', isVip: false },
-        { id: 8, username: 'Minh', age: 29, gender: 'male', income: '30+', location: 'hcm', isVip: true }
-      ];
-      res.json(mockUsers);
+    if (!user) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
     }
-  } catch (error) {
-    console.error('Get users error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.status(500).json({ message: 'Lỗi server', error: error.message });
-  }
-});
-
-// Get user by ID endpoint
-app.get('/api/user/:id', async (req, res) => {
-  try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
     
-    const userId = req.params.id;
-    
-    if (mongoose.connection.readyState === 1) {
-      const user = await User.findById(userId, { password: 0 });
-      if (!user) {
-        return res.status(404).json({ message: 'Không tìm thấy người dùng' });
-      }
-      res.json(user);
-    } else {
-      // Trả về dữ liệu giả nếu không kết nối được MongoDB
-      const mockUser = {
-        id: userId,
-        username: 'Người dùng ' + userId,
-        email: `user${userId}@example.com`,
-        profile: {
-          age: Math.floor(Math.random() * 15) + 20,
-          gender: ['male', 'female'][Math.floor(Math.random() * 2)],
-          bio: 'Rất vui được làm quen!',
-          interests: ['Du lịch', 'Âm nhạc', 'Thể thao']
-        },
-        friendsCount: Math.floor(Math.random() * 50),
-        matchesCount: Math.floor(Math.random() * 20),
-        postsCount: Math.floor(Math.random() * 10)
-      };
-      res.json(mockUser);
-    }
+    res.json(user);
   } catch (error) {
     console.error('Get user error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 });
 
-// Get user friends endpoint
-app.get('/api/user/:id/friends', async (req, res) => {
+// Add friend
+app.post('/api/friends/:userId', authenticateToken, async (req, res) => {
   try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    const { userId } = req.params;
     
-    const userId = req.params.id;
-    
-    if (mongoose.connection.readyState === 1) {
-      const user = await User.findById(userId).populate('friends', 'username profileImage');
-      if (!user) {
-        return res.status(404).json({ message: 'Không tìm thấy người dùng' });
-      }
-      res.json(user.friends);
-    } else {
-      // Trả về dữ liệu giả nếu không kết nối được MongoDB
-      const mockFriends = [
-        { id: 1, username: 'Anh', profileImage: null },
-        { id: 2, username: 'Bình', profileImage: null },
-        { id: 3, username: 'Chi', profileImage: null },
-        { id: 4, username: 'Dũng', profileImage: null },
-        { id: 5, username: 'Giang', profileImage: null }
-      ];
-      res.json(mockFriends);
+    // Kiểm tra xem người dùng có tồn tại không
+    const userToAdd = await User.findById(userId);
+    if (!userToAdd) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
     }
+    
+    // Thêm vào danh sách bạn bè
+    await User.findByIdAndUpdate(
+      req.user.userId,
+      { $addToSet: { friends: userId } }
+    );
+    
+    res.json({ message: 'Đã thêm bạn thành công' });
+  } catch (error) {
+    console.error('Add friend error:', error);
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
+// Get friends list
+app.get('/api/friends', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId)
+      .populate('friends', 'username profile');
+    
+    if (!user) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
+    }
+    
+    res.json(user.friends);
   } catch (error) {
     console.error('Get friends error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 });
 
-// Get matching users endpoint
-app.get('/api/matching-users', async (req, res) => {
+// Like a user (match)
+app.post('/api/like/:userId', authenticateToken, async (req, res) => {
   try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    const { userId } = req.params;
     
-    if (mongoose.connection.readyState === 1) {
-      const users = await User.find({}, { password: 0 }).limit(8);
-      res.json(users);
-    } else {
-      // Trả về dữ liệu giả nếu không kết nối được MongoDB
-      const mockUsers = [
-        { id: 1, username: 'Anh', age: 25, gender: 'female', income: '10-20', location: 'hanoi', bio: 'Yêu thích du lịch và ẩm thực' },
-        { id: 2, username: 'Bình', age: 28, gender: 'male', income: '20-30', location: 'hcm', bio: 'Đam mê thể thao và âm nhạc' },
-        { id: 3, username: 'Chi', age: 23, gender: 'female', income: '5-10', location: 'danang', bio: 'Thích đọc sách và xem phim' },
-        { id: 4, username: 'Dũng', age: 30, gender: 'male', income: '30+', location: 'hanoi', bio: 'Công nghệ và đầu tư là đam mê' },
-        { id: 5, username: 'Giang', age: 26, gender: 'female', income: '10-20', location: 'hcm', bio: 'Yêu động vật và thiên nhiên' },
-        { id: 6, username: 'Huy', age: 32, gender: 'male', income: '20-30', location: 'danang', bio: 'Thích nấu ăn và khám phá' },
-        { id: 7, username: 'Linh', age: 24, gender: 'female', income: '5-10', location: 'hanoi', bio: 'Đam mê thời trang và làm đẹp' },
-        { id: 8, username: 'Minh', age: 29, gender: 'male', income: '30+', location: 'hcm', bio: 'Yêu xe hơi và công nghệ' }
-      ];
-      res.json(mockUsers);
+    // Kiểm tra xem người dùng có tồn tại không
+    const userToLike = await User.findById(userId);
+    if (!userToLike) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
     }
+    
+    // Thêm vào danh sách matches
+    await User.findByIdAndUpdate(
+      req.user.userId,
+      { $addToSet: { matches: userId } }
+    );
+    
+    // Kiểm tra xem có match không (nếu người kia cũng like mình)
+    const isMatch = userToLike.matches.includes(req.user.userId);
+    
+    res.json({ 
+      message: 'Đã thích thành công',
+      isMatch: isMatch
+    });
   } catch (error) {
-    console.error('Get matching users error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    console.error('Like user error:', error);
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
+// Get posts
+app.get('/api/posts', authenticateToken, async (req, res) => {
+  try {
+    const posts = await Post.find()
+      .populate('userId', 'username profile')
+      .sort({ createdAt: -1 })
+      .limit(20);
+    
+    res.json(posts);
+  } catch (error) {
+    console.error('Get posts error:', error);
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
+// Create post
+app.post('/api/posts', authenticateToken, async (req, res) => {
+  try {
+    const { content, image, video } = req.body;
+    
+    const newPost = new Post({
+      userId: req.user.userId,
+      content,
+      image,
+      video,
+      likes: [],
+      comments: []
+    });
+    
+    await newPost.save();
+    
+    // Populate user info before sending response
+    await newPost.populate('userId', 'username profile');
+    
+    res.status(201).json({
+      message: 'Đăng bài thành công',
+      post: newPost
+    });
+  } catch (error) {
+    console.error('Create post error:', error);
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
+// Like a post
+app.post('/api/posts/:postId/like', authenticateToken, async (req, res) => {
+  try {
+    const { postId } = req.params;
+    
+    const post = await Post.findByIdAndUpdate(
+      postId,
+      { $addToSet: { likes: req.user.userId } },
+      { new: true }
+    );
+    
+    if (!post) {
+      return res.status(404).json({ message: 'Bài viết không tồn tại' });
+    }
+    
+    res.json({ message: 'Đã thích bài viết' });
+  } catch (error) {
+    console.error('Like post error:', error);
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
+// Get messages between users
+app.get('/api/messages/:userId', authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const messages = await Message.find({
+      $or: [
+        { sender: req.user.userId, receiver: userId },
+        { sender: userId, receiver: req.user.userId }
+      ]
+    })
+    .populate('sender', 'username profile')
+    .populate('receiver', 'username profile')
+    .sort({ createdAt: 1 });
+    
+    res.json(messages);
+  } catch (error) {
+    console.error('Get messages error:', error);
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
+// Send message
+app.post('/api/messages', authenticateToken, async (req, res) => {
+  try {
+    const { receiverId, content } = req.body;
+    
+    const newMessage = new Message({
+      sender: req.user.userId,
+      receiver: receiverId,
+      content
+    });
+    
+    await newMessage.save();
+    
+    // Populate sender info before sending response
+    await newMessage.populate('sender', 'username profile');
+    
+    res.status(201).json({
+      message: 'Tin nhắn đã được gửi',
+      message: newMessage
+    });
+  } catch (error) {
+    console.error('Send message error:', error);
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
+// Upgrade to VIP
+app.post('/api/upgrade-vip', authenticateToken, async (req, res) => {
+  try {
+    const { plan } = req.body;
+    
+    let expirationDate = new Date();
+    
+    switch (plan) {
+      case 'week':
+        expirationDate.setDate(expirationDate.getDate() + 7);
+        break;
+      case 'basic':
+      case 'premium':
+        expirationDate.setMonth(expirationDate.getMonth() + 1);
+        break;
+      default:
+        return res.status(400).json({ message: 'Gói không hợp lệ' });
+    }
+    
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      { 
+        isVip: true,
+        vipExpiration: expirationDate
+      },
+      { new: true }
+    );
+    
+    res.json({
+      message: 'Nâng cấp VIP thành công',
+      isVip: user.isVip,
+      vipExpiration: user.vipExpiration
+    });
+  } catch (error) {
+    console.error('Upgrade VIP error:', error);
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 });
@@ -558,11 +732,12 @@ app.use((err, req, res, next) => {
 });
 
 // ==================== START SERVER ====================
-app.listen(PORT, HOST, () => {
+server.listen(PORT, HOST, () => {
   console.log(`=== SERVER DATING APP ===`);
   console.log(`🚀 Server đang chạy trên ${HOST}:${PORT}`);
   console.log(`🌍 Môi trường: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 Kết nối MongoDB: ${mongoose.connection.readyState === 1 ? '✅ Thành công' : '❌ Thất bại'}`);
   console.log(`📁 Phục vụ file tĩnh từ: ${path.join(__dirname, 'public')}`);
+  console.log(`🔗 WebSocket server ready for connections`);
   console.log(`================================`);
 });
