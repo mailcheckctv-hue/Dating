@@ -1,47 +1,17 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Đăng nhập - Dating App</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - Dating App</title>
 </head>
 <body>
   <h2>Đăng nhập</h2>
   <form id="loginForm">
-    <input id="username" placeholder="Tên đăng nhập hoặc email" required><br>
-    <input type="password" id="password" placeholder="Mật khẩu" required><br>
+    <input type="text" placeholder="Username" required />
+    <input type="password" placeholder="Password" required />
     <button type="submit">Đăng nhập</button>
   </form>
-
-  <p id="msg"></p>
-
-  <script>
-    const API_BASE_URL = window.location.origin;
-
-    document.getElementById("loginForm").addEventListener("submit", async e => {
-      e.preventDefault();
-      const username = document.getElementById("username").value;
-      const password = document.getElementById("password").value;
-
-      try {
-        const res = await fetch(API_BASE_URL + "/api/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password })
-        });
-
-        const data = await res.json();
-        if (res.ok) {
-          localStorage.setItem("token", data.token);
-          localStorage.setItem("user", JSON.stringify(data.user));
-          window.location.href = "trang-chu.html";
-        } else {
-          document.getElementById("msg").textContent = data.message;
-        }
-      } catch (err) {
-        document.getElementById("msg").textContent = "Lỗi server!";
-      }
-    });
-  </script>
+  <p><a href="#">Đăng ký</a> | <a href="#">Quên mật khẩu?</a></p>
 </body>
 </html>
