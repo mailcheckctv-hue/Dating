@@ -6,7 +6,6 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -38,12 +37,12 @@ app.use(cors({
 
 app.options('*', cors());
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // SERVING STATIC FILES - FIX QUAN TRỌNG
 app.use(express.static(path.join(__dirname, 'public'), {
-  index: 'login.html',
+  index: 'login.html', // Mặc định là login.html
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html')) {
       res.setHeader('Content-Type', 'text/html; charset=UTF-8');
@@ -68,56 +67,17 @@ const UserSchema = new mongoose.Schema({
     gender: { type: String, enum: ['Nam', 'Nữ', 'Khác'] },
     bio: String,
     interests: [String],
-    avatar: String,
-    location: String,
-    income: String
+    avatar: String
   },
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  matches: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  isVip: { type: Boolean, default: false },
-  vipType: { type: String, enum: ['none', 'week', 'basic', 'premium'], default: 'none' },
-  vipExpiry: Date,
-  createdAt: { type: Date, default: Date.now }
-});
-
-const PostSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  content: String,
-  image: String,
-  video: String,
-  likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  comments: [{
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    content: String,
-    createdAt: { type: Date, default: Date.now }
-  }],
-  createdAt: { type: Date, default: Date.now }
-});
-
-const MessageSchema = new mongoose.Schema({
-  sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  content: { type: String, required: true },
-  isRead: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
 
 const User = mongoose.model('User', UserSchema);
-const Post = mongoose.model('Post', PostSchema);
-const Message = mongoose.model('Message', MessageSchema);
 
 // ==================== FALLBACK DATA ====================
 let users = [];
 let nextId = 1;
-
-// ==================== EMAIL CONFIGURATION ====================
-const transporter = nodemailer.createTransporter({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER || 'mailcheckctv@gmail.com',
-    pass: process.env.EMAIL_PASS || 'your_email_password_here'
-  }
-});
 
 // ==================== RESET PASSWORD HANDLING ====================
 const resetCodes = new Map();
@@ -128,29 +88,7 @@ function generateResetCode() {
 
 function sendResetCode(email, code) {
   console.log(`Mã xác nhận cho ${email}: ${code}`);
-  
-  // Gửi email thật nếu có cấu hình
-  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'Mã xác nhận đặt lại mật khẩu - LoveConnect',
-      html: `
-        <h2>Mã xác nhận đặt lại mật khẩu</h2>
-        <p>Mã xác nhận của bạn là: <strong>${code}</strong></p>
-        <p>Mã này có hiệu lực trong 15 phút.</p>
-      `
-    };
-    
-    transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.error('Lỗi gửi email:', error);
-      } else {
-        console.log('Email đã gửi:', info.response);
-      }
-    });
-  }
-  
+  // Trong thực tế, bạn sẽ tích hợp service gửi email ở đây
   return true;
 }
 
@@ -175,32 +113,6 @@ app.get('/api/test', (req, res) => {
     message: 'Kết nối thành công! Server đang hoạt động.',
     timestamp: new Date().toISOString()
   });
-});
-
-// Verify token endpoint
-app.get('/api/verify-token', async (req, res) => {
-  try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ valid: false, message: 'Token không hợp lệ' });
-    }
-    
-    const token = authHeader.substring(7);
-    
-    jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key', (err, decoded) => {
-      if (err) {
-        return res.status(401).json({ valid: false, message: 'Token không hợp lệ hoặc đã hết hạn' });
-      }
-      
-      res.json({ valid: true, userId: decoded.userId });
-    });
-  } catch (error) {
-    console.error('Verify token error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.status(500).json({ valid: false, message: 'Lỗi server', error: error.message });
-  }
 });
 
 // Register endpoint
@@ -234,8 +146,7 @@ app.post('/api/register', async (req, res) => {
         email,
         password: hashedPassword,
         profile: profile || {},
-        friends: [],
-        matches: []
+        friends: []
       });
       
       await newUser.save();
@@ -253,8 +164,7 @@ app.post('/api/register', async (req, res) => {
           id: newUser._id,
           username: newUser.username,
           email: newUser.email,
-          profile: newUser.profile,
-          isVip: newUser.isVip
+          profile: newUser.profile
         }
       });
     } else {
@@ -265,8 +175,6 @@ app.post('/api/register', async (req, res) => {
         password: hashedPassword,
         profile: profile || {},
         friends: [],
-        matches: [],
-        isVip: false,
         createdAt: new Date()
       };
       
@@ -285,8 +193,7 @@ app.post('/api/register', async (req, res) => {
           id: newUser.id,
           username: newUser.username,
           email: newUser.email,
-          profile: newUser.profile,
-          isVip: newUser.isVip
+          profile: newUser.profile
         }
       });
     }
@@ -337,51 +244,12 @@ app.post('/api/login', async (req, res) => {
         id: mongoose.connection.readyState === 1 ? user._id : user.id, 
         username: user.username,
         email: user.email,
-        profile: user.profile,
-        isVip: user.isVip
+        profile: user.profile
       },
       message: 'Đăng nhập thành công'
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.status(500).json({ message: 'Lỗi server', error: error.message });
-  }
-});
-
-// Admin login endpoint
-app.post('/api/admin/login', async (req, res) => {
-  try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    
-    const { username, password } = req.body;
-    
-    if (!username || !password) {
-      return res.status(400).json({ message: 'Vui lòng điền đầy đủ thông tin' });
-    }
-    
-    // Check admin credentials
-    if (username === 'Admin_CFC' && password === '687969') {
-      const token = jwt.sign(
-        { userId: 'admin', isAdmin: true }, 
-        process.env.JWT_SECRET || 'fallback_secret_key', 
-        { expiresIn: '24h' }
-      );
-      
-      res.json({ 
-        token, 
-        user: { 
-          id: 'admin',
-          username: 'Admin_CFC',
-          isAdmin: true
-        },
-        message: 'Đăng nhập admin thành công'
-      });
-    } else {
-      res.status(401).json({ message: 'Thông tin đăng nhập admin không đúng' });
-    }
-  } catch (error) {
-    console.error('Admin login error:', error);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
@@ -409,11 +277,14 @@ app.post('/api/forgot-password', async (req, res) => {
       return res.status(404).json({ message: 'Email không tồn tại trong hệ thống' });
     }
     
+    // Tạo mã xác nhận
     const resetCode = generateResetCode();
-    const expiresAt = Date.now() + 15 * 60 * 1000;
+    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 phút
     
+    // Lưu mã xác nhận
     resetCodes.set(email, { code: resetCode, expiresAt });
     
+    // Gửi mã (mô phỏng)
     const sent = sendResetCode(email, resetCode);
     
     if (sent) {
@@ -457,6 +328,7 @@ app.post('/api/verify-reset-code', async (req, res) => {
       return res.status(400).json({ message: 'Mã xác nhận không đúng' });
     }
     
+    // Mã hợp lệ
     res.json({ message: 'Mã xác nhận hợp lệ' });
   } catch (error) {
     console.error('Verify code error:', error);
@@ -476,16 +348,20 @@ app.post('/api/reset-password', async (req, res) => {
       return res.status(400).json({ message: 'Vui lòng cung cấp email và mật khẩu mới' });
     }
     
+    // Kiểm tra xem email có mã reset hợp lệ không
     const resetData = resetCodes.get(email);
     if (!resetData) {
       return res.status(400).json({ message: 'Vui lòng yêu cầu mã xác nhận trước' });
     }
     
+    // Xóa mã reset đã sử dụng
     resetCodes.delete(email);
     
+    // Mã hóa mật khẩu mới
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     
+    // Cập nhật mật khẩu trong database
     if (mongoose.connection.readyState === 1) {
       const result = await User.updateOne(
         { email },
@@ -521,6 +397,7 @@ app.get('/api/users', async (req, res) => {
       const users = await User.find({}, { password: 0 });
       res.json(users);
     } else {
+      // Trả về dữ liệu giả nếu không kết nối được MongoDB
       const mockUsers = [
         { id: 1, username: 'Anh', age: 25, gender: 'female', income: '10-20', location: 'hanoi', isVip: true },
         { id: 2, username: 'Bình', age: 28, gender: 'male', income: '20-30', location: 'hcm', isVip: false },
@@ -552,18 +429,9 @@ app.get('/api/user/:id', async (req, res) => {
       if (!user) {
         return res.status(404).json({ message: 'Không tìm thấy người dùng' });
       }
-      
-      const friendsCount = user.friends ? user.friends.length : 0;
-      const matchesCount = user.matches ? user.matches.length : 0;
-      const postsCount = await Post.countDocuments({ userId: user._id });
-      
-      res.json({
-        ...user.toObject(),
-        friendsCount,
-        matchesCount,
-        postsCount
-      });
+      res.json(user);
     } else {
+      // Trả về dữ liệu giả nếu không kết nối được MongoDB
       const mockUser = {
         id: userId,
         username: 'Người dùng ' + userId,
@@ -572,11 +440,8 @@ app.get('/api/user/:id', async (req, res) => {
           age: Math.floor(Math.random() * 15) + 20,
           gender: ['male', 'female'][Math.floor(Math.random() * 2)],
           bio: 'Rất vui được làm quen!',
-          interests: ['Du lịch', 'Âm nhạc', 'Thể thao'],
-          location: ['hanoi', 'hcm', 'danang'][Math.floor(Math.random() * 3)],
-          income: ['0-5', '5-10', '10-20', '20-30', '30+'][Math.floor(Math.random() * 5)]
+          interests: ['Du lịch', 'Âm nhạc', 'Thể thao']
         },
-        isVip: Math.random() > 0.5,
         friendsCount: Math.floor(Math.random() * 50),
         matchesCount: Math.floor(Math.random() * 20),
         postsCount: Math.floor(Math.random() * 10)
@@ -590,54 +455,6 @@ app.get('/api/user/:id', async (req, res) => {
   }
 });
 
-// Update user profile endpoint
-app.put('/api/user/:id', async (req, res) => {
-  try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    
-    const userId = req.params.id;
-    const updateData = req.body;
-    
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Token không hợp lệ' });
-    }
-    
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key');
-    
-    if (decoded.userId !== userId && !decoded.isAdmin) {
-      return res.status(403).json({ message: 'Không có quyền cập nhật thông tin người dùng này' });
-    }
-    
-    if (mongoose.connection.readyState === 1) {
-      const user = await User.findByIdAndUpdate(
-        userId,
-        { $set: updateData },
-        { new: true, select: { password: 0 } }
-      );
-      
-      if (!user) {
-        return res.status(404).json({ message: 'Không tìm thấy người dùng' });
-      }
-      
-      res.json({ message: 'Cập nhật thông tin thành công', user });
-    } else {
-      const userIndex = users.findIndex(u => u.id == userId);
-      if (userIndex === -1) {
-        return res.status(404).json({ message: 'Không tìm thấy người dùng' });
-      }
-      
-      users[userIndex] = { ...users[userIndex], ...updateData };
-      res.json({ message: 'Cập nhật thông tin thành công (fallback mode)', user: users[userIndex] });
-    }
-  } catch (error) {
-    console.error('Update user error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.status(500).json({ message: 'Lỗi server', error: error.message });
-  }
-});
-
 // Get user friends endpoint
 app.get('/api/user/:id/friends', async (req, res) => {
   try {
@@ -646,18 +463,19 @@ app.get('/api/user/:id/friends', async (req, res) => {
     const userId = req.params.id;
     
     if (mongoose.connection.readyState === 1) {
-      const user = await User.findById(userId).populate('friends', 'username profile avatar');
+      const user = await User.findById(userId).populate('friends', 'username profileImage');
       if (!user) {
         return res.status(404).json({ message: 'Không tìm thấy người dùng' });
       }
       res.json(user.friends);
     } else {
+      // Trả về dữ liệu giả nếu không kết nối được MongoDB
       const mockFriends = [
-        { id: 1, username: 'Anh', profile: { avatar: null } },
-        { id: 2, username: 'Bình', profile: { avatar: null } },
-        { id: 3, username: 'Chi', profile: { avatar: null } },
-        { id: 4, username: 'Dũng', profile: { avatar: null } },
-        { id: 5, username: 'Giang', profile: { avatar: null } }
+        { id: 1, username: 'Anh', profileImage: null },
+        { id: 2, username: 'Bình', profileImage: null },
+        { id: 3, username: 'Chi', profileImage: null },
+        { id: 4, username: 'Dũng', profileImage: null },
+        { id: 5, username: 'Giang', profileImage: null }
       ];
       res.json(mockFriends);
     }
@@ -677,6 +495,7 @@ app.get('/api/matching-users', async (req, res) => {
       const users = await User.find({}, { password: 0 }).limit(8);
       res.json(users);
     } else {
+      // Trả về dữ liệu giả nếu không kết nối được MongoDB
       const mockUsers = [
         { id: 1, username: 'Anh', age: 25, gender: 'female', income: '10-20', location: 'hanoi', bio: 'Yêu thích du lịch và ẩm thực' },
         { id: 2, username: 'Bình', age: 28, gender: 'male', income: '20-30', location: 'hcm', bio: 'Đam mê thể thao và âm nhạc' },
@@ -696,339 +515,13 @@ app.get('/api/matching-users', async (req, res) => {
   }
 });
 
-// Get posts endpoint
-app.get('/api/posts', async (req, res) => {
-  try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    
-    const { userId, page = 1, limit = 10 } = req.query;
-    
-    if (mongoose.connection.readyState === 1) {
-      let query = {};
-      if (userId) {
-        query.userId = userId;
-      }
-      
-      const posts = await Post.find(query)
-        .populate('userId', 'username profile')
-        .sort({ createdAt: -1 })
-        .limit(limit * 1)
-        .skip((page - 1) * limit);
-      
-      res.json(posts);
-    } else {
-      const mockPosts = [
-        {
-          id: 1,
-          userId: { id: 2, username: 'Bình', profile: { avatar: null } },
-          content: 'Hôm nay thời tiết thật đẹp, ai rảnh đi cà phê không?',
-          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-          likes: 15,
-          comments: 5
-        },
-        {
-          id: 2,
-          userId: { id: 4, username: 'Dũng', profile: { avatar: null } },
-          content: 'Vừa hoàn thành xong dự án mới, cảm thấy thật hạnh phúc!',
-          image: 'https://picsum.photos/600/400?random=1',
-          createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000),
-          likes: 32,
-          comments: 8
-        }
-      ];
-      res.json(mockPosts);
-    }
-  } catch (error) {
-    console.error('Get posts error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.status(500).json({ message: 'Lỗi server', error: error.message });
-  }
-});
-
-// Create post endpoint
-app.post('/api/posts', async (req, res) => {
-  try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    
-    const { userId, content, image, video } = req.body;
-    
-    if (!userId) {
-      return res.status(400).json({ message: 'Thiếu thông tin userId' });
-    }
-    
-    if (mongoose.connection.readyState === 1) {
-      const newPost = new Post({
-        userId,
-        content,
-        image,
-        video
-      });
-      
-      await newPost.save();
-      await newPost.populate('userId', 'username profile');
-      
-      res.status(201).json({ message: 'Đăng bài thành công', post: newPost });
-    } else {
-      const newPost = {
-        id: nextId++,
-        userId: { id: userId, username: 'User' + userId, profile: { avatar: null } },
-        content,
-        image,
-        video,
-        likes: 0,
-        comments: [],
-        createdAt: new Date()
-      };
-      
-      res.status(201).json({ message: 'Đăng bài thành công (fallback mode)', post: newPost });
-    }
-  } catch (error) {
-    console.error('Create post error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.status(500).json({ message: 'Lỗi server', error: error.message });
-  }
-});
-
-// Get messages between users endpoint
-app.get('/api/messages', async (req, res) => {
-  try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    
-    const { userId, friendId } = req.query;
-    
-    if (!userId || !friendId) {
-      return res.status(400).json({ message: 'Thiếu thông tin userId hoặc friendId' });
-    }
-    
-    if (mongoose.connection.readyState === 1) {
-      const messages = await Message.find({
-        $or: [
-          { sender: userId, receiver: friendId },
-          { sender: friendId, receiver: userId }
-        ]
-      })
-      .populate('sender', 'username profile')
-      .populate('receiver', 'username profile')
-      .sort({ createdAt: 1 });
-      
-      res.json(messages);
-    } else {
-      const mockMessages = [
-        {
-          id: 1,
-          sender: { id: friendId, username: 'User' + friendId, profile: { avatar: null } },
-          receiver: { id: userId, username: 'User' + userId, profile: { avatar: null } },
-          content: 'Xin chào! Bạn có khỏe không?',
-          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
-        },
-        {
-          id: 2,
-          sender: { id: userId, username: 'User' + userId, profile: { avatar: null } },
-          receiver: { id: friendId, username: 'User' + friendId, profile: { avatar: null } },
-          content: 'Mình khỏe, cảm ơn bạn! Còn bạn?',
-          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000 + 60000)
-        }
-      ];
-      res.json(mockMessages);
-    }
-  } catch (error) {
-    console.error('Get messages error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.status(500).json({ message: 'Lỗi server', error: error.message });
-  }
-});
-
-// Send message endpoint
-app.post('/api/messages', async (req, res) => {
-  try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    
-    const { sender, receiver, content } = req.body;
-    
-    if (!sender || !receiver || !content) {
-      return res.status(400).json({ message: 'Thiếu thông tin sender, receiver hoặc content' });
-    }
-    
-    if (mongoose.connection.readyState === 1) {
-      const newMessage = new Message({
-        sender,
-        receiver,
-        content
-      });
-      
-      await newMessage.save();
-      await newMessage.populate('sender', 'username profile');
-      await newMessage.populate('receiver', 'username profile');
-      
-      res.status(201).json({ message: 'Gửi tin nhắn thành công', message: newMessage });
-    } else {
-      const newMessage = {
-        id: nextId++,
-        sender: { id: sender, username: 'User' + sender, profile: { avatar: null } },
-        receiver: { id: receiver, username: 'User' + receiver, profile: { avatar: null } },
-        content,
-        createdAt: new Date()
-      };
-      
-      res.status(201).json({ message: 'Gửi tin nhắn thành công (fallback mode)', message: newMessage });
-    }
-  } catch (error) {
-    console.error('Send message error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.status(500).json({ message: 'Lỗi server', error: error.message });
-  }
-});
-
-// Add friend endpoint
-app.post('/api/friends', async (req, res) => {
-  try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    
-    const { userId, friendId } = req.body;
-    
-    if (!userId || !friendId) {
-      return res.status(400).json({ message: 'Thiếu thông tin userId hoặc friendId' });
-    }
-    
-    if (mongoose.connection.readyState === 1) {
-      const user = await User.findById(userId);
-      const friend = await User.findById(friendId);
-      
-      if (!user || !friend) {
-        return res.status(404).json({ message: 'Không tìm thấy người dùng' });
-      }
-      
-      if (user.friends.includes(friendId)) {
-        return res.status(400).json({ message: 'Đã là bạn bè' });
-      }
-      
-      user.friends.push(friendId);
-      friend.friends.push(userId);
-      
-      await user.save();
-      await friend.save();
-      
-      res.json({ message: 'Kết bạn thành công' });
-    } else {
-      res.json({ message: 'Kết bạn thành công (fallback mode)' });
-    }
-  } catch (error) {
-    console.error('Add friend error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.status(500).json({ message: 'Lỗi server', error: error.message });
-  }
-});
-
-// Send VIP request endpoint
-app.post('/api/vip-request', async (req, res) => {
-  try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    
-    const { userId, planType, amount } = req.body;
-    
-    if (!userId || !planType || !amount) {
-      return res.status(400).json({ message: 'Thiếu thông tin userId, planType hoặc amount' });
-    }
-    
-    // Send email to admin
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: 'mailcheckctv@gmail.com',
-        subject: 'Yêu cầu nâng cấp VIP mới - LoveConnect',
-        html: `
-          <h2>Yêu cầu nâng cấp VIP mới</h2>
-          <p><strong>Gói:</strong> ${planType}</p>
-          <p><strong>Số tiền:</strong> ${amount.toLocaleString('vi-VN')} VNĐ</p>
-          <p>Vui lòng kiểm tra và xác nhận yêu cầu này.</p>
-        `
-      };
-      
-      transporter.sendMail(mailOptions, (error, info) => {
-        if (error) {
-          console.error('Error sending email:', error);
-        } else {
-          console.log('Email sent:', info.response);
-        }
-      });
-    }
-    
-    res.status(201).json({ message: 'Gửi yêu cầu nâng cấp VIP thành công' });
-  } catch (error) {
-    console.error('VIP request error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.status(500).json({ message: 'Lỗi server', error: error.message });
-  }
-});
-
-// Send support message endpoint
-app.post('/api/support', async (req, res) => {
-  try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    
-    const { userId, message } = req.body;
-    
-    if (!userId || !message) {
-      return res.status(400).json({ message: 'Thiếu thông tin userId hoặc message' });
-    }
-    
-    // Send email to support
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: 'mailcheckctv@gmail.com',
-        subject: 'Tin nhắn hỗ trợ mới - LoveConnect',
-        html: `
-          <h2>Tin nhắn hỗ trợ mới</h2>
-          <p><strong>Nội dung:</strong></p>
-          <p>${message}</p>
-        `
-      };
-      
-      transporter.sendMail(mailOptions, (error, info) => {
-        if (error) {
-          console.error('Error sending email:', error);
-        } else {
-          console.log('Email sent:', info.response);
-        }
-      });
-    }
-    
-    res.json({ message: 'Gửi tin nhắn hỗ trợ thành công' });
-  } catch (error) {
-    console.error('Support message error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.status(500).json({ message: 'Lỗi server', error: error.message });
-  }
-});
-
-// Upload image endpoint
-app.post('/api/upload', async (req, res) => {
-  try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    
-    const { image, type = 'avatar' } = req.body;
-    
-    if (!image) {
-      return res.status(400).json({ message: 'Không có dữ liệu ảnh' });
-    }
-    
-    // Simulate upload - in real app, upload to cloud storage
-    const imageUrl = `data:image/jpeg;base64,${image}`;
-    
-    res.json({ url: imageUrl, message: 'Tải ảnh lên thành công' });
-  } catch (error) {
-    console.error('Upload image error:', error);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.status(500).json({ message: 'Lỗi server', error: error.message });
-  }
-});
-
-// ==================== STATIC ROUTES ====================
+// ==================== STATIC ROUTES - FIX QUAN TRỌNG ====================
+// Route cho trang chính
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
+// Route cho các trang cụ thể
 app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
@@ -1041,21 +534,17 @@ app.get('/trang-chu', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'trang-chu.html'));
 });
 
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
-
+// Route cho tất cả các requests khác - serve file tĩnh
 app.get('*', (req, res) => {
-  if (req.path === '/' || req.path === '') {
-    return res.sendFile(path.join(__dirname, 'public', 'login.html'));
-  }
-  
   const filePath = path.join(__dirname, 'public', req.path);
   
+  // Kiểm tra nếu file tồn tại
   fs.access(filePath, fs.constants.F_OK, (err) => {
     if (err) {
+      // Nếu file không tồn tại, trả về login.html
       res.sendFile(path.join(__dirname, 'public', 'login.html'));
     } else {
+      // Nếu file tồn tại, serve file đó
       res.sendFile(filePath);
     }
   });
