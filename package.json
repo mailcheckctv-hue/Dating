@@ -13,9 +13,5 @@
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1"
-  },
-  "keywords": ["dating", "social", "app"],
-  "author": "Your Name",
-  "license": "MIT"
-}
+    "dotenv": "^16.3.1",
+    "ws": "^8
