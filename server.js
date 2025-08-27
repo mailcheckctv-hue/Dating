@@ -1,241 +1,171 @@
-// ================== server.js ==================
-// Dating App - Backend server with WebSocket, Upload, VIP, Posts, Messages
-require('dotenv').config();
 const express = require('express');
+const http = require('http');
+const path = require('path');
+const fs = require('fs');
 const mongoose = require('mongoose');
-const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { WebSocketServer } = require('ws');
+const cors = require('cors');
 const multer = require('multer');
-const path = require('path');
-const nodemailer = require('nodemailer');
+const { WebSocketServer } = require('ws');
+require('dotenv').config();
 
 const app = express();
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server });
+
+// ===== Ensure uploads folder exists =====
+if (!fs.existsSync('uploads')) {
+  fs.mkdirSync('uploads', { recursive: true });
+}
+
+// ===== Middlewares =====
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// ============ DB ==============
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
+// Serve static files from root (login.html, trang-chu.html, ...)
+app.use(express.static(path.join(__dirname)));
+
+// Default route -> login.html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'login.html'));
 });
 
-// ============ SCHEMAS ==========
-const UserSchema = new mongoose.Schema({
+// ===== DB Connection =====
+const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
+if (!mongoUri) {
+  console.error("❌ Missing MONGO_URI / MONGODB_URI in environment variables");
+  process.exit(1);
+}
+mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log("✅ MongoDB connected"))
+  .catch(err => console.error("❌ MongoDB error:", err));
+
+// ===== Schemas =====
+const userSchema = new mongoose.Schema({
   username: String,
-  password: String,
   email: String,
+  password: String,
   gender: String,
   avatar: String,
-  role: { type: String, default: 'user' }, // user | admin
-  isVip: { type: Boolean, default: false },
+  vip: { type: String, default: 'free' },
 });
-const User = mongoose.model('User', UserSchema);
-
-const MessageSchema = new mongoose.Schema({
+const messageSchema = new mongoose.Schema({
   sender: String,
   receiver: String,
   content: String,
-  image: String,
   fileUrl: String,
   fileName: String,
-  createdAt: { type: Date, default: Date.now },
+  createdAt: { type: Date, default: Date.now }
 });
-const Message = mongoose.model('Message', MessageSchema);
-
-const PostSchema = new mongoose.Schema({
+const postSchema = new mongoose.Schema({
   userId: String,
   content: String,
   image: String,
   video: String,
-  createdAt: { type: Date, default: Date.now },
+  createdAt: { type: Date, default: Date.now }
 });
-const Post = mongoose.model('Post', PostSchema);
+const User = mongoose.model('User', userSchema);
+const Message = mongoose.model('Message', messageSchema);
+const Post = mongoose.model('Post', postSchema);
 
-const VipRequestSchema = new mongoose.Schema({
-  userId: String,
-  package: String,
-  createdAt: { type: Date, default: Date.now },
-  status: { type: String, default: 'pending' }, // pending | approved | rejected
-});
-const VipRequest = mongoose.model('VipRequest', VipRequestSchema);
-
-const NotificationSchema = new mongoose.Schema({
-  message: String,
-  createdAt: { type: Date, default: Date.now },
-});
-const Notification = mongoose.model('Notification', NotificationSchema);
-
-// ============ AUTH =============
-function authMiddleware(req, res, next) {
+// ===== Auth Middleware =====
+function authenticateToken(req, res, next) {
   const token = req.headers['authorization'];
-  if (!token) return res.status(401).json({ error: 'No token provided' });
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) return res.status(401).json({ error: 'Invalid token' });
-    req.userId = decoded.id;
-    req.role = decoded.role;
+  if (!token) return res.sendStatus(401);
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
     next();
   });
 }
 
-// ============ UPLOAD ===========
+// ===== File Upload =====
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
-  filename: (req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, unique + path.extname(file.originalname));
-  },
+  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
 });
 const upload = multer({ storage });
 
-app.post('/api/upload', authMiddleware, upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-  res.json({ fileUrl, fileName: req.file.originalname });
+app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => {
+  res.json({ fileUrl: '/uploads/' + req.file.filename, fileName: req.file.originalname });
 });
 
-// ============ AUTH ROUTES ======
+// ===== Auth Routes =====
 app.post('/api/register', async (req, res) => {
-  const { username, password, email, gender } = req.body;
+  const { username, email, password, gender } = req.body;
   const hashed = await bcrypt.hash(password, 10);
-  const user = await User.create({ username, password: hashed, email, gender });
-
-  // gợi ý bạn bè theo giới tính đối lập
-  let suggest = '';
-  if (gender === 'male') {
-    suggest = `${username} ơi, Thư cùng nhiều bạn nữ khác đang chờ bạn để trò chuyện!`;
-  } else {
-    suggest = `${username} ơi, Nam cùng nhiều bạn nam khác đang chờ bạn để kết nối!`;
-  }
-
-  res.json({ user, suggest });
+  const user = new User({ username, email, password: hashed, gender });
+  await user.save();
+  res.json({ message: 'User registered' });
 });
 
 app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
-  const user = await User.findOne({ username });
+  const { email, password } = req.body;
+  const user = await User.findOne({ email });
   if (!user) return res.status(400).json({ error: 'User not found' });
   const valid = await bcrypt.compare(password, user.password);
   if (!valid) return res.status(400).json({ error: 'Invalid password' });
-  const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
-  res.json({ token, user });
+  const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET);
+  res.json({ token });
 });
 
-// ============ PROFILE ==========
-app.get('/api/profile', authMiddleware, async (req, res) => {
-  const user = await User.findById(req.userId);
-  res.json(user);
-});
-app.put('/api/profile', authMiddleware, upload.single('avatar'), async (req, res) => {
-  let avatarUrl;
-  if (req.file) {
-    avatarUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-  }
-  const user = await User.findByIdAndUpdate(req.userId, { ...req.body, ...(avatarUrl && { avatar: avatarUrl }) }, { new: true });
-  res.json(user);
-});
-
-// ============ POSTS ============
-app.post('/api/posts', authMiddleware, upload.single('media'), async (req, res) => {
-  let image, video;
-  if (req.file) {
-    const url = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-    if (req.file.mimetype.startsWith('image/')) image = url;
-    else if (req.file.mimetype.startsWith('video/')) video = url;
-  }
-  const post = await Post.create({ userId: req.userId, content: req.body.content, image, video });
-  res.json(post);
-});
-app.get('/api/posts', authMiddleware, async (req, res) => {
+// ===== Posts API =====
+app.get('/api/posts', authenticateToken, async (req, res) => {
   const posts = await Post.find().sort({ createdAt: -1 }).limit(50);
   res.json(posts);
 });
-
-// ============ VIP ============
-app.post('/api/upgrade-vip', authMiddleware, async (req, res) => {
-  const { package } = req.body;
-  const vip = await VipRequest.create({ userId: req.userId, package });
-  res.json(vip);
-});
-app.post('/api/admin/vip/:id/:action', authMiddleware, async (req, res) => {
-  if (req.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
-  const vip = await VipRequest.findById(req.params.id);
-  vip.status = req.params.action === 'approve' ? 'approved' : 'rejected';
-  await vip.save();
-  if (vip.status === 'approved') {
-    await User.findByIdAndUpdate(vip.userId, { isVip: true });
+app.post('/api/posts', authenticateToken, upload.single('file'), async (req, res) => {
+  let image, video;
+  if (req.file) {
+    if (req.file.mimetype.startsWith('image')) image = '/uploads/' + req.file.filename;
+    if (req.file.mimetype.startsWith('video')) video = '/uploads/' + req.file.filename;
   }
-  res.json(vip);
+  const post = new Post({ userId: req.user.id, content: req.body.content, image, video });
+  await post.save();
+  res.json(post);
 });
 
-// ============ FRIENDS =========
-app.get('/api/users/suggested', authMiddleware, async (req, res) => {
-  const users = await User.find({ _id: { $ne: req.userId } }).sort({ createdAt: -1 }).limit(10);
+// ===== Suggestions API =====
+app.get('/api/users/suggested', authenticateToken, async (req, res) => {
+  const users = await User.find().limit(10);
   res.json(users);
 });
 
-// ============ ADMIN ===========
-app.get('/api/admin/notifications', authMiddleware, async (req, res) => {
-  if (req.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
-  const notis = await Notification.find().sort({ createdAt: -1 }).limit(50);
-  res.json(notis);
-});
-
-// ============ WEBSOCKET =======
-const server = app.listen(process.env.PORT || 10000, () =>
-  console.log('Server running on port', process.env.PORT || 10000)
-);
-const wss = new WebSocketServer({ server });
-let clients = new Map();
-
+// ===== WebSocket =====
+let clients = {};
 wss.on('connection', (ws, req) => {
   const params = new URLSearchParams(req.url.replace('/?', ''));
   const token = params.get('token');
   if (!token) return ws.close();
-  jwt.verify(token, process.env.JWT_SECRET, async (err, decoded) => {
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) return ws.close();
-    ws.userId = decoded.id;
-    clients.set(ws.userId, ws);
+    ws.userId = user.id;
+    clients[user.id] = ws;
 
-    ws.on('message', async (msg) => {
-      try {
-        const data = JSON.parse(msg);
-        if (data.type === 'message') {
-          const message = await Message.create({
-            sender: ws.userId,
-            receiver: data.receiverId,
-            content: data.content || null,
-            image: data.image || null,
-            fileUrl: data.fileUrl || null,
-            fileName: data.fileName || null,
-          });
-          const receiverWS = clients.get(data.receiverId);
-          if (receiverWS) receiverWS.send(JSON.stringify({ type: 'message', message }));
-          ws.send(JSON.stringify({ type: 'message', message }));
+    ws.on('message', async msg => {
+      const data = JSON.parse(msg);
+      if (data.type === 'message') {
+        const newMsg = new Message({
+          sender: ws.userId,
+          receiver: data.receiverId,
+          content: data.content,
+          fileUrl: data.fileUrl,
+          fileName: data.fileName
+        });
+        await newMsg.save();
+        if (clients[data.receiverId]) {
+          clients[data.receiverId].send(JSON.stringify({ type: 'message', message: newMsg }));
         }
-        if (data.type === 'typing') {
-          const receiverWS = clients.get(data.receiverId);
-          if (receiverWS) receiverWS.send(JSON.stringify({ type: 'typing', from: ws.userId }));
-        }
-      } catch (e) {
-        console.error('WS error:', e);
+        ws.send(JSON.stringify({ type: 'message', message: newMsg }));
       }
     });
 
-    ws.on('close', () => {
-      clients.delete(ws.userId);
-    });
+    ws.on('close', () => delete clients[user.id]);
   });
 });
 
-// ============ SEED ADMIN ======
-(async () => {
-  const exists = await User.findOne({ username: 'Admin_CFC' });
-  if (!exists) {
-    const hashed = await bcrypt.hash('687969', 10);
-    await User.create({ username: 'Admin_CFC', password: hashed, role: 'admin' });
-    console.log('Admin_CFC created');
-  }
-})();
+// ===== Start =====
+const PORT = process.env.PORT || 10000;
+server.listen(PORT, () => console.log('🚀 Server running on port ' + PORT));
