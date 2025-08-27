@@ -1,580 +1,69 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LoveConnect - Dating App</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        /* CSS hiện tại giữ nguyên */
-        
-        /* Thêm CSS mới */
-        .stats-container {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #f0f2f5;
-        }
-        
-        .stat-item {
-            text-align: center;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            padding: 8px;
-            border-radius: 8px;
-        }
-        
-        .stat-item:hover {
-            background-color: #f0f2f5;
-            transform: translateY(-3px);
-        }
-        
-        .stat-item strong {
-            display: block;
-            font-size: 18px;
-            color: #e91e63;
-            transition: color 0.3s ease;
-        }
-        
-        .stat-item:hover strong {
-            color: #ff4e8c;
-        }
-        
-        .friend-item {
-            display: flex;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #f9f9f9;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .friend-item:hover {
-            background-color: #f0f2f5;
-            transform: translateX(5px);
-        }
-        
-        .modal-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 15px;
-            max-height: 400px;
-            overflow-y: auto;
-            padding: 10px;
-        }
-        
-        .modal-friend-item {
-            background: #f9f9f9;
-            border-radius: 10px;
-            padding: 15px;
-            text-align: center;
-            transition: transform 0.3s;
-        }
-        
-        .modal-friend-item:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        .user-detail-modal {
-            max-width: 500px;
-        }
-        
-        .user-detail-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        
-        .user-detail-avatar {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            background: linear-gradient(to right, #e91e63, #ff4e8c);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 40px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            border: 3px solid white;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        }
-        
-        .auto-logout-warning {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            background: #ff9800;
-            color: white;
-            padding: 15px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transform: translateY(150%);
-            transition: transform 0.3s ease-out;
-        }
-        
-        .auto-logout-warning.show {
-            transform: translateY(0);
-        }
-        
-        .interaction-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        
-        .interaction-btn {
-            padding: 8px 15px;
-            border-radius: 20px;
-            border: none;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-        
-        .like-btn {
-            background: linear-gradient(to right, #e91e63, #ff4e8c);
-            color: white;
-        }
-        
-        .message-btn {
-            background: linear-gradient(to right, #4267b2, #5b7cbf);
-            color: white;
-        }
-        
-        .interaction-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-        }
-        
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .modal-grid {
-                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            }
-            
-            .stats-container {
-                flex-direction: column;
-                gap: 10px;
-            }
-            
-            .stat-item {
-                padding: 12px;
-            }
-        }
-        
-        /* Animation for new messages */
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        
-        .new-message {
-            animation: pulse 1s ease-in-out;
-        }
-        
-        /* Online status indicator */
-        .online-status {
-            width: 12px;
-            height: 12px;
-            background-color: #4CAF50;
-            border-radius: 50%;
-            position: absolute;
-            bottom: 5px;
-            right: 5px;
-            border: 2px solid white;
-        }
-        
-        .avatar-container {
-            position: relative;
-            display: inline-block;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trang chủ - Dating App</title>
 </head>
 <body>
-    <!-- Nội dung hiện tại giữ nguyên -->
-    
-    <!-- Modal for friends list -->
-    <div class="modal-overlay" id="friendsModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2>Danh sách bạn bè</h2>
-                <button class="close-modal" id="closeFriendsModal">&times;</button>
-            </div>
-            <div class="modal-grid" id="allFriendsList">
-                <!-- All friends will be loaded here -->
-            </div>
-        </div>
-    </div>
-    
-    <!-- Modal for user details -->
-    <div class="modal-overlay" id="userDetailModal">
-        <div class="modal user-detail-modal">
-            <div class="modal-header">
-                <h2>Thông tin người dùng</h2>
-                <button class="close-modal" id="closeUserDetailModal">&times;</button>
-            </div>
-            <div class="user-detail-content" id="userDetailContent">
-                <!-- User details will be loaded here -->
-            </div>
-        </div>
-    </div>
-    
-    <!-- Modal for stats details -->
-    <div class="modal-overlay" id="statsModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2 id="statsModalTitle">Thống kê chi tiết</h2>
-                <button class="close-modal" id="closeStatsModal">&times;</button>
-            </div>
-            <div id="statsModalContent">
-                <!-- Stats details will be loaded here -->
-            </div>
-        </div>
-    </div>
-    
-    <!-- Auto logout warning -->
-    <div class="auto-logout-warning" id="autoLogoutWarning">
-        <i class="fas fa-exclamation-triangle"></i>
-        <span id="logoutWarningText">Bạn sẽ tự động đăng xuất trong <span id="logoutCountdown">60</span> giây</span>
-        <button class="logout-btn" id="stayLoggedInBtn" style="margin-left: 10px; padding: 5px 10px; background: rgba(255,255,255,0.2);">Tiếp tục</button>
-    </div>
-    
-    <script>
-        // Thêm các biến toàn cục mới
-        let inactivityTimer;
-        let logoutTimer;
-        const LOGOUT_WARNING_TIME = 60; // seconds
-        const LOGOUT_TIME = 300; // 5 minutes inactivity
-        
-        // Cập nhật hàm initApp
-        function initApp() {
-            // Các hàm hiện tại giữ nguyên
-            
-            // Thiết lập bộ đếm thời gian tự động đăng xuất
-            setupAutoLogout();
-            
-            // Thêm event listeners mới
-            setupNewEventListeners();
-            
-            // Tải dữ liệu bạn bè đầy đủ
-            loadAllFriends();
+  <h2>Xin chào <span id="username"></span></h2>
+  <button onclick="logout()">Đăng xuất</button>
+
+  <h3>Chat demo</h3>
+  <input id="receiverId" placeholder="ID người nhận">
+  <input id="msgInput" placeholder="Tin nhắn...">
+  <button onclick="sendMsg()">Gửi</button>
+
+  <ul id="chatBox"></ul>
+
+  <script>
+    const API_BASE_URL = window.location.origin;
+    const WS_URL = API_BASE_URL.replace(/^http/, "ws");
+    const user = JSON.parse(localStorage.getItem("user"));
+    const token = localStorage.getItem("token");
+    document.getElementById("username").textContent = user.username;
+
+    let socket;
+    function connectWS() {
+      socket = new WebSocket(WS_URL);
+
+      socket.onopen = () => {
+        console.log("WS connected");
+        socket.send(JSON.stringify({ type: "auth", userId: user._id || user.id }));
+      };
+
+      socket.onmessage = e => {
+        const data = JSON.parse(e.data);
+        if (data.type === "message") {
+          const li = document.createElement("li");
+          li.textContent = "Tin nhắn mới: " + data.message.content;
+          document.getElementById("chatBox").appendChild(li);
         }
-        
-        // Thêm hàm mới để thiết lập auto logout
-        function setupAutoLogout() {
-            // Reset timers on any user activity
-            const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-            events.forEach(event => {
-                document.addEventListener(event, resetInactivityTimer);
-            });
-            
-            resetInactivityTimer();
-        }
-        
-        function resetInactivityTimer() {
-            clearTimeout(inactivityTimer);
-            clearTimeout(logoutTimer);
-            
-            // Hide warning if visible
-            document.getElementById('autoLogoutWarning').classList.remove('show');
-            
-            // Set new timer
-            inactivityTimer = setTimeout(showLogoutWarning, LOGOUT_TIME * 1000);
-        }
-        
-        function showLogoutWarning() {
-            const warning = document.getElementById('autoLogoutWarning');
-            const countdown = document.getElementById('logoutCountdown');
-            warning.classList.add('show');
-            
-            let timeLeft = LOGOUT_WARNING_TIME;
-            countdown.textContent = timeLeft;
-            
-            logoutTimer = setInterval(() => {
-                timeLeft--;
-                countdown.textContent = timeLeft;
-                
-                if (timeLeft <= 0) {
-                    clearInterval(logoutTimer);
-                    performLogout();
-                }
-            }, 1000);
-        }
-        
-        function performLogout() {
-            showNotification('Bạn đã đăng xuất tự động do không hoạt động', true);
-            
-            // Simulate logout process
-            setTimeout(() => {
-                // In a real app, this would redirect to login page
-                // For demo, we'll just reload the page
-                window.location.reload();
-            }, 1500);
-        }
-        
-        // Thêm hàm mới để thiết lập event listeners mới
-        function setupNewEventListeners() {
-            // Event listeners for stats items
-            document.querySelectorAll('.stat-item').forEach(item => {
-                item.addEventListener('click', showStatsDetails);
-            });
-            
-            // Event listener for "See all" friends button
-            document.getElementById('seeAllFriends').addEventListener('click', showAllFriends);
-            
-            // Event listener for friend items
-            document.querySelectorAll('.friend-item').forEach(item => {
-                item.addEventListener('click', showFriendDetails);
-            });
-            
-            // Event listeners for modals
-            document.getElementById('closeFriendsModal').addEventListener('click', () => {
-                document.getElementById('friendsModal').classList.remove('show');
-            });
-            
-            document.getElementById('closeUserDetailModal').addEventListener('click', () => {
-                document.getElementById('userDetailModal').classList.remove('show');
-            });
-            
-            document.getElementById('closeStatsModal').addEventListener('click', () => {
-                document.getElementById('statsModal').classList.remove('show');
-            });
-            
-            // Event listener for stay logged in button
-            document.getElementById('stayLoggedInBtn').addEventListener('click', resetInactivityTimer);
-            
-            // Event listeners for interaction buttons
-            document.addEventListener('click', function(e) {
-                // Like button
-                if (e.target.classList.contains('like-btn') || e.target.closest('.like-btn')) {
-                    const userId = e.target.closest('.like-btn').dataset.userId;
-                    likeUser(userId);
-                }
-                
-                // Message button
-                if (e.target.classList.contains('message-btn') || e.target.closest('.message-btn')) {
-                    const userId = e.target.closest('.message-btn').dataset.userId;
-                    startChatWithUser(userId);
-                }
-            });
-        }
-        
-        // Thêm hàm mới để hiển thị thống kê chi tiết
-        function showStatsDetails(e) {
-            const statType = e.currentTarget.querySelector('strong').parentNode.textContent.trim().toLowerCase();
-            let title = '';
-            let content = '';
-            
-            if (statType.includes('bạn bè')) {
-                title = 'Chi tiết bạn bè';
-                content = `<p>Bạn có ${currentUser.friends} người bạn trên LoveConnect.</p>
-                          <p>${Math.floor(currentUser.friends * 0.6)} người bạn hoạt động trong tháng qua.</p>
-                          <div class="modal-grid">
-                            ${suggestedUsers.slice(0, 4).map(user => `
-                                <div class="modal-friend-item">
-                                    <div class="user-card-avatar">${getInitials(user.name)}</div>
-                                    <h4>${user.name}</h4>
-                                    <p>${user.location}</p>
-                                </div>
-                            `).join('')}
-                          </div>`;
-            } else if (statType.includes('matches')) {
-                title = 'Chi tiết matches';
-                content = `<p>Bạn có ${currentUser.matches} matches trên LoveConnect.</p>
-                          <p>${Math.floor(currentUser.matches * 0.8)} matches đang hoạt động.</p>
-                          <ul>
-                            <li>${Math.floor(currentUser.matches * 0.4)} matches trong 30 ngày qua</li>
-                            <li>${Math.floor(currentUser.matches * 0.2)} matches đã nhắn tin với bạn</li>
-                          </ul>`;
-            } else if (statType.includes('bài viết')) {
-                title = 'Chi tiết bài viết';
-                content = `<p>Bạn đã đăng ${currentUser.posts} bài viết trên LoveConnect.</p>
-                          <p>Trung bình nhận được:</p>
-                          <ul>
-                            <li>${Math.floor(currentUser.posts * 12.5)} lượt thích mỗi bài</li>
-                            <li>${Math.floor(currentUser.posts * 3.2)} bình luận mỗi bài</li>
-                            <li>${Math.floor(currentUser.posts * 1.5)} lượt chia sẻ mỗi bài</li>
-                          </ul>`;
-            }
-            
-            document.getElementById('statsModalTitle').textContent = title;
-            document.getElementById('statsModalContent').innerHTML = content;
-            document.getElementById('statsModal').classList.add('show');
-        }
-        
-        // Thêm hàm mới để hiển thị tất cả bạn bè
-        function showAllFriends() {
-            document.getElementById('friendsModal').classList.add('show');
-        }
-        
-        // Thêm hàm mới để tải tất cả bạn bè
-        function loadAllFriends() {
-            const allFriendsList = document.getElementById('allFriendsList');
-            allFriendsList.innerHTML = '';
-            
-            // Simulate loading more friends
-            const allFriends = [...suggestedUsers, 
-                               { id: 'user7', name: 'Võ Thị H', age: 27, location: 'Vũng Tàu', avatar: '', mutualFriends: 2 },
-                               { id: 'user8', name: 'Đinh Văn I', age: 31, location: 'Huế', avatar: '', mutualFriends: 4 },
-                               { id: 'user9', name: 'Bùi Thị K', age: 25, location: 'Quy Nhơn', avatar: '', mutualFriends: 3 }];
-            
-            allFriends.forEach(friend => {
-                const friendElement = document.createElement('div');
-                friendElement.className = 'modal-friend-item';
-                friendElement.innerHTML = `
-                    <div class="user-card-avatar">${getInitials(friend.name)}</div>
-                    <h4>${friend.name}, ${friend.age}</h4>
-                    <p><i class="fas fa-map-marker-alt"></i> ${friend.location}</p>
-                    <p>${friend.mutualFriends} bạn chung</p>
-                    <div class="interaction-buttons">
-                        <button class="interaction-btn like-btn" data-user-id="${friend.id}">
-                            <i class="fas fa-heart"></i> Thích
-                        </button>
-                        <button class="interaction-btn message-btn" data-user-id="${friend.id}">
-                            <i class="fas fa-comment"></i> Nhắn tin
-                        </button>
-                    </div>
-                `;
-                
-                allFriendsList.appendChild(friendElement);
-            });
-        }
-        
-        // Thêm hàm mới để hiển thị chi tiết bạn bè
-        function showFriendDetails(e) {
-            const friendElement = e.currentTarget;
-            const friendName = friendElement.querySelector('h4').textContent;
-            
-            // Find friend data
-            const friend = suggestedUsers.find(user => user.name === friendName);
-            
-            if (friend) {
-                const userDetailContent = document.getElementById('userDetailContent');
-                userDetailContent.innerHTML = `
-                    <div class="avatar-container">
-                        <div class="user-detail-avatar">${getInitials(friend.name)}</div>
-                        <div class="online-status"></div>
-                    </div>
-                    <h3>${friend.name}, ${friend.age}</h3>
-                    <p><i class="fas fa-map-marker-alt"></i> ${friend.location}</p>
-                    <p>${friend.mutualFriends} bạn chung</p>
-                    <p class="profile-bio">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.</p>
-                    <div class="profile-stats">
-                        <p><strong>142</strong> bạn bè</p>
-                        <p><strong>56</strong> matches</p>
-                        <p><strong>24</strong> bài viết</p>
-                    </div>
-                    <div class="interaction-buttons">
-                        <button class="interaction-btn like-btn" data-user-id="${friend.id}">
-                            <i class="fas fa-heart"></i> Thích
-                        </button>
-                        <button class="interaction-btn message-btn" data-user-id="${friend.id}">
-                            <i class="fas fa-comment"></i> Nhắn tin
-                        </button>
-                    </div>
-                `;
-                
-                document.getElementById('userDetailModal').classList.add('show');
-            }
-        }
-        
-        // Thêm hàm mới để lấy chữ cái đầu từ tên
-        function getInitials(name) {
-            const nameParts = name.split(' ');
-            return nameParts[0].charAt(0) + (nameParts.length > 1 ? nameParts[nameParts.length - 1].charAt(0) : '');
-        }
-        
-        // Thêm hàm mới để xử lý thích người dùng
-        function likeUser(userId) {
-            const user = suggestedUsers.find(u => u.id === userId);
-            if (user) {
-                showNotification(`Bạn đã thích ${user.name}! 💖`);
-                
-                // Simulate match
-                if (Math.random() > 0.5) {
-                    setTimeout(() => {
-                        showNotification(`🎉 ${user.name} cũng thích bạn! Bây giờ các bạn có thể nhắn tin.`);
-                    }, 1500);
-                }
-            }
-        }
-        
-        // Thêm hàm mới để bắt đầu chat với người dùng
-        function startChatWithUser(userId) {
-            const user = suggestedUsers.find(u => u.id === userId);
-            if (user) {
-                document.getElementById('chatWithUser').textContent = `Tin nhắn với ${user.name}`;
-                chatContainer.classList.add('active');
-                
-                // Load chat messages
-                loadChatMessages(userId);
-                
-                showNotification(`Đã bắt đầu trò chuyện với ${user.name}`);
-            }
-        }
-        
-        // Cập nhật hàm loadFriendsList để thêm hiệu ứng
-        function loadFriendsList() {
-            // Simulate loading
-            setTimeout(() => {
-                friendsList.innerHTML = '';
-                
-                for (let i = 0; i < 5; i++) {
-                    const friend = suggestedUsers[i];
-                    const nameParts = friend.name.split(' ');
-                    const initials = nameParts[0].charAt(0) + (nameParts.length > 1 ? nameParts[nameParts.length - 1].charAt(0) : '');
-                    
-                    const friendElement = document.createElement('div');
-                    friendElement.className = 'friend-item';
-                    friendElement.innerHTML = `
-                        <div class="friend-avatar">${initials}</div>
-                        <div>
-                            <h4>${friend.name}</h4>
-                            <p>${friend.mutualFriends} bạn chung</p>
-                        </div>
-                    `;
-                    
-                    friendsList.appendChild(friendElement);
-                    
-                    // Add click event to the new friend item
-                    friendElement.addEventListener('click', showFriendDetails);
-                }
-            }, 1000);
-        }
-        
-        // Cập nhật hàm loadUserData để thêm hiệu ứng cho thống kê
-        function loadUserData() {
-            // Existing code...
-            
-            // Update stats container to add interactivity
-            const statsContainer = document.querySelector('.profile-stats');
-            statsContainer.innerHTML = `
-                <div class="stat-item" data-type="friends">
-                    <strong>${currentUser.friends}</strong> bạn bè
-                </div>
-                <div class="stat-item" data-type="matches">
-                    <strong>${currentUser.matches}</strong> matches
-                </div>
-                <div class="stat-item" data-type="posts">
-                    <strong>${currentUser.posts}</strong> bài viết
-                </div>
-            `;
-            
-            // Add event listeners to the new stat items
-            document.querySelectorAll('.stat-item').forEach(item => {
-                item.addEventListener('click', showStatsDetails);
-            });
-        }
-    </script>
+      };
+
+      socket.onclose = () => {
+        console.log("WS disconnected, reconnecting...");
+        setTimeout(connectWS, 3000);
+      };
+    }
+    connectWS();
+
+    function sendMsg() {
+      const receiverId = document.getElementById("receiverId").value;
+      const content = document.getElementById("msgInput").value;
+      socket.send(JSON.stringify({
+        type: "message",
+        senderId: user._id || user.id,
+        receiverId,
+        content
+      }));
+      document.getElementById("msgInput").value = "";
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = "login.html";
+    }
+  </script>
 </body>
 </html>
