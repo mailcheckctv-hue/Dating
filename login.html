@@ -3,62 +3,56 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dating App - Đăng nhập</title>
+  <title>Đăng nhập</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f9f9f9; display: flex; align-items: center; justify-content: center; height: 100vh; margin:0; }
-    .container { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 350px; }
-    h2 { text-align: center; margin-bottom: 20px; }
-    input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; }
-    button { width: 100%; padding: 10px; border: none; border-radius: 6px; background: #ff4d6d; color: white; font-size: 16px; cursor: pointer; }
-    button:hover { background: #e8435f; }
-    .links { text-align: center; margin-top: 10px; }
-    .links a { margin: 0 8px; color: #007bff; text-decoration: none; font-size: 14px; }
-    .links a:hover { text-decoration: underline; }
+    body { font-family: Arial, sans-serif; background: #f6f6f6; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    .container { background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 300px; text-align: center; }
+    h2 { margin-bottom: 20px; }
+    input, select { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 5px; }
+    button { width: 100%; padding: 10px; background: #ff4b5c; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
+    button:hover { background: #e04352; }
+    .link { margin-top: 10px; display: flex; justify-content: space-between; font-size: 14px; }
+    .link a { text-decoration: none; color: #007bff; }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>Đăng nhập</h2>
     <form id="loginForm">
-      <input type="text" id="username" placeholder="Tên đăng nhập" required />
+      <input type="email" id="email" placeholder="Email" required />
       <input type="password" id="password" placeholder="Mật khẩu" required />
       <button type="submit">Đăng nhập</button>
     </form>
-    <div class="links">
-      <a href="#" onclick="showRegister()">Đăng ký</a> | 
-      <a href="#" onclick="showForgot()">Quên mật khẩu?</a>
+    <div class="link">
+      <a href="dang-ky.html">Đăng ký</a>
+      <a href="#">Quên mật khẩu?</a>
     </div>
   </div>
 
-<script>
-function showRegister(){
-  document.querySelector('.container').innerHTML = `
-    <h2>Đăng ký</h2>
-    <form id="registerForm">
-      <input type="text" id="r_username" placeholder="Tên đăng nhập" required />
-      <input type="email" id="r_email" placeholder="Email" required />
-      <input type="password" id="r_password" placeholder="Mật khẩu" required />
-      <select id="r_gender" required>
-        <option value="">Chọn giới tính</option>
-        <option value="male">Nam</option>
-        <option value="female">Nữ</option>
-      </select>
-      <button type="submit">Đăng ký</button>
-    </form>
-    <div class="links"><a href="#" onclick="location.reload()">Đăng nhập</a></div>
-  `;
-}
+  <script>
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
 
-function showForgot(){
-  document.querySelector('.container').innerHTML = `
-    <h2>Quên mật khẩu</h2>
-    <form id="forgotForm">
-      <input type="email" id="f_email" placeholder="Nhập email đã đăng ký" required />
-      <button type="submit">Gửi lại mật khẩu</button>
-    </form>
-    <div class="links"><a href="#" onclick="location.reload()">Đăng nhập</a></div>
-  `;
-}
-</script>
+      try {
+        const res = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (data.token) {
+          localStorage.setItem("token", data.token);
+          alert("Đăng nhập thành công!");
+          window.location.href = "trang-chu.html";
+        } else {
+          alert(data.error || "Đăng nhập thất bại!");
+        }
+      } catch (err) {
+        alert("Lỗi kết nối server!");
+      }
+    });
+  </script>
 </body>
 </html>
