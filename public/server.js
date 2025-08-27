@@ -7,7 +7,6 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const multer = require('multer');
-const nodemailer = require('nodemailer');
 const { WebSocketServer } = require('ws');
 require('dotenv').config();
 
@@ -25,8 +24,10 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Serve static html files from project root
+// Serve static files from root (login.html, trang-chu.html, ...)
 app.use(express.static(path.join(__dirname)));
+
+// Default route -> login.html
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'login.html'));
 });
@@ -167,4 +168,4 @@ wss.on('connection', (ws, req) => {
 
 // ===== Start =====
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, () => console.log('Server running on port ' + PORT));
+server.listen(PORT, () => console.log('🚀 Server running on port ' + PORT));
