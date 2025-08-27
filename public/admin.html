@@ -1,0 +1,88 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LoveConnect - Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--pink:#e91e63;--danger:#ef4444;--bg:#fafafa;--card:#fff;--text:#111827}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Inter,system-ui,sans-serif;color:var(--text)}
+header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--pink);color:#fff}
+.btn{padding:8px 12px;border:none;border-radius:10px;cursor:pointer;font-weight:600}
+.btn-logout{background:var(--danger);color:#fff}
+.container{display:grid;grid-template-columns:340px 1fr;gap:16px;padding:16px}
+.card{background:var(--card);border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.06);padding:14px}
+h3{margin:4px 0 12px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px;border-bottom:1px solid #f1f5f9;text-align:left}
+.badge{padding:2px 8px;border-radius:999px;background:#fee2e2;color:#991b1b;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div>LoveConnect • Admin Panel</div>
+  <button class="btn btn-logout" onclick="logout()">Đăng xuất</button>
+</header>
+<div class="container">
+  <aside class="card">
+    <h3>Hành động nhanh</h3>
+    <div id="summary"></div>
+  </aside>
+  <main class="card">
+    <h3>Quản lý người dùng</h3>
+    <table>
+      <thead><tr><th>Tên</th><th>Email</th><th>Quyền</th><th>Trạng thái</th><th>Hành động</th></tr></thead>
+      <tbody id="userTable"></tbody>
+    </table>
+    <h3>Gần đây (tin nhắn)</h3>
+    <div id="msgArea" style="max-height:300px;overflow:auto"></div>
+  </main>
+</div>
+<script>
+const API_BASE = window.location.origin;
+const token = localStorage.getItem("token");
+const me = JSON.parse(localStorage.getItem("user")||"null");
+if(!token || !me || me.role!=="admin"){ location.href="login.html"; }
+
+async function loadUsers(){
+  const res = await fetch(API_BASE+"/api/admin/users",{ headers:{ Authorization:"Bearer "+token }});
+  const users = await res.json();
+  const tbody = document.getElementById("userTable"); tbody.innerHTML="";
+  users.forEach(u=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML = `<td>${u.username}</td><td>${u.email}</td><td>${u.role}</td>
+      <td>${u.blocked ? '<span class="badge">Đang chặn</span>' : 'Hoạt động'}</td>
+      <td>
+        <button onclick="toggleBlock('${u._id}')" class="btn">${u.blocked?'Mở chặn':'Chặn'}</button>
+        <button onclick="delUser('${u._id}')" class="btn" style="background:#fde68a">Xóa</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById("summary").innerHTML = `Tổng người dùng: <b>${users.length}</b>`;
+}
+async function toggleBlock(id){
+  const res = await fetch(API_BASE+"/api/admin/block/"+id, { method:"PUT", headers:{ Authorization:"Bearer "+token }});
+  await res.json(); loadUsers();
+}
+async function delUser(id){
+  if(!confirm("Xóa tài khoản này?")) return;
+  const res = await fetch(API_BASE+"/api/admin/delete/"+id, { method:"DELETE", headers:{ Authorization:"Bearer "+token }});
+  await res.json(); loadUsers();
+}
+async function loadMsgs(){
+  const res = await fetch(API_BASE+"/api/admin/messages", { headers:{ Authorization:"Bearer "+token }});
+  const msgs = await res.json();
+  const area = document.getElementById("msgArea"); area.innerHTML="";
+  msgs.forEach(m=>{
+    const div=document.createElement("div");
+    div.textContent = `[${new Date(m.createdAt).toLocaleString()}] ${m.sender?.username} → ${m.receiver?.username}: ${m.content||m.fileUrl||''}`;
+    area.appendChild(div);
+  });
+}
+function logout(){ localStorage.clear(); location.href="login.html"; }
+loadUsers(); loadMsgs();
+</script>
+</body>
+</html>
