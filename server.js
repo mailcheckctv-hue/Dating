@@ -1,171 +1,281 @@
-const express = require('express');
-const http = require('http');
+/**
+ * LoveConnect - Full server.js
+ * Features: Auth (JWT), Users, Posts (upload), Suggested users,
+ * WebSocket chat, Static hosting for /public, healthcheck, VIP stub.
+ */
+require('dotenv').config();
 const path = require('path');
 const fs = require('fs');
+const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const cors = require('cors');
 const multer = require('multer');
-const { WebSocketServer } = require('ws');
-require('dotenv').config();
+const http = require('http');
+const WebSocket = require('ws');
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
+const wss = new WebSocket.Server({ server });
 
-// ===== Ensure uploads folder exists =====
-if (!fs.existsSync('uploads')) {
-  fs.mkdirSync('uploads', { recursive: true });
-}
+// ---------- ENV & Mongo ----------
+const PORT = process.env.PORT || 10000;
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_please_change';
+const MONGO = process.env.MONGODB_URI || process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/loveconnect';
 
-// ===== Middlewares =====
+mongoose
+  .connect(MONGO, { dbName: 'loveconnect' })
+  .then(() => console.log('MongoDB connected'))
+  .catch((err) => console.error('Mongo error:', err.message));
+
+// ---------- Middlewares ----------
 app.use(cors());
-app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true }));
 
-// Serve static files from root (login.html, trang-chu.html, ...)
-app.use(express.static(path.join(__dirname)));
+// ensure /uploads exists
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 
-// Default route -> login.html
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'login.html'));
-});
-
-// ===== DB Connection =====
-const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
-if (!mongoUri) {
-  console.error("❌ Missing MONGO_URI / MONGODB_URI in environment variables");
-  process.exit(1);
-}
-mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log("✅ MongoDB connected"))
-  .catch(err => console.error("❌ MongoDB error:", err));
-
-// ===== Schemas =====
-const userSchema = new mongoose.Schema({
-  username: String,
-  email: String,
-  password: String,
-  gender: String,
-  avatar: String,
-  vip: { type: String, default: 'free' },
-});
-const messageSchema = new mongoose.Schema({
-  sender: String,
-  receiver: String,
-  content: String,
-  fileUrl: String,
-  fileName: String,
-  createdAt: { type: Date, default: Date.now }
-});
-const postSchema = new mongoose.Schema({
-  userId: String,
-  content: String,
-  image: String,
-  video: String,
-  createdAt: { type: Date, default: Date.now }
-});
-const User = mongoose.model('User', userSchema);
-const Message = mongoose.model('Message', messageSchema);
-const Post = mongoose.model('Post', postSchema);
-
-// ===== Auth Middleware =====
-function authenticateToken(req, res, next) {
-  const token = req.headers['authorization'];
-  if (!token) return res.sendStatus(401);
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return res.sendStatus(403);
-    req.user = user;
-    next();
-  });
-}
-
-// ===== File Upload =====
+// Multer storage
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
-  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname || '');
+    cb(null, unique + ext);
+  }
 });
 const upload = multer({ storage });
 
-app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => {
-  res.json({ fileUrl: '/uploads/' + req.file.filename, fileName: req.file.originalname });
-});
+// ---------- Schemas ----------
+const userSchema = new mongoose.Schema({
+  username: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  gender: { type: String, enum: ['Nam', 'Nữ', 'Khác'], default: 'Khác' },
+  avatarUrl: String,
+  location: String,
+  income: String,
+  vip: { type: String, enum: ['none', 'vip-week', 'basic', 'premium'], default: 'none' },
+}, { timestamps: true });
 
-// ===== Auth Routes =====
+const postSchema = new mongoose.Schema({
+  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  content: String,
+  fileUrl: String,
+  fileName: String,
+  likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+}, { timestamps: true });
+
+const messageSchema = new mongoose.Schema({
+  sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  content: String,
+  fileUrl: String,
+  fileName: String,
+  read: { type: Boolean, default: false },
+}, { timestamps: true });
+
+const User = mongoose.model('User', userSchema);
+const Post = mongoose.model('Post', postSchema);
+const Message = mongoose.model('Message', messageSchema);
+
+// ---------- Helpers ----------
+function signToken(user) {
+  return jwt.sign({ id: user._id, email: user.email, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
+}
+function auth(req, res, next) {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.substring(7) : null;
+  if (!token) return res.status(401).json({ message: 'Missing token' });
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch (e) {
+    return res.status(401).json({ message: 'Invalid token' });
+  }
+}
+
+// ---------- Static ----------
+const publicDir = path.join(__dirname, 'public');
+app.use('/uploads', express.static(uploadDir));
+if (fs.existsSync(publicDir)) {
+  app.use(express.static(publicDir));
+}
+
+// ---------- Healthcheck ----------
+app.get('/healthz', (req, res) => res.json({ ok: true }));
+
+// ---------- Auth Routes ----------
 app.post('/api/register', async (req, res) => {
-  const { username, email, password, gender } = req.body;
-  const hashed = await bcrypt.hash(password, 10);
-  const user = new User({ username, email, password: hashed, gender });
-  await user.save();
-  res.json({ message: 'User registered' });
+  try {
+    const { username, email, password, gender } = req.body;
+    if (!username || !email || !password) return res.status(400).json({ message: 'Thiếu dữ liệu' });
+    const existed = await User.findOne({ email });
+    if (existed) return res.status(400).json({ message: 'Email đã tồn tại' });
+    const hash = await bcrypt.hash(password, 10);
+    const user = await User.create({ username, email, password: hash, gender });
+    const token = signToken(user);
+    res.json({ token, user: { id: user._id, username: user.username, email: user.email } });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'Lỗi máy chủ' });
+  }
 });
 
 app.post('/api/login', async (req, res) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email });
-  if (!user) return res.status(400).json({ error: 'User not found' });
-  const valid = await bcrypt.compare(password, user.password);
-  if (!valid) return res.status(400).json({ error: 'Invalid password' });
-  const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET);
-  res.json({ token });
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: 'Email hoặc mật khẩu không đúng' });
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) return res.status(400).json({ message: 'Email hoặc mật khẩu không đúng' });
+    const token = signToken(user);
+    res.json({ token, user: { id: user._id, username: user.username, email: user.email } });
+  } catch (e) {
+    res.status(500).json({ message: 'Lỗi máy chủ' });
+  }
 });
 
-// ===== Posts API =====
-app.get('/api/posts', authenticateToken, async (req, res) => {
-  const posts = await Post.find().sort({ createdAt: -1 }).limit(50);
+// ---------- Profile ----------
+app.get('/api/profile', auth, async (req, res) => {
+  const me = await User.findById(req.user.id).lean();
+  res.json(me);
+});
+
+// ---------- Upload (file/image) ----------
+app.post('/api/upload', auth, upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'Chưa có file' });
+  const fileUrl = `/uploads/${req.file.filename}`;
+  res.json({ fileUrl, fileName: req.file.originalname || req.file.filename });
+});
+
+// ---------- Posts ----------
+app.get('/api/posts', auth, async (req, res) => {
+  const posts = await Post.find().sort({ createdAt: -1 }).limit(50).populate('author', 'username avatarUrl').lean();
   res.json(posts);
 });
-app.post('/api/posts', authenticateToken, upload.single('file'), async (req, res) => {
-  let image, video;
-  if (req.file) {
-    if (req.file.mimetype.startsWith('image')) image = '/uploads/' + req.file.filename;
-    if (req.file.mimetype.startsWith('video')) video = '/uploads/' + req.file.filename;
+
+app.post('/api/posts', auth, upload.single('file'), async (req, res) => {
+  try {
+    let fileUrl, fileName;
+    if (req.file) {
+      fileUrl = `/uploads/${req.file.filename}`;
+      fileName = req.file.originalname || req.file.filename;
+    } else if (req.body.fileUrl) {
+      fileUrl = req.body.fileUrl;
+      fileName = req.body.fileName;
+    }
+    const post = await Post.create({
+      author: req.user.id,
+      content: req.body.content || '',
+      fileUrl, fileName
+    });
+    const populated = await post.populate('author', 'username avatarUrl');
+    res.json(populated);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'Không tạo được bài viết' });
   }
-  const post = new Post({ userId: req.user.id, content: req.body.content, image, video });
-  await post.save();
-  res.json(post);
 });
 
-// ===== Suggestions API =====
-app.get('/api/users/suggested', authenticateToken, async (req, res) => {
-  const users = await User.find().limit(10);
+// ---------- Suggested users ----------
+app.get('/api/users/suggested', auth, async (req, res) => {
+  const users = await User.find({ _id: { $ne: req.user.id } }).select('username avatarUrl gender location').limit(12).lean();
   res.json(users);
 });
 
-// ===== WebSocket =====
-let clients = {};
-wss.on('connection', (ws, req) => {
-  const params = new URLSearchParams(req.url.replace('/?', ''));
-  const token = params.get('token');
-  if (!token) return ws.close();
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return ws.close();
-    ws.userId = user.id;
-    clients[user.id] = ws;
+// ---------- Messages (REST for history) ----------
+app.get('/api/messages/:otherId', auth, async (req, res) => {
+  const other = req.params.otherId;
+  const msgs = await Message.find({
+    $or: [
+      { sender: req.user.id, receiver: other },
+      { sender: other, receiver: req.user.id }
+    ]
+  }).sort({ createdAt: 1 }).lean();
+  res.json(msgs);
+});
 
-    ws.on('message', async msg => {
-      const data = JSON.parse(msg);
+// ---------- VIP Stub ----------
+app.post('/api/upgrade-vip', auth, async (req, res) => {
+  const { plan } = req.body;
+  await User.findByIdAndUpdate(req.user.id, { vip: plan || 'vip-week' });
+  res.json({ success: true });
+});
+
+// ---------- Default routes ----------
+app.get('/', (req, res) => {
+  // serve login if public exists; otherwise simple text
+  const loginPath = path.join(publicDir, 'login.html');
+  if (fs.existsSync(loginPath)) return res.sendFile(loginPath);
+  res.send('LoveConnect API is running.');
+});
+
+// ---------- WebSocket ----------
+const clients = new Map(); // userId -> ws
+
+function wsAuth(token) {
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch {
+    return null;
+  }
+}
+
+wss.on('connection', (socket, req) => {
+  // token from query ?token=...
+  const params = new URLSearchParams((req.url || '').split('?')[1]);
+  const token = params.get('token');
+  const user = wsAuth(token);
+  if (!user) {
+    socket.close();
+    return;
+  }
+  clients.set(user.id, socket);
+
+  socket.on('message', async (msg) => {
+    try {
+      const data = JSON.parse(msg.toString());
       if (data.type === 'message') {
-        const newMsg = new Message({
-          sender: ws.userId,
+        const payload = {
+          sender: user.id,
           receiver: data.receiverId,
-          content: data.content,
+          content: data.content || '',
           fileUrl: data.fileUrl,
           fileName: data.fileName
-        });
-        await newMsg.save();
-        if (clients[data.receiverId]) {
-          clients[data.receiverId].send(JSON.stringify({ type: 'message', message: newMsg }));
-        }
-        ws.send(JSON.stringify({ type: 'message', message: newMsg }));
+        };
+        const saved = await Message.create(payload);
+        const sendObj = {
+          type: 'message',
+          _id: saved._id,
+          sender: { _id: user.id, username: user.username },
+          receiver: data.receiverId,
+          content: payload.content,
+          fileUrl: payload.fileUrl,
+          fileName: payload.fileName,
+          createdAt: saved.createdAt
+        };
+        // send to receiver if online
+        const rc = clients.get(data.receiverId);
+        if (rc && rc.readyState === WebSocket.OPEN) rc.send(JSON.stringify(sendObj));
+        // echo back to sender
+        if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(sendObj));
       }
-    });
+    } catch (e) {
+      console.error('WS error', e.message);
+    }
+  });
 
-    ws.on('close', () => delete clients[user.id]);
+  socket.on('close', () => {
+    clients.delete(user.id);
   });
 });
 
-// ===== Start =====
-const PORT = process.env.PORT || 10000;
-server.listen(PORT, () => console.log('🚀 Server running on port ' + PORT));
+server.listen(PORT, () => {
+  console.log('Server running on port', PORT);
+});
