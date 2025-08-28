@@ -69,6 +69,7 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const postSchema = new mongoose.Schema({
+  reactions: { type: Object, default: {} },
   author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   content: String,
   fileUrl: String,
@@ -283,6 +284,57 @@ app.get('/api/conversations', auth, async (req, res) => {
     res.status(500).json({ message: 'Không lấy được danh sách hội thoại' });
   }
 });
+
+
+// ---------- Comments & Reactions & Delete Post (NEW) ----------
+const commentSchema = new mongoose.Schema({
+  post: { type: mongoose.Schema.Types.ObjectId, ref: 'Post', required: true },
+  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  content: { type: String, default: '' }
+}, { timestamps: true });
+const Comment = mongoose.model('Comment', commentSchema);
+
+// list comments
+app.get('/api/posts/:id/comments', auth, async (req, res) => {
+  const list = await Comment.find({ post: req.params.id })
+    .sort({ createdAt: 1 })
+    .populate('author', 'username avatarUrl')
+    .lean();
+  res.json(list);
+});
+
+// add comment
+app.post('/api/posts/:id/comments', auth, async (req, res) => {
+  if (!req.body.content || !req.body.content.trim()) return res.status(400).json({ message: 'Nội dung trống' });
+  const c = await Comment.create({ post: req.params.id, author: req.user.id, content: req.body.content.trim() });
+  const populated = await c.populate('author', 'username avatarUrl');
+  res.json(populated);
+});
+
+// toggle reaction (like/heart/emoji key)
+app.post('/api/posts/:id/react/:emoji', auth, async (req, res) => {
+  const { id, emoji } = req.params;
+  const post = await Post.findById(id);
+  if (!post) return res.status(404).json({ message: 'Không tìm thấy bài viết' });
+  if (!post.reactions) post.reactions = {};
+  const arr = (post.reactions[emoji] || []).map(x => x.toString());
+  const idx = arr.indexOf(req.user.id);
+  if (idx >= 0) arr.splice(idx, 1); else arr.push(req.user.id);
+  post.reactions[emoji] = arr;
+  await post.save();
+  res.json({ reactions: post.reactions });
+});
+
+// delete own post
+app.delete('/api/posts/:id', auth, async (req, res) => {
+  const p = await Post.findById(req.params.id);
+  if (!p) return res.status(404).json({ message: 'Không tìm thấy' });
+  if (p.author.toString() !== req.user.id) return res.status(403).json({ message: 'Không có quyền' });
+  await Comment.deleteMany({ post: p._id });
+  await p.deleteOne();
+  res.json({ success: true });
+});
+
 
 // ---------- VIP Stub ----------
 app.post('/api/upgrade-vip', auth, async (req, res) => {
