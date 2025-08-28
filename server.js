@@ -498,7 +498,7 @@ wss.on('connection', (socket, req) => {
 
 
 // --- Update avatar (crop image uploaded from client) ---
-app.post('/update-avatar', authMiddleware, upload.single('file'), async (req, res) => {
+app.post('/update-avatar', auth, upload.single('file'), async (req, res) => {
   try{
     const fileUrl = req.file ? (req.protocol + '://' + req.get('host') + '/uploads/' + req.file.filename) : null;
     if(!fileUrl) return res.status(400).json({error:'No file uploaded'});
