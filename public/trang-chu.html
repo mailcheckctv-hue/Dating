@@ -37,9 +37,6 @@
     .btn-pink:hover{background:#ff2e60;color:#fff}
     .media{border-radius:12px; max-height:520px; object-fit:cover; width:100%}
     .logout-btn{border:2px solid #fff !important; background:transparent !important}
-    .emoji-picker{position:absolute;background:#fff;border:1px solid #eee;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:.4rem;display:none;max-width:260px;flex-wrap:wrap;gap:.25rem;z-index:1000}
-    .emoji-picker .emoji{font-size:22px;cursor:pointer;line-height:1.2}
-
   </style>
 </head>
 <body>
@@ -53,8 +50,7 @@
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
         <li class="nav-item"><a class="nav-link active" href="trang-chu.html"><i class="fa-solid fa-house"></i> Trang chủ</a></li>
         <li class="nav-item"><a class="nav-link" href="#" id="btnFriends"><i class="fa-solid fa-user-group"></i> Bạn bè</a></li>
-        <li class="nav-item position-relative"><a class="nav-link" href="#" id="btnMessages"><i class="fa-regular fa-message"></i> Tin nhắn <span class="badge rounded-pill text-bg-danger ms-1" id="msgBadge">0</span></a></li>
-        <li class="nav-item position-relative"><a class="nav-link" href="#" id="btnBell"><i class="fa-solid fa-bell"></i> <span class="badge rounded-pill text-bg-warning position-absolute translate-middle" style="top:8px;left:24px" id="notifBellBadge">0</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="#" id="btnMessages"><i class="fa-regular fa-message"></i> Tin nhắn</a></li>
         <li class="nav-item"><a class="nav-link" href="#" id="btnVip"><i class="fa-solid fa-crown"></i> Nâng cấp VIP</a></li>
       </ul>
       <div class="d-flex align-items-center gap-3">
@@ -222,68 +218,6 @@ const isImg = (url='') => /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url.split('?')
 const isVideo = (url='') => /\.(mp4|webm|ogg)$/i.test(url.split('?')[0]);
 const fmtNameToInitial = (name) => (name||'NA').split(' ').map(s=>s[0]).join('').slice(0,2).toUpperCase();
 
-
-// === Emoji Picker (reusable) ===
-const EMOJIS = "😀😁😂🤣😅😊😍😘🤩😎🙂🙃🤔🤨😮😢😭😡😴🤗👍👎👌🙏👏❤️🔥🎉✨✅❌".split('');
-const picker = document.getElementById('globalEmojiPicker');
-function openEmojiPicker(targetInput, anchorBtn){
-  picker.innerHTML = EMOJIS.map(e=>`<span class="emoji" data-e="${e}">${e}</span>`).join('');
-  const rect = anchorBtn.getBoundingClientRect();
-  picker.style.left = (rect.left) + 'px';
-  picker.style.top = (rect.bottom + window.scrollY + 6) + 'px';
-  picker.style.display = 'flex';
-  const onPick = (ev)=>{
-    const el = ev.target.closest('.emoji');
-    if(!el) return;
-    targetInput.value += el.dataset.e;
-    picker.style.display='none';
-    window.removeEventListener('click', onOutside);
-  };
-  const onOutside = (ev)=>{
-    if(!picker.contains(ev.target) && ev.target!==anchorBtn){ picker.style.display='none'; window.removeEventListener('click', onOutside); picker.removeEventListener('click', onPick); }
-  }
-  picker.addEventListener('click', onPick, { once:true });
-  setTimeout(()=>window.addEventListener('click', onOutside), 0);
-}
-
-// Attach picker to each comment input toggle
-function attachEmojiButton(pid){
-  const anchor = document.createElement('button');
-  anchor.className = 'btn btn-light btn-sm';
-  anchor.innerHTML = '<i class="fa-regular fa-face-smile"></i>';
-  const input = document.getElementById('cmtInput'+pid);
-  const parent = input.closest('.input-group');
-  parent.after(anchor);
-  anchor.addEventListener('click', ()=>openEmojiPicker(input, anchor));
-}
-
-// === Browser Notifications ===
-async function ensureNotifyPermission(){
-  try{
-    if (!('Notification' in window)) return;
-    if (Notification.permission === 'default') await Notification.requestPermission();
-  }catch{}
-}
-ensureNotifyPermission();
-
-function notifyNewMessage(fromName, text){
-  try{
-    if (!('Notification' in window)) return;
-    if (Notification.permission !== 'granted') return;
-    const n = new Notification(fromName || 'Tin nhắn mới', { body: text || 'Bạn có tin nhắn mới', icon: (me && me.avatarUrl) || undefined });
-    setTimeout(()=>n.close(), 5000);
-  }catch{}
-}
-
-// Update bell badge
-function incBell(count=1){
-  const b = document.getElementById('notifBellBadge');
-  if(b){ b.textContent = String((parseInt(b.textContent||'0',10))+count); }
-}
-document.getElementById('btnBell')?.addEventListener('click', ()=>{
-  const b = document.getElementById('notifBellBadge'); if(b) b.textContent = '0';
-});
-
 // Fetch profile
 async function loadProfile(){
   const r = await fetch(API+'/profile', {headers:{Authorization:'Bearer '+token}});
@@ -352,7 +286,7 @@ async function loadFeed(){
     const card = document.createElement('div');
     card.className = 'card mb-3';
     const media = p.fileUrl ? (
-      isImg(p.fileUrl) ? `<img src="${p.fileUrl}" class="media mt-2" alt="post" onerror="this.replaceWith(document.createRange().createContextualFragment(\'<div class=\\\'mt-2\\\'><a href=\\\'${p.fileUrl}\\\' target=\\\'_blank\\\'><i class=\\\'fa-solid fa-paperclip\\\'></i> ${p.fileName||\\\'Tệp đính kèm\\\'} </a></div>\'))">`
+      isImg(p.fileUrl) ? `<img src="${p.fileUrl}" class="media mt-2" alt="post">`
       : isVideo(p.fileUrl) ? `<video controls class="media mt-2" src="${p.fileUrl}"></video>`
       : `<div class="mt-2"><a href="${p.fileUrl}" target="_blank"><i class="fa-solid fa-paperclip"></i> ${p.fileName||'Tệp đính kèm'}</a></div>`
     ) : '';
@@ -388,7 +322,6 @@ async function loadFeed(){
       </div>`;
     container.appendChild(card);
     loadComments(p._id);
-    attachEmojiButton(p._id);
     const fileInput = document.getElementById('cmtSticker'+p._id);
     fileInput.addEventListener('change', ()=> uploadStickerAndComment(p._id, fileInput.files[0]));
   });
@@ -550,7 +483,7 @@ function ensureWS(){
     const data = JSON.parse(ev.data);
     if(data.type==='message'){
       renderMessage(data);
-      if(!window.chattingWith || (window.chattingWith.id !== (data.sender?._id || data.sender))){ incBell(1); notifyNewMessage(data.sender?.username || 'Tin nhắn mới', data.content); }
+      document.getElementById('badgeNoti').textContent = (+document.getElementById('badgeNoti').textContent + 1);
     }
   };
 }
@@ -646,6 +579,5 @@ async function onOpenChatWith(otherId){
   refreshUnread();
 }
 </script>
-<div class="emoji-picker" id="globalEmojiPicker" role="dialog" aria-label="Emoji picker"></div>
 </body>
 </html>
