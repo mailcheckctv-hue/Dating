@@ -113,17 +113,6 @@ if (fs.existsSync(publicDir)) {
   app.use(express.static(publicDir));
 }
 
-// Serve static UI files (fallback to project root if /public is missing)
-const serveDir = fs.existsSync(publicDir) ? publicDir : __dirname;
-if (!fs.existsSync(publicDir)) {
-  app.use(express.static(serveDir));
-}
-// HTML routes for SPA pages
-app.get('/', (req,res)=> res.sendFile(path.join(serveDir, 'login.html')));
-app.get('/login', (req,res)=> res.sendFile(path.join(serveDir, 'login.html')));
-app.get('/dang-ky', (req,res)=> res.sendFile(path.join(serveDir, 'dang-ky.html')));
-app.get(['/trang-chu','/home','/index'], (req,res)=> res.sendFile(path.join(serveDir, 'trang-chu.html')));
-
 // ---------- Healthcheck ----------
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 
@@ -505,18 +494,4 @@ wss.on('connection', (socket, req) => {
       } catch (e) { console.error('WS message error', e); }
     });
   } catch (e) { console.error('WS connection error', e); try { socket.close(); } catch(_){ } }
-});
-
-
-// --- Update avatar (crop image uploaded from client) ---
-app.post('/update-avatar', auth, upload.single('file'), async (req, res) => {
-  try{
-    const fileUrl = req.file ? (req.protocol + '://' + req.get('host') + '/uploads/' + req.file.filename) : null;
-    if(!fileUrl) return res.status(400).json({error:'No file uploaded'});
-    await User.findByIdAndUpdate(req.user.id, { avatarUrl: fileUrl });
-    res.json({ url: fileUrl });
-  }catch(e){
-    console.error('update-avatar', e);
-    res.status(500).json({error:'Server error'});
-  }
 });
