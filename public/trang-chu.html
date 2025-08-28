@@ -10,6 +10,9 @@
     :root{--pink:#ff3b6b}
     body{background:#f6f7fb}
     .navbar{background:var(--pink)}
+    .container{max-width:1100px}
+    .navbar-toggler{border-color:#fff}
+    .navbar-toggler-icon{filter:invert(1)}
     .navbar .nav-link,.navbar-brand,.navbar .btn{color:#fff}
     .navbar .nav-link.active{font-weight:700; text-decoration:underline}
     .card{border:0; box-shadow:0 8px 24px rgba(149,157,165,.2)}
@@ -28,6 +31,8 @@
     .btn-pink:hover{background:#ff2e60;color:#fff}
     .media{border-radius:12px; max-height:520px; object-fit:cover; width:100%}
     .logout-btn{border:2px solid #fff !important; background:transparent !important}
+    .reaction-pill{padding:.25rem .5rem;border-radius:999px;border:1px solid #eee;display:inline-flex;align-items:center;gap:.35rem}
+    @media (max-width: 576px){ .chatbox{width:100%; right:0; border-radius:12px 12px 0 0} }
   </style>
 </head>
 <body>
@@ -268,27 +273,71 @@ async function loadFeed(){
       : isVideo(p.fileUrl) ? `<video controls class="media mt-2" src="${p.fileUrl}"></video>`
       : `<div class="mt-2"><a href="${p.fileUrl}" target="_blank"><i class="fa-solid fa-paperclip"></i> ${p.fileName||'Tệp đính kèm'}</a></div>`
     ) : '';
+    const isOwner = (me && (p.author?._id===me._id || p.author===me.id));
+    const actions = `
+      <div class="d-flex gap-2 ms-auto">
+        ${isOwner?`<button class="btn btn-sm btn-outline-danger" onclick="deletePost('${p._id}')"><i class="fa-solid fa-trash"></i></button>`:''}
+      </div>`;
     card.innerHTML = `
       <div class="card-body">
         <div class="d-flex gap-2 align-items-center">
           <div class="avatar avatar-sm">${p.author?.avatarUrl?`<img src="${p.author.avatarUrl}">`:fmtNameToInitial(p.author?.username||'?')}</div>
-          <div>
+          <div class="flex-grow-1">
             <div class="fw-bold">${p.author?.username||'Người dùng'}</div>
             <div class="text-muted" style="font-size:12px">${new Date(p.createdAt).toLocaleString()}</div>
           </div>
+          ${actions}
         </div>
         <div class="mt-2">${(p.content||'').replace(/</g,'&lt;')}</div>
         ${media}
-        <div class="d-flex gap-3 mt-2 text-muted">
-          <span class="pointer"><i class="fa-regular fa-thumbs-up"></i> Thích</span>
-          <span class="pointer"><i class="fa-regular fa-comment"></i> Bình luận</span>
-          <span class="pointer"><i class="fa-solid fa-share"></i> Chia sẻ</span>
+        <div class="d-flex gap-3 mt-2 text-muted flex-wrap">
+          <span class="reaction-pill pointer" onclick="reactPost('${p._id}','like')"><i class="fa-regular fa-thumbs-up"></i> Thích <b>${(p.reactions?.like||[]).length}</b></span>
+          <span class="reaction-pill pointer" onclick="reactPost('${p._id}','heart')"><i class="fa-regular fa-heart"></i> Yêu thích <b>${(p.reactions?.heart||[]).length}</b></span>
+          <span class="reaction-pill pointer" data-bs-toggle="collapse" data-bs-target="#cmt${p._id}"><i class="fa-regular fa-comment"></i> Bình luận</span>
+        </div>
+        <div class="collapse mt-2" id="cmt${p._id}">
+          <div id="comments${p._id}" class="mb-2 small"></div>
+          <div class="input-group input-group-sm">
+            <input id="cmtInput${p._id}" class="form-control" placeholder="Viết bình luận...">
+            <button class="btn btn-pink" onclick="postComment('${p._id}')">Gửi</button>
+          </div>
         </div>
       </div>`;
     container.appendChild(card);
+    loadComments(p._id);
   });
 }
 loadFeed();
+
+async function deletePost(id){
+  if(!confirm('Xóa bài viết này?')) return;
+  const r = await fetch(API+'/posts/'+id,{method:'DELETE',headers:{Authorization:'Bearer '+token}});
+  if(r.ok) loadFeed();
+}
+
+async function reactPost(id,emoji){
+  await fetch(API+'/posts/'+id+'/react/'+emoji,{method:'POST',headers:{Authorization:'Bearer '+token}});
+  loadFeed();
+}
+
+async function loadComments(pid){
+  const r = await fetch(API+'/posts/'+pid+'/comments',{headers:{Authorization:'Bearer '+token}});
+  const list = await r.json();
+  const wrap = document.getElementById('comments'+pid);
+  wrap.innerHTML = '';
+  list.forEach(c=>{
+    wrap.innerHTML += `<div class="d-flex gap-2 mb-1"><div class="avatar avatar-sm">${c.author?.avatarUrl?`<img src="${c.author.avatarUrl}">`:fmtNameToInitial(c.author?.username||'?')}</div><div><b>${c.author?.username}</b>: ${c.content.replace(/</g,'&lt;')}</div></div>`;
+  });
+}
+
+async function postComment(pid){
+  const input = document.getElementById('cmtInput'+pid);
+  const txt = input.value.trim();
+  if(!txt) return;
+  const r = await fetch(API+'/posts/'+pid+'/comments',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({content:txt})});
+  if(r.ok){ input.value=''; loadComments(pid); }
+}
+
 
 // Composer
 document.getElementById('btnPost').onclick = async () => {
