@@ -432,54 +432,66 @@ server.listen(PORT, () => {
   console.log('Server running on port', PORT);
 });
 
+// --- WebSocket (robust, single handler) ---
+const wsClients = new Map(); // userId -> Set<sockets>
 
-// --- WS Robust Broadcast ---
-try {
-  const wsClients = new Map(); // userId -> Set of sockets
-  if (wss && wss.on) {
-    wss.on('connection', (socket, req) => {
-      try {
-        const url = require('url');
-        const q = url.parse(req.url, true).query || {};
-        const token = q.token || (req.headers['sec-websocket-protocol']||'').split(',').pop()?.trim();
-        let user = null;
-        if (token) {
-          try { user = jwt.verify(token, JWT_SECRET); } catch(e){}
-        }
-        if (!user) { socket.close(); return; }
-        socket._uid = user.id;
-        if (!wsClients.has(user.id)) wsClients.set(user.id, new Set());
-        wsClients.get(user.id).add(socket);
+wss.on('connection', (socket, req) => {
+  try {
+    const url = require('url');
+    const q = url.parse(req.url, true).query || {};
+    const token = q.token || (req.headers['sec-websocket-protocol']||'').split(',').pop()?.trim();
+    let user = null;
+    if (token) {
+      try { user = jwt.verify(token, JWT_SECRET); } catch(e){}
+    }
+    if (!user) { socket.close(); return; }
 
-        socket.on('close', () => {
-          const set = wsClients.get(user.id);
-          if (set) {
-            set.delete(socket);
-            if (set.size === 0) wsClients.delete(user.id);
-          }
-        });
+    socket._uid = user.id;
+    if (!wsClients.has(user.id)) wsClients.set(user.id, new Set());
+    wsClients.get(user.id).add(socket);
 
-        socket.on('message', async (raw) => {
-          try {
-            const data = JSON.parse(raw.toString());
-            if (data.type === 'message' && data.text && data.receiverId) {
-              // Save before broadcast
-              const saved = await Message.create({ sender: user.id, receiver: data.receiverId, text: data.text, read: false });
-              const populated = await saved.populate('sender', 'username avatarUrl');
-              const msgObj = { type: 'message', ...populated.toObject() };
-
-              // Deliver to receiver sockets
-              const recvSet = wsClients.get(data.receiverId) || new Set();
-              recvSet.forEach(s => { if (s.readyState === 1) s.send(JSON.stringify(msgObj)); });
-
-              // Echo to sender sockets
-              const sndSet = wsClients.get(user.id) || new Set();
-              sndSet.forEach(s => { if (s.readyState === 1) s.send(JSON.stringify(msgObj)); });
-            }
-          } catch (e) { console.error('WS message error', e); }
-        });
-      } catch (e) { console.error('WS connection error', e); try { socket.close(); } catch(_){ } }
+    socket.on('close', () => {
+      const set = wsClients.get(user.id);
+      if (set) {
+        set.delete(socket);
+        if (set.size === 0) wsClients.delete(user.id);
+      }
     });
-  }
-} catch (e) { console.error('WS attach failed', e); }
 
+    socket.on('message', async (raw) => {
+      try {
+        const data = JSON.parse(raw.toString());
+        if (data.type === 'message' && data.receiverId) {
+          // Persist message
+          const payload = {
+            sender: user.id,
+            receiver: data.receiverId,
+            content: data.content || '',
+            fileUrl: data.fileUrl,
+            fileName: data.fileName,
+            read: false
+          };
+          const saved = await Message.create(payload);
+          const sendObj = {
+            type: 'message',
+            _id: saved._id,
+            sender: { _id: user.id, username: user.username },
+            receiver: data.receiverId,
+            content: payload.content,
+            fileUrl: payload.fileUrl,
+            fileName: payload.fileName,
+            createdAt: saved.createdAt
+          };
+
+          // Deliver to receiver sockets
+          const recvSet = wsClients.get(data.receiverId) || new Set();
+          recvSet.forEach(s => { if (s.readyState === 1) s.send(JSON.stringify(sendObj)); });
+
+          // Echo to sender sockets
+          const sndSet = wsClients.get(user.id) || new Set();
+          sndSet.forEach(s => { if (s.readyState === 1) s.send(JSON.stringify(sendObj)); });
+        }
+      } catch (e) { console.error('WS message error', e); }
+    });
+  } catch (e) { console.error('WS connection error', e); try { socket.close(); } catch(_){ } }
+});
