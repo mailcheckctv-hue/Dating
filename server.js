@@ -1,7 +1,11 @@
+
 /**
- * LoveConnect - Full server.js
- * Features: Auth (JWT), Users, Posts (upload), Suggested users,
- * WebSocket chat, Static hosting for /public, healthcheck, VIP stub.
+ * LoveConnect - Enhanced server.js (avatar, friends, conversations, image-first feed)
+ * Keeps all existing routes; adds safe, backward-compatible endpoints:
+ *  - POST   /api/profile/avatar     (upload & set avatarUrl)
+ *  - POST   /api/friends/:id        (toggle follow/friend request-style add)
+ *  - GET    /api/friends            (list mutual friends: users who list each other)
+ *  - GET    /api/conversations      (recent chat heads with last message)
  */
 require('dotenv').config();
 const path = require('path');
@@ -31,7 +35,7 @@ mongoose
 
 // ---------- Middlewares ----------
 app.use(cors());
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // ensure /uploads exists
@@ -61,6 +65,7 @@ const userSchema = new mongoose.Schema({
   location: String,
   income: String,
   vip: { type: String, enum: ['none', 'vip-week', 'basic', 'premium'], default: 'none' },
+  friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // NEW: simple friends list
 }, { timestamps: true });
 
 const postSchema = new mongoose.Schema({
@@ -147,7 +152,15 @@ app.get('/api/profile', auth, async (req, res) => {
   res.json(me);
 });
 
-// ---------- Upload (file/image) ----------
+// NEW: upload avatar
+app.post('/api/profile/avatar', auth, upload.single('avatar'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'Chưa có ảnh' });
+  const fileUrl = `/uploads/${req.file.filename}`;
+  await User.findByIdAndUpdate(req.user.id, { avatarUrl: fileUrl });
+  res.json({ avatarUrl: fileUrl });
+});
+
+// ---------- Upload (generic file/image) ----------
 app.post('/api/upload', auth, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'Chưa có file' });
   const fileUrl = `/uploads/${req.file.filename}`;
@@ -189,6 +202,33 @@ app.get('/api/users/suggested', auth, async (req, res) => {
   res.json(users);
 });
 
+// ---------- Friends ----------
+// Toggle add/remove friend (simple): if id exists in my list -> remove, else add.
+app.post('/api/friends/:id', auth, async (req, res) => {
+  const otherId = req.params.id;
+  if (otherId === req.user.id) return res.status(400).json({ message: 'Không thể tự kết bạn' });
+  const me = await User.findById(req.user.id);
+  const idx = me.friends.findIndex(f => f.toString() === otherId);
+  if (idx >= 0) me.friends.splice(idx, 1);
+  else me.friends.push(otherId);
+  await me.save();
+  res.json({ success: true, friends: me.friends });
+});
+
+// List mutual friends: both users include each other in friends[]
+app.get('/api/friends', auth, async (req, res) => {
+  const me = await User.findById(req.user.id).lean();
+  if (!me) return res.status(404).json({ message: 'Not found' });
+  const candidates = await User.find({ _id: { $in: me.friends } }).select('username avatarUrl').lean();
+  const mutual = [];
+  for (const u of candidates) {
+    const uu = await User.findById(u._id).select('friends username avatarUrl').lean();
+    const list = (uu.friends || []).map(x => x.toString());
+    if (list.includes(req.user.id)) mutual.push({ _id: u._id, username: u.username, avatarUrl: u.avatarUrl });
+  }
+  res.json(mutual);
+});
+
 // ---------- Messages (REST for history) ----------
 app.get('/api/messages/:otherId', auth, async (req, res) => {
   const other = req.params.otherId;
@@ -201,6 +241,49 @@ app.get('/api/messages/:otherId', auth, async (req, res) => {
   res.json(msgs);
 });
 
+// NEW: conversation heads (last message per peer)
+app.get('/api/conversations', auth, async (req, res) => {
+  try {
+    const pipeline = [
+      { $match: { $or: [ { sender: new mongoose.Types.ObjectId(req.user.id) }, { receiver: new mongoose.Types.ObjectId(req.user.id) } ] } },
+      { $sort: { createdAt: -1 } },
+      { $group: {
+          _id: {
+            other: {
+              $cond: [
+                { $eq: ['$sender', new mongoose.Types.ObjectId(req.user.id)] },
+                '$receiver', '$sender'
+              ]
+            }
+          },
+          lastMessage: { $first: '$$ROOT' }
+        }
+      },
+      { $lookup: {
+          from: 'users',
+          localField: '_id.other',
+          foreignField: '_id',
+          as: 'otherUser'
+        }
+      },
+      { $unwind: '$otherUser' },
+      { $project: {
+          otherId: '$_id.other',
+          otherName: '$otherUser.username',
+          otherAvatar: '$otherUser.avatarUrl',
+          lastMessage: 1
+        }
+      },
+      { $limit: 50 }
+    ];
+    const conv = await Message.aggregate(pipeline);
+    res.json(conv);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'Không lấy được danh sách hội thoại' });
+  }
+});
+
 // ---------- VIP Stub ----------
 app.post('/api/upgrade-vip', auth, async (req, res) => {
   const { plan } = req.body;
@@ -210,7 +293,6 @@ app.post('/api/upgrade-vip', auth, async (req, res) => {
 
 // ---------- Default routes ----------
 app.get('/', (req, res) => {
-  // serve login if public exists; otherwise simple text
   const loginPath = path.join(publicDir, 'login.html');
   if (fs.existsSync(loginPath)) return res.sendFile(loginPath);
   res.send('LoveConnect API is running.');
@@ -228,7 +310,6 @@ function wsAuth(token) {
 }
 
 wss.on('connection', (socket, req) => {
-  // token from query ?token=...
   const params = new URLSearchParams((req.url || '').split('?')[1]);
   const token = params.get('token');
   const user = wsAuth(token);
@@ -260,10 +341,8 @@ wss.on('connection', (socket, req) => {
           fileName: payload.fileName,
           createdAt: saved.createdAt
         };
-        // send to receiver if online
         const rc = clients.get(data.receiverId);
         if (rc && rc.readyState === WebSocket.OPEN) rc.send(JSON.stringify(sendObj));
-        // echo back to sender
         if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(sendObj));
       }
     } catch (e) {
