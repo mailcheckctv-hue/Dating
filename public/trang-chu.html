@@ -11,14 +11,8 @@
     body{background:#f6f7fb}
     .navbar{background:var(--pink)}
     .container{max-width:1100px}
-    .card{border:1px solid #eee; border-radius:16px; box-shadow:0 2px 10px rgba(0,0,0,.04)}
-    .btn{border-radius:999px}
-    .reaction-pill{padding:.25rem .6rem;border-radius:999px;border:1px solid #eee;display:inline-flex;align-items:center;gap:.35rem}
-    .pointer{cursor:pointer}
-    @media (max-width: 576px){
-      .chatbox{width:100%!important; right:0!important; left:0!important; bottom:0!important; top:auto!important; border-radius:14px 14px 0 0!important}
-      .media{max-height:260px}
-    }
+    .navbar-toggler{border-color:#fff}
+    .navbar-toggler-icon{filter:invert(1)}
     .navbar .nav-link,.navbar-brand,.navbar .btn{color:#fff}
     .navbar .nav-link.active{font-weight:700; text-decoration:underline}
     .card{border:0; box-shadow:0 8px 24px rgba(149,157,165,.2)}
@@ -37,6 +31,8 @@
     .btn-pink:hover{background:#ff2e60;color:#fff}
     .media{border-radius:12px; max-height:520px; object-fit:cover; width:100%}
     .logout-btn{border:2px solid #fff !important; background:transparent !important}
+    .reaction-pill{padding:.25rem .5rem;border-radius:999px;border:1px solid #eee;display:inline-flex;align-items:center;gap:.35rem}
+    @media (max-width: 576px){ .chatbox{width:100%; right:0; border-radius:12px 12px 0 0} }
   </style>
 </head>
 <body>
@@ -263,19 +259,6 @@ document.getElementById('avatarFile').addEventListener('change', async (e)=>{
 });
 
 // Feed
-const REACTIONS = ['like','heart','haha','wow','sad','angry'];
-
-function reactionBar(p){
-  const counts = REACTIONS.map(e => ({e, n: (p.reactions?.[e]||[]).length}));
-  return counts.map(x => `<span class="reaction-pill pointer" onclick="reactPost('${p._id}','${x.e}')">
-    ${iconFor(x.e)} <b>${x.n}</b></span>`).join(' ');
-}
-function iconFor(e){
-  const map = { like:'<i class="fa-regular fa-thumbs-up"></i>', heart:'<i class="fa-regular fa-heart"></i>',
-    haha:'😂', wow:'😮', sad:'😢', angry:'😠' };
-  return map[e] || '⭐';
-}
-
 async function loadFeed(){
   const r = await fetch(API+'/posts', {headers:{Authorization:'Bearer '+token}});
   const posts = await r.json();
@@ -291,7 +274,10 @@ async function loadFeed(){
       : `<div class="mt-2"><a href="${p.fileUrl}" target="_blank"><i class="fa-solid fa-paperclip"></i> ${p.fileName||'Tệp đính kèm'}</a></div>`
     ) : '';
     const isOwner = (me && (p.author?._id===me._id || p.author===me.id));
-    const actions = `${isOwner?`<button class="btn btn-sm btn-outline-danger ms-auto" onclick="deletePost('${p._id}')"><i class="fa-solid fa-trash"></i></button>`:''}`;
+    const actions = `
+      <div class="d-flex gap-2 ms-auto">
+        ${isOwner?`<button class="btn btn-sm btn-outline-danger" onclick="deletePost('${p._id}')"><i class="fa-solid fa-trash"></i></button>`:''}
+      </div>`;
     card.innerHTML = `
       <div class="card-body">
         <div class="d-flex gap-2 align-items-center">
@@ -304,26 +290,21 @@ async function loadFeed(){
         </div>
         <div class="mt-2">${(p.content||'').replace(/</g,'&lt;')}</div>
         ${media}
-        <div class="d-flex gap-2 flex-wrap mt-2 text-muted">${reactionBar(p)}</div>
-        <div class="mt-2">
-          <button class="btn btn-light btn-sm" data-bs-toggle="collapse" data-bs-target="#cmt${p._id}"><i class="fa-regular fa-comment"></i> Bình luận</button>
+        <div class="d-flex gap-3 mt-2 text-muted flex-wrap">
+          <span class="reaction-pill pointer" onclick="reactPost('${p._id}','like')"><i class="fa-regular fa-thumbs-up"></i> Thích <b>${(p.reactions?.like||[]).length}</b></span>
+          <span class="reaction-pill pointer" onclick="reactPost('${p._id}','heart')"><i class="fa-regular fa-heart"></i> Yêu thích <b>${(p.reactions?.heart||[]).length}</b></span>
+          <span class="reaction-pill pointer" data-bs-toggle="collapse" data-bs-target="#cmt${p._id}"><i class="fa-regular fa-comment"></i> Bình luận</span>
         </div>
         <div class="collapse mt-2" id="cmt${p._id}">
           <div id="comments${p._id}" class="mb-2 small"></div>
-          <div class="d-flex gap-1 align-items-center">
-            <div class="input-group input-group-sm">
-              <input id="cmtInput${p._id}" class="form-control" placeholder="Viết bình luận...">
-              <button class="btn btn-pink" onclick="postComment('${p._id}')">Gửi</button>
-            </div>
-            <input type="file" id="cmtSticker${p._id}" accept="image/*" hidden>
-            <label class="btn btn-light btn-sm mb-0" for="cmtSticker${p._id}" title="Gửi sticker"><i class="fa-regular fa-face-smile"></i></label>
+          <div class="input-group input-group-sm">
+            <input id="cmtInput${p._id}" class="form-control" placeholder="Viết bình luận...">
+            <button class="btn btn-pink" onclick="postComment('${p._id}')">Gửi</button>
           </div>
         </div>
       </div>`;
     container.appendChild(card);
     loadComments(p._id);
-    const fileInput = document.getElementById('cmtSticker'+p._id);
-    fileInput.addEventListener('change', ()=> uploadStickerAndComment(p._id, fileInput.files[0]));
   });
 }
 loadFeed();
@@ -345,12 +326,7 @@ async function loadComments(pid){
   const wrap = document.getElementById('comments'+pid);
   wrap.innerHTML = '';
   list.forEach(c=>{
-    const text = c.content ? `${c.content.replace(/</g,'&lt;')}` : '';
-    const sticker = c.stickerUrl ? `<div><img src="${c.stickerUrl}" style="max-width:120px;border-radius:12px"></div>` : '';
-    wrap.innerHTML += `<div class="d-flex gap-2 mb-1">
-      <div class="avatar avatar-sm">${c.author?.avatarUrl?`<img src="${c.author.avatarUrl}">`:fmtNameToInitial(c.author?.username||'?')}</div>
-      <div><b>${c.author?.username}</b>: ${text} ${sticker}</div>
-    </div>`;
+    wrap.innerHTML += `<div class="d-flex gap-2 mb-1"><div class="avatar avatar-sm">${c.author?.avatarUrl?`<img src="${c.author.avatarUrl}">`:fmtNameToInitial(c.author?.username||'?')}</div><div><b>${c.author?.username}</b>: ${c.content.replace(/</g,'&lt;')}</div></div>`;
   });
 }
 
@@ -360,18 +336,6 @@ async function postComment(pid){
   if(!txt) return;
   const r = await fetch(API+'/posts/'+pid+'/comments',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({content:txt})});
   if(r.ok){ input.value=''; loadComments(pid); }
-}
-
-async function uploadStickerAndComment(pid, file){
-  if(!file) return;
-  const fd = new FormData();
-  fd.append('file', file);
-  const up = await fetch(API+'/upload', {method:'POST', headers:{Authorization:'Bearer '+token}, body:fd});
-  if(up.ok){
-    const { url } = await up.json();
-    const r = await fetch(API+'/posts/'+pid+'/comments',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({stickerUrl:url})});
-    if(r.ok) loadComments(pid);
-  }
 }
 
 
@@ -538,46 +502,6 @@ document.getElementById('btnPaid').onclick = async ()=>{
 
 // Logout - clearer style
 document.getElementById('btnLogout').onclick = ()=>{ localStorage.removeItem('token'); location.href='login.html'; };
-</script>
-<script>
-// --- Unread messages badge ---
-async function refreshUnread(){
-  try{
-    const r = await fetch(API+'/messages/unread-count',{headers:{Authorization:'Bearer '+token}});
-    if(r.ok){
-      const {count} = await r.json();
-      const b = document.getElementById('msgBadge');
-      if(b) b.textContent = count;
-    }
-  }catch{}
-}
-setInterval(refreshUnread, 10000);
-document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refreshUnread(); });
-refreshUnread();
-
-// Hook WebSocket to raise badge on messages from others
-if (typeof ws !== 'undefined' && ws) {
-  const _origOnMessage = ws.onmessage;
-  ws.onmessage = (ev)=>{
-    try{
-      const data = JSON.parse(ev.data);
-      if(data.type==='message'){
-        if(typeof renderMessage==='function') renderMessage(data);
-        if(!window.chattingWith || (window.chattingWith.id !== (data.sender?._id || data.sender))){
-          const b = document.getElementById('msgBadge');
-          if(b) b.textContent = (parseInt(b.textContent||'0',10) + 1);
-        }
-      }
-    }catch(e){}
-    if(_origOnMessage) _origOnMessage(ev);
-  }
-}
-
-// When opening a chat with someone, call this after UI opens
-async function onOpenChatWith(otherId){
-  await fetch(API+'/messages/read/'+otherId,{method:'PATCH',headers:{Authorization:'Bearer '+token}});
-  refreshUnread();
-}
 </script>
 </body>
 </html>
