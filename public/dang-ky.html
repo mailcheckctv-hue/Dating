@@ -1,45 +1,60 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LoveConnect - Đăng ký</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-<style>
-:root{--pink:#e91e63;--bg:#f7f7fb;--card:#ffffff;--text:#111827}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Inter,system-ui,sans-serif;color:var(--text);display:flex;min-height:100vh;align-items:center;justify-content:center}
-.card{background:var(--card);padding:28px;border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,.08);width:100%;max-width:420px}
-h1{margin:0 0 18px;font-size:22px}
-input{width:100%;padding:12px 14px;border:1px solid #e5e7eb;border-radius:12px;margin:8px 0 14px;font-size:14px}
-button.primary{width:100%;padding:12px 14px;border:none;border-radius:12px;background:var(--pink);color:#fff;font-weight:600;cursor:pointer}
-a{color:var(--pink);text-decoration:none}
-</style>
+  <meta charset="UTF-8">
+  <title>Đăng ký</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {font-family: Arial, sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; background:#f8f9fa;}
+    .container {background:#fff; padding:30px; border-radius:10px; box-shadow:0 4px 10px rgba(0,0,0,0.1); width:300px; text-align:center;}
+    h2 {margin-bottom:20px;}
+    input, select {width:100%; padding:10px; margin:10px 0; border:1px solid #ccc; border-radius:5px;}
+    button {width:100%; padding:10px; background:#e83e6b; color:#fff; border:none; border-radius:5px; cursor:pointer;}
+    button:hover {background:#c72f58;}
+    a {display:block; margin-top:10px; font-size:14px; color:#007bff; text-decoration:none;}
+  </style>
 </head>
 <body>
-<div class="card">
-  <h1>Tạo tài khoản</h1>
-  <input id="username" placeholder="Tên hiển thị">
-  <input id="email" placeholder="Email" autocomplete="email">
-  <input id="password" type="password" placeholder="Mật khẩu" autocomplete="new-password">
-  <button class="primary" onclick="register()">Đăng ký</button>
-  <p>Đã có tài khoản? <a href="login.html">Đăng nhập</a></p>
-</div>
-<script>
-const API_BASE = window.location.origin;
-async function register(){
-  try{
-    const res = await fetch(API_BASE + "/api/register", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({ username: username.value.trim(), email: email.value.trim(), password: password.value })
-    });
-    const data = await res.json();
-    if(!res.ok){ alert(data.error || "Đăng ký thất bại"); return; }
-    alert("Đăng ký thành công! Đăng nhập ngay.");
-    location.href = "login.html";
-  }catch(e){ alert("Không thể kết nối server"); }
-}
-</script>
+  <div class="container">
+    <h2>Đăng ký</h2>
+    <input type="text" id="username" placeholder="Tên người dùng" required>
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="password" id="password" placeholder="Mật khẩu" required>
+    <select id="gender">
+      <option value="Nam">Nam</option>
+      <option value="Nữ">Nữ</option>
+    </select>
+    <button onclick="register()">Đăng ký</button>
+    <a href="login.html">Đăng nhập</a>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+
+    async function register() {
+      const username = document.getElementById('username').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const gender = document.getElementById('gender').value;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, email, password, gender })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          alert("Đăng ký thành công! Vui lòng đăng nhập.");
+          window.location.href = "login.html";
+        } else {
+          alert(data.message || "Đăng ký thất bại!");
+        }
+      } catch (err) {
+        alert("Lỗi kết nối server!");
+      }
+    }
+  </script>
 </body>
 </html>

@@ -1,238 +1,318 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LoveConnect - Trang chủ</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-<style>
-:root{--pink:#e91e63;--danger:#ef4444;--bg:#fafafa;--card:#fff;--muted:#6b7280;--text:#111827}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Inter,system-ui,sans-serif;color:var(--text)}
-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--pink);color:#fff;position:sticky;top:0;z-index:10}
-.logo{font-weight:700}
-.btn{padding:8px 12px;border:none;border-radius:10px;cursor:pointer;font-weight:600}
-.btn-logout{background:var(--danger);color:#fff}
-.container{display:grid;grid-template-columns:280px 1fr 340px;gap:16px;padding:16px}
-.card{background:var(--card);border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.06);padding:14px}
-.section-title{margin:0 0 10px;font-size:16px}
-.row{display:flex;gap:8px;align-items:center}
-input,textarea{width:100%;padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px;font-size:14px}
-.avatar{width:40px;height:40px;border-radius:50%;object-fit:cover}
-.post img{max-width:100%;border-radius:12px;margin-top:8px}
-.badge{background:#fee2e2;color:#991b1b;border-radius:999px;padding:2px 8px;font-size:12px;margin-left:6px}
-.list{display:flex;flex-direction:column;gap:10px;max-height:60vh;overflow:auto}
-.user-item{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid #f1f5f9;border-radius:12px}
-.user-item button{padding:6px 10px;border:none;border-radius:8px;background:var(--pink);color:#fff;cursor:pointer}
-.chat{display:flex;flex-direction:column;height:70vh}
-.chat-messages{flex:1;border:1px solid #e5e7eb;border-radius:12px;padding:10px;overflow:auto;background:#fff}
-.chat-input{display:flex;gap:8px;margin-top:8px}
-.message{margin:6px 0}
-.message.me{text-align:right}
-.message .bubble{display:inline-block;padding:8px 10px;border-radius:12px;background:#f3f4f6;max-width:70%}
-.message.me .bubble{background:#ffe4ec}
-.nav{display:flex;gap:8px}
-.nav a{color:#fff;text-decoration:none;font-weight:600}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LoveConnect - Trang chủ</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body{background:#f6f7fb}
+    .navbar{background:#ff3b6b}
+    .navbar .nav-link,.navbar-brand,.navbar .btn{color:#fff}
+    .card{border:0; box-shadow:0 8px 24px rgba(149,157,165,.2)}
+    .avatar{width:56px;height:56px;border-radius:50%;background:#6b7cff;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}
+    .avatar-sm{width:36px;height:36px;font-size:14px}
+    .pointer{cursor:pointer}
+    .message-bubble{max-width:80%; padding:.5rem .75rem; border-radius:12px; margin-bottom:.35rem}
+    .msg-me{background:#ffeff4; margin-left:auto}
+    .msg-other{background:#eef1ff}
+    .chatbox{position:fixed; right:20px; bottom:0; width:360px; height:420px; display:none; flex-direction:column; background:#fff; border-radius:12px 12px 0 0; box-shadow:0 8px 24px rgba(0,0,0,.12); z-index:999}
+    .chatbox-header{background:#ff3b6b;color:#fff;padding:.6rem 1rem;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between}
+    .chatbox-body{padding:10px; overflow-y:auto; height:300px}
+    .chatbox-input{border-top:1px solid #eee; display:flex; gap:.5rem; padding:.5rem}
+    .btn-pink{background:#ff3b6b;color:#fff}
+    .btn-pink:hover{background:#ff2e60;color:#fff}
+  </style>
 </head>
 <body>
-<header>
-  <div class="logo">LoveConnect</div>
-  <nav class="nav">
-    <span>Trang chủ</span>
-    <span id="badgeMessage" class="badge" style="display:none">0</span>
-  </nav>
-  <button class="btn btn-logout" onclick="logout()">Đăng xuất</button>
-</header>
-
-<div class="container">
-  <aside class="card">
-    <h3 class="section-title">Hồ sơ</h3>
-    <div class="row">
-      <img id="meAvatar" class="avatar" src="" alt="avatar">
-      <div>
-        <div id="meName" style="font-weight:600"></div>
-        <small id="meEmail" class="muted"></small>
+<nav class="navbar navbar-expand-lg sticky-top">
+  <div class="container">
+    <a class="navbar-brand fw-bold" href="#"><i class="fa-solid fa-heart"></i> LoveConnect</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="nav">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item"><a class="nav-link" href="trang-chu.html"><i class="fa-solid fa-house"></i> Trang chủ</a></li>
+        <li class="nav-item"><a class="nav-link" href="#"><i class="fa-solid fa-user-group"></i> Bạn bè</a></li>
+        <li class="nav-item"><a class="nav-link" href="#"><i class="fa-regular fa-message"></i> Tin nhắn</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" id="btnVip"><i class="fa-solid fa-crown"></i> Nâng cấp VIP</a></li>
+      </ul>
+      <div class="d-flex align-items-center gap-3">
+        <div class="avatar avatar-sm" id="navAvatar">NA</div>
+        <button class="btn btn-light btn-sm" id="btnLogout"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</button>
       </div>
     </div>
-    <hr>
-    <div>
-      <label>Đổi ảnh đại diện</label>
-      <input type="file" id="avatarInput" accept="image/*">
-      <button class="btn" onclick="uploadAvatar()">Cập nhật</button>
-    </div>
-    <hr>
-    <h3 class="section-title">Bạn bè</h3>
-    <div id="friendList" class="list"></div>
-  </aside>
+  </div>
+</nav>
 
-  <main class="card">
-    <h3 class="section-title">Bài viết</h3>
-    <div class="row">
-      <textarea id="postContent" placeholder="Bạn đang nghĩ gì?" rows="2"></textarea>
-    </div>
-    <div class="row">
-      <input type="file" id="postImage" accept="image/*">
-      <button class="btn" onclick="createPost()">Đăng</button>
-    </div>
-    <div id="feed" class="list" style="margin-top:12px"></div>
-  </main>
-
-  <aside class="card">
-    <h3 class="section-title">Gợi ý kết bạn</h3>
-    <div id="suggestList" class="list"></div>
-    <hr>
-    <h3 class="section-title">Tin nhắn</h3>
-    <div class="chat">
-      <select id="chatTarget"></select>
-      <div id="chatBox" class="chat-messages"></div>
-      <div class="chat-input">
-        <input id="chatText" placeholder="Nhập tin nhắn...">
-        <input id="chatFile" type="file">
-        <button class="btn" onclick="sendMessage()">Gửi</button>
+<div class="container my-4">
+  <div class="row g-4">
+    <!-- Left: Profile -->
+    <div class="col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3">
+            <div class="avatar" id="profileAvatar">NA</div>
+            <div>
+              <div class="fw-bold" id="profileName">Người dùng</div>
+              <div class="text-muted" style="font-size:13px"><i class="fa-solid fa-location-dot"></i> <span id="profileLoc">Việt Nam</span></div>
+            </div>
+          </div>
+          <hr>
+          <div class="row text-center">
+            <div class="col-4"><div class="fw-bold" id="statFriends">0</div><div class="text-muted" style="font-size:13px">bạn bè</div></div>
+            <div class="col-4"><div class="fw-bold" id="statMatches">0</div><div class="text-muted" style="font-size:13px">matches</div></div>
+            <div class="col-4"><div class="fw-bold" id="statPosts">0</div><div class="text-muted" style="font-size:13px">bài viết</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card mt-3">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="fw-bold"><i class="fa-solid fa-bell"></i> Thông báo</div>
+            <span class="badge rounded-pill text-bg-danger" id="badgeNoti">0</span>
+          </div>
+          <div class="small text-muted mt-2">Thông báo mới sẽ hiện ở đây.</div>
+        </div>
       </div>
     </div>
-  </aside>
+
+    <!-- Middle: Composer + Feed -->
+    <div class="col-lg-6">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex gap-2">
+            <div class="avatar avatar-sm" id="composerAvatar">NA</div>
+            <input id="composerText" class="form-control" placeholder="Bạn đang nghĩ gì?">
+          </div>
+          <div class="d-flex justify-content-between mt-2">
+            <div class="d-flex gap-2">
+              <label class="btn btn-light btn-sm mb-0 pointer">
+                <i class="fa-regular fa-image"></i> Ảnh/Video
+                <input type="file" id="composerFile" hidden>
+              </label>
+            </div>
+            <button class="btn btn-pink btn-sm" id="btnPost"><i class="fa-solid fa-paper-plane"></i> Đăng</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="feed" class="mt-3"></div>
+    </div>
+
+    <!-- Right: Suggestions -->
+    <div class="col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="fw-bold"><i class="fa-solid fa-user-plus"></i> Gợi ý kết bạn</div>
+          <div id="suggestions" class="mt-2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
-<script src="/socket.io/socket.io.js"></script>
+<!-- Chat box -->
+<div class="chatbox" id="chatbox">
+  <div class="chatbox-header">
+    <div><i class="fa-regular fa-message"></i> Chat với <span id="chatWith">...</span></div>
+    <div><button class="btn btn-sm btn-light" onclick="toggleChat()">Thu gọn</button></div>
+  </div>
+  <div class="chatbox-body" id="chatBody"></div>
+  <div class="chatbox-input">
+    <input id="chatInput" class="form-control" placeholder="Nhập tin nhắn...">
+    <label class="btn btn-light mb-0">
+      <i class="fa-solid fa-paperclip"></i>
+      <input type="file" id="chatFile" hidden>
+    </label>
+    <button class="btn btn-pink" id="btnSend"><i class="fa-solid fa-paper-plane"></i></button>
+  </div>
+</div>
+
+<!-- VIP Modal -->
+<div class="modal fade" id="vipModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-crown text-warning"></i> Nâng cấp VIP</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <ul class="list-group">
+          <li class="list-group-item d-flex justify-content-between align-items-center">VIP Week <span class="badge text-bg-danger">50.000đ/tuần</span></li>
+          <li class="list-group-item d-flex justify-content-between align-items-center">Basic <span class="badge text-bg-primary">199.000đ/tháng</span></li>
+          <li class="list-group-item d-flex justify-content-between align-items-center">Premium <span class="badge text-bg-success">499.000đ/tháng</span></li>
+        </ul>
+        <div class="mt-3">
+          Thanh toán: <b>Vietcombank 1059173949 - Nguyễn Thanh Duy</b>
+          <div class="text-center mt-2"><img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=1059173949" alt="QR"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Trở lại</button>
+        <button class="btn btn-pink" id="btnPaid">Đã thanh toán</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-const API_BASE = window.location.origin;
-const token = localStorage.getItem("token");
-const user = JSON.parse(localStorage.getItem("user")||"null");
-if(!token || !user){ location.href="login.html"; }
+const API = (window.location.origin) + '/api';
+let token = localStorage.getItem('token');
+if(!token){ window.location.href = 'login.html'; }
+let me = null;
+let ws = null;
+let chattingWith = null;
 
-// Profile
-document.getElementById("meName").innerText = user.username || "";
-document.getElementById("meEmail").innerText = user.email || "";
-document.getElementById("meAvatar").src = user.avatarUrl || "https://i.pravatar.cc/100";
+const fmtNameToInitial = (name) => (name||'NA').split(' ').map(s=>s[0]).join('').slice(0,2).toUpperCase();
 
-// Socket
-const socket = io(API_BASE, { transports: ["websocket","polling"] });
-socket.on("connect", ()=> socket.emit("join", user.id));
-socket.on("newMessage", (msg)=>{
-  if (msg.sender === getSelectedTarget()) {
-    appendMessage(msg);
-  }
-  refreshUnread();
-});
-
-// Posts
-async function createPost(){
-  const fd = new FormData();
-  fd.append("content", document.getElementById("postContent").value);
-  const file = document.getElementById("postImage").files[0];
-  if (file) fd.append("image", file);
-  const res = await fetch(API_BASE+"/api/posts", { method:"POST", headers:{ Authorization:"Bearer "+token }, body: fd });
-  if(res.ok){ document.getElementById("postContent").value=""; document.getElementById("postImage").value=""; loadPosts(); }
+// Fetch profile
+async function loadProfile(){
+  const r = await fetch(API+'/profile', {headers:{Authorization:'Bearer '+token}});
+  if(!r.ok){ localStorage.removeItem('token'); return window.location.href='login.html'; }
+  me = await r.json();
+  document.getElementById('profileName').textContent = me.username;
+  document.getElementById('profileAvatar').textContent = fmtNameToInitial(me.username);
+  document.getElementById('navAvatar').textContent = fmtNameToInitial(me.username);
+  document.getElementById('composerAvatar').textContent = fmtNameToInitial(me.username);
 }
-async function loadPosts(){
-  const res = await fetch(API_BASE+"/api/posts", { headers:{ Authorization:"Bearer "+token }});
-  const posts = await res.json();
-  const feed = document.getElementById("feed"); feed.innerHTML="";
+loadProfile();
+
+// Feed
+async function loadFeed(){
+  const r = await fetch(API+'/posts', {headers:{Authorization:'Bearer '+token}});
+  const posts = await r.json();
+  document.getElementById('statPosts').textContent = posts.length;
+  const container = document.getElementById('feed');
+  container.innerHTML = '';
   posts.forEach(p=>{
-    const item = document.createElement("div"); item.className="user-item post";
-    item.innerHTML = `<img class="avatar" src="${p.user?.avatarUrl||'https://i.pravatar.cc/100'}">
-      <div><b>${p.user?.username||'User'}</b><div>${p.content||''}</div>${p.imageUrl?`<img src="${p.imageUrl}">`:''}
-      <div style="font-size:12px;color:#6b7280">${new Date(p.createdAt).toLocaleString()}</div></div>`;
-    feed.appendChild(item);
+    const card = document.createElement('div');
+    card.className = 'card mb-3';
+    card.innerHTML = `
+      <div class="card-body">
+        <div class="d-flex gap-2 align-items-center">
+          <div class="avatar avatar-sm">${fmtNameToInitial(p.author?.username||'?')}</div>
+          <div>
+            <div class="fw-bold">${p.author?.username||'Người dùng'}</div>
+            <div class="text-muted" style="font-size:12px">${new Date(p.createdAt).toLocaleString()}</div>
+          </div>
+        </div>
+        <div class="mt-2">${(p.content||'').replace(/</g,'&lt;')}</div>
+        ${p.fileUrl?`<div class="mt-2"><a href="${p.fileUrl}" target="_blank"><i class="fa-solid fa-paperclip"></i> ${p.fileName||'Tệp đính kèm'}</a></div>`:''}
+        <div class="d-flex gap-3 mt-2 text-muted">
+          <span class="pointer"><i class="fa-regular fa-thumbs-up"></i> Thích</span>
+          <span class="pointer"><i class="fa-regular fa-comment"></i> Bình luận</span>
+          <span class="pointer"><i class="fa-solid fa-share"></i> Chia sẻ</span>
+        </div>
+      </div>`;
+    container.appendChild(card);
   });
 }
+loadFeed();
 
-// Avatar
-async function uploadAvatar(){
-  const file = document.getElementById("avatarInput").files[0];
-  if(!file) return alert("Chọn ảnh trước");
-  const fd = new FormData(); fd.append("avatar", file);
-  const res = await fetch(API_BASE+"/api/avatar", { method:"POST", headers:{ Authorization:"Bearer "+token }, body: fd });
-  const data = await res.json();
-  if(res.ok){ document.getElementById("meAvatar").src = data.avatarUrl; user.avatarUrl = data.avatarUrl; localStorage.setItem("user", JSON.stringify(user)); }
+// Composer
+document.getElementById('btnPost').onclick = async () => {
+  const content = document.getElementById('composerText').value.trim();
+  const file = document.getElementById('composerFile').files[0];
+  const fd = new FormData();
+  fd.append('content', content);
+  if(file) fd.append('file', file);
+  const r = await fetch(API+'/posts', {method:'POST', headers:{Authorization:'Bearer '+token}, body: fd});
+  if(r.ok){ document.getElementById('composerText').value=''; document.getElementById('composerFile').value=''; loadFeed(); }
 }
 
-// Friends & Suggestion
-async function loadFriends(){
-  const res = await fetch(API_BASE+"/api/friends", { headers:{ Authorization:"Bearer "+token }});
-  const friends = await res.json();
-  const list = document.getElementById("friendList"); list.innerHTML="";
-  const sel = document.getElementById("chatTarget"); sel.innerHTML="";
-  friends.forEach(f=>{
-    const el = document.createElement("div"); el.className="user-item";
-    el.innerHTML = `<img class="avatar" src="${f.avatarUrl}"><div>${f.username}</div>`;
-    el.onclick = ()=> { sel.value = f._id; openChatWith(f._id); };
-    list.appendChild(el);
-    const opt=document.createElement("option"); opt.value=f._id; opt.textContent=f.username; sel.appendChild(opt);
-  });
-}
-function getSelectedTarget(){ return document.getElementById("chatTarget").value; }
+// Suggestions
 async function loadSuggested(){
-  const res = await fetch(API_BASE+"/api/users/suggested", { headers:{ Authorization:"Bearer "+token }});
-  const data = await res.json();
-  const list=document.getElementById("suggestList"); list.innerHTML="";
-  data.forEach(u=>{
-    const el = document.createElement("div"); el.className="user-item";
-    el.innerHTML = `<img class="avatar" src="${u.avatarUrl}"><div style="flex:1">${u.username}</div>
-      <button onclick="addFriend('${u._id}')">Kết bạn</button>`;
-    list.appendChild(el);
+  const r = await fetch(API+'/users/suggested', {headers:{Authorization:'Bearer '+token}});
+  const users = await r.json();
+  document.getElementById('statFriends').textContent = users.length;
+  const wrap = document.getElementById('suggestions');
+  wrap.innerHTML = '';
+  users.forEach(u=>{
+    const item = document.createElement('div');
+    item.className = 'd-flex align-items-center justify-content-between border rounded p-2 mb-2';
+    item.innerHTML = `
+      <div class="d-flex gap-2 align-items-center">
+        <div class="avatar avatar-sm">${fmtNameToInitial(u.username)}</div>
+        <div>
+          <div class="fw-bold">${u.username}</div>
+          <div class="text-muted" style="font-size:12px">${u.location||''}</div>
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-pink" data-id="${u._id}" data-name="${u.username}"><i class="fa-regular fa-message"></i> Nhắn</button>
+      </div>`;
+    item.querySelector('button').onclick = () => openChat(u._id, u.username);
+    wrap.appendChild(item);
   });
 }
-async function addFriend(id){
-  const res = await fetch(API_BASE+"/api/friends/request/"+id, { method:"POST", headers:{ Authorization:"Bearer "+token }});
-  if(res.ok){ alert("Đã gửi lời mời!"); }
-}
+loadSuggested();
 
 // Chat
-async function openChatWith(id){
-  const box = document.getElementById("chatBox");
-  box.innerHTML = "";
-  await fetch(API_BASE+"/api/messages/mark-read/"+id, { method:"POST", headers:{ Authorization:"Bearer "+token }});
-  refreshUnread();
-  const res = await fetch(API_BASE+"/api/messages/with/"+id, { headers:{ Authorization:"Bearer "+token }});
-  const msgs = await res.json();
-  msgs.forEach(appendMessage);
+function toggleChat(){ const box=document.getElementById('chatbox'); box.style.display = (box.style.display==='flex'?'none':'flex'); }
+function ensureWS(){
+  if(ws && ws.readyState===1) return;
+  const proto = location.protocol==='https:'?'wss':'ws';
+  ws = new WebSocket(`${proto}://${location.host}/?token=${token}`);
+  ws.onmessage = (ev)=>{
+    const data = JSON.parse(ev.data);
+    if(data.type==='message'){
+      renderMessage(data);
+      document.getElementById('badgeNoti').textContent = (+document.getElementById('badgeNoti').textContent + 1);
+    }
+  };
 }
-function appendMessage(m){
-  const box = document.getElementById("chatBox");
-  const wrap = document.createElement("div"); wrap.className="message" + (m.sender===user.id?" me":"");
-  let inner = "";
-  if (m.type==="file" && m.fileUrl){
-    const isImg = /\.(png|jpg|jpeg|gif|webp)$/i.test(m.fileUrl);
-    inner = isImg ? `<img src="${m.fileUrl}" style="max-width:60%;border-radius:10px">` : `<a href="${m.fileUrl}" download>📎 Tải tệp</a>`;
-  } else {
-    inner = m.content || "";
+function openChat(id,name){
+  chattingWith = {id, name};
+  document.getElementById('chatWith').textContent = name;
+  document.getElementById('chatBody').innerHTML='';
+  toggleChat();
+  ensureWS();
+  // load history
+  fetch(API+'/messages/'+id, {headers:{Authorization:'Bearer '+token}})
+    .then(r=>r.json()).then(list => list.forEach(renderMessage));
+}
+function renderMessage(m){
+  const meId = me?._id || me?.id;
+  const isMe = m.sender?._id===meId || m.sender===meId;
+  const div = document.getElementById('chatBody');
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble ' + (isMe ? 'msg-me ms-auto text-end' : 'msg-other');
+  const safe = (m.content||'').replace(/</g,'&lt;');
+  bubble.innerHTML = `<div class="small text-muted">${new Date(m.createdAt||Date.now()).toLocaleString()}</div>${safe}${m.fileUrl?`<div><a href="${m.fileUrl}" target="_blank"><i class="fa-solid fa-paperclip"></i> ${m.fileName||'Tệp'}</a></div>`:''}`;
+  div.appendChild(bubble);
+  div.scrollTop = div.scrollHeight;
+}
+document.getElementById('btnSend').onclick = async ()=>{
+  if(!chattingWith) return;
+  ensureWS();
+  const input = document.getElementById('chatInput');
+  const file = document.getElementById('chatFile').files[0];
+  let fileUrl, fileName;
+  if(file){
+    const fd = new FormData(); fd.append('file', file);
+    const up = await fetch(API+'/upload', {method:'POST', headers:{Authorization:'Bearer '+token}, body:fd});
+    const j = await up.json(); fileUrl = j.fileUrl; fileName = j.fileName;
+    document.getElementById('chatFile').value='';
   }
-  wrap.innerHTML = `<div class="bubble">${inner}</div>`;
-  box.appendChild(wrap);
-  box.scrollTop = box.scrollHeight;
-}
-async function sendMessage(){
-  const receiver = getSelectedTarget();
-  if(!receiver) return alert("Chọn bạn bè để chat");
-  const input = document.getElementById("chatText");
-  const file = document.getElementById("chatFile").files[0];
-  const fd = new FormData();
-  fd.append("receiver", receiver);
-  if (file){ fd.append("file", file); }
-  else { fd.append("content", input.value); }
-  const res = await fetch(API_BASE+"/api/messages", { method:"POST", headers:{ Authorization:"Bearer "+token }, body: fd });
-  const m = await res.json();
-  if(res.ok){ appendMessage({ ...m, sender: user.id }); input.value=""; document.getElementById("chatFile").value=""; }
-}
-async function refreshUnread(){
-  const res = await fetch(API_BASE+"/api/messages/unread-count", { headers:{ Authorization:"Bearer "+token }});
-  const arr = await res.json();
-  const total = arr.reduce((s,x)=>s+x.total,0);
-  const badge = document.getElementById("badgeMessage");
-  badge.style.display = total>0 ? "inline-block" : "none";
-  badge.textContent = total;
+  const msg = {type:'message', receiverId:chattingWith.id, content:input.value, fileUrl, fileName};
+  ws.send(JSON.stringify(msg));
+  input.value='';
 }
 
-// Init
-loadPosts();
-loadFriends();
-loadSuggested();
-refreshUnread();
+// VIP Modal
+document.getElementById('btnVip').onclick = ()=> new bootstrap.Modal('#vipModal').show();
+document.getElementById('btnPaid').onclick = async ()=>{
+  await fetch(API+'/upgrade-vip', {method:'POST', headers:{'Content-Type':'application/json', Authorization:'Bearer '+token}, body:JSON.stringify({plan:'vip-week'})});
+  alert('Đã ghi nhận, admin sẽ duyệt sớm!');
+  bootstrap.Modal.getInstance(document.getElementById('vipModal')).hide();
+};
 
-function logout(){ localStorage.clear(); location.href="login.html"; }
+// Logout
+document.getElementById('btnLogout').onclick = ()=>{ localStorage.removeItem('token'); location.href='login.html'; };
 </script>
 </body>
 </html>
