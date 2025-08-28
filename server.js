@@ -286,15 +286,15 @@ app.get('/api/conversations', auth, async (req, res) => {
 });
 
 
-// ---------- Comments & Reactions & Delete Post (NEW) ----------
+// ---------- Comments, Reactions, Delete Post, Unread Messages (NEW) ----------
 const commentSchema = new mongoose.Schema({
   post: { type: mongoose.Schema.Types.ObjectId, ref: 'Post', required: true },
   author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  content: { type: String, default: '' }
+  content: { type: String, default: '' },
+  stickerUrl: { type: String, default: '' }
 }, { timestamps: true });
 const Comment = mongoose.model('Comment', commentSchema);
 
-// list comments
 app.get('/api/posts/:id/comments', auth, async (req, res) => {
   const list = await Comment.find({ post: req.params.id })
     .sort({ createdAt: 1 })
@@ -303,35 +303,56 @@ app.get('/api/posts/:id/comments', auth, async (req, res) => {
   res.json(list);
 });
 
-// add comment
 app.post('/api/posts/:id/comments', auth, async (req, res) => {
-  if (!req.body.content || !req.body.content.trim()) return res.status(400).json({ message: 'Nội dung trống' });
-  const c = await Comment.create({ post: req.params.id, author: req.user.id, content: req.body.content.trim() });
+  const body = req.body || {};
+  if ((!body.content || !body.content.trim()) && !body.stickerUrl) {
+    return res.status(400).json({ message: 'Nội dung trống' });
+  }
+  const c = await Comment.create({
+    post: req.params.id,
+    author: req.user.id,
+    content: (body.content||'').trim(),
+    stickerUrl: body.stickerUrl || ''
+  });
   const populated = await c.populate('author', 'username avatarUrl');
   res.json(populated);
 });
 
-// toggle reaction (like/heart/emoji key)
+// Toggle reaction with any emoji key: like, heart, haha, wow, sad, angry...
 app.post('/api/posts/:id/react/:emoji', auth, async (req, res) => {
   const { id, emoji } = req.params;
   const post = await Post.findById(id);
   if (!post) return res.status(404).json({ message: 'Không tìm thấy bài viết' });
   if (!post.reactions) post.reactions = {};
-  const arr = (post.reactions[emoji] || []).map(x => x.toString());
-  const idx = arr.indexOf(req.user.id);
-  if (idx >= 0) arr.splice(idx, 1); else arr.push(req.user.id);
-  post.reactions[emoji] = arr;
+  const set = new Set((post.reactions[emoji] || []).map(u => u.toString()));
+  if (set.has(req.user.id)) set.delete(req.user.id); else set.add(req.user.id);
+  post.reactions[emoji] = Array.from(set);
   await post.save();
   res.json({ reactions: post.reactions });
 });
 
-// delete own post
+// Delete own post (+ cascade delete comments)
 app.delete('/api/posts/:id', auth, async (req, res) => {
   const p = await Post.findById(req.params.id);
   if (!p) return res.status(404).json({ message: 'Không tìm thấy' });
   if (p.author.toString() !== req.user.id) return res.status(403).json({ message: 'Không có quyền' });
   await Comment.deleteMany({ post: p._id });
   await p.deleteOne();
+  res.json({ success: true });
+});
+
+// Unread messages count
+app.get('/api/messages/unread-count', auth, async (req, res) => {
+  const count = await Message.countDocuments({ receiver: req.user.id, read: false });
+  res.json({ count });
+});
+
+// Mark conversation as read
+app.patch('/api/messages/read/:otherId', auth, async (req, res) => {
+  await Message.updateMany(
+    { sender: req.params.otherId, receiver: req.user.id, read: false },
+    { $set: { read: true } }
+  );
   res.json({ success: true });
 });
 
@@ -410,3 +431,55 @@ wss.on('connection', (socket, req) => {
 server.listen(PORT, () => {
   console.log('Server running on port', PORT);
 });
+
+
+// --- WS Robust Broadcast ---
+try {
+  const wsClients = new Map(); // userId -> Set of sockets
+  if (wss && wss.on) {
+    wss.on('connection', (socket, req) => {
+      try {
+        const url = require('url');
+        const q = url.parse(req.url, true).query || {};
+        const token = q.token || (req.headers['sec-websocket-protocol']||'').split(',').pop()?.trim();
+        let user = null;
+        if (token) {
+          try { user = jwt.verify(token, JWT_SECRET); } catch(e){}
+        }
+        if (!user) { socket.close(); return; }
+        socket._uid = user.id;
+        if (!wsClients.has(user.id)) wsClients.set(user.id, new Set());
+        wsClients.get(user.id).add(socket);
+
+        socket.on('close', () => {
+          const set = wsClients.get(user.id);
+          if (set) {
+            set.delete(socket);
+            if (set.size === 0) wsClients.delete(user.id);
+          }
+        });
+
+        socket.on('message', async (raw) => {
+          try {
+            const data = JSON.parse(raw.toString());
+            if (data.type === 'message' && data.text && data.receiverId) {
+              // Save before broadcast
+              const saved = await Message.create({ sender: user.id, receiver: data.receiverId, text: data.text, read: false });
+              const populated = await saved.populate('sender', 'username avatarUrl');
+              const msgObj = { type: 'message', ...populated.toObject() };
+
+              // Deliver to receiver sockets
+              const recvSet = wsClients.get(data.receiverId) || new Set();
+              recvSet.forEach(s => { if (s.readyState === 1) s.send(JSON.stringify(msgObj)); });
+
+              // Echo to sender sockets
+              const sndSet = wsClients.get(user.id) || new Set();
+              sndSet.forEach(s => { if (s.readyState === 1) s.send(JSON.stringify(msgObj)); });
+            }
+          } catch (e) { console.error('WS message error', e); }
+        });
+      } catch (e) { console.error('WS connection error', e); try { socket.close(); } catch(_){ } }
+    });
+  }
+} catch (e) { console.error('WS attach failed', e); }
+
