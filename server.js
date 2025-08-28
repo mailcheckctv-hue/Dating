@@ -495,3 +495,17 @@ wss.on('connection', (socket, req) => {
     });
   } catch (e) { console.error('WS connection error', e); try { socket.close(); } catch(_){ } }
 });
+
+
+// --- Update avatar (crop image uploaded from client) ---
+app.post('/update-avatar', authMiddleware, upload.single('file'), async (req, res) => {
+  try{
+    const fileUrl = req.file ? (req.protocol + '://' + req.get('host') + '/uploads/' + req.file.filename) : null;
+    if(!fileUrl) return res.status(400).json({error:'No file uploaded'});
+    await User.findByIdAndUpdate(req.user.id, { avatarUrl: fileUrl });
+    res.json({ url: fileUrl });
+  }catch(e){
+    console.error('update-avatar', e);
+    res.status(500).json({error:'Server error'});
+  }
+});
