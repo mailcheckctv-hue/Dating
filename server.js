@@ -113,6 +113,17 @@ if (fs.existsSync(publicDir)) {
   app.use(express.static(publicDir));
 }
 
+// Serve static UI files (fallback to project root if /public is missing)
+const serveDir = fs.existsSync(publicDir) ? publicDir : __dirname;
+if (!fs.existsSync(publicDir)) {
+  app.use(express.static(serveDir));
+}
+// HTML routes for SPA pages
+app.get('/', (req,res)=> res.sendFile(path.join(serveDir, 'login.html')));
+app.get('/login', (req,res)=> res.sendFile(path.join(serveDir, 'login.html')));
+app.get('/dang-ky', (req,res)=> res.sendFile(path.join(serveDir, 'dang-ky.html')));
+app.get(['/trang-chu','/home','/index'], (req,res)=> res.sendFile(path.join(serveDir, 'trang-chu.html')));
+
 // ---------- Healthcheck ----------
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 
