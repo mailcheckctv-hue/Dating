@@ -221,23 +221,6 @@ let ws = null;
 let chattingWith = null;
 
 // helpers
-async function ensureNotificationPermission(){
-  try{
-    if(!('Notification' in window)) return false;
-    if(Notification.permission==='default'){ await Notification.requestPermission(); }
-    return Notification.permission==='granted';
-  }catch(e){ return false; }
-}
-function showDeskNotification(title, body){
-  try{
-    if(!('Notification' in window)) return;
-    if(Notification.permission==='granted'){
-      const n = new Notification(title||'LoveConnect', { body: body||'Tin nhắn mới' });
-      setTimeout(()=>n.close(), 6000);
-    }
-  }catch(e){}
-}
-
 const isVideo = (url='') => /\.(mp4|webm|ogg)$/i.test(url.split('?')[0]);
 const fmtNameToInitial = (name) => (name||'NA').split(' ').map(s=>s[0]).join('').slice(0,2).toUpperCase();
 
@@ -516,7 +499,7 @@ function ensureWS(){
       renderMessage(data);
       // tăng badge nếu tin từ người khác
       if(!chattingWith || (chattingWith.id !== (data.sender?._id || data.sender))){
-        bumpBadges(); ensureNotificationPermission().then(g=>{ if(g){ showDeskNotification('Tin nhắn mới', (data.sender?.username||'')+': '+(data.content||'(đã gửi tệp)')); } });
+        bumpBadges();
       }
     }
   };
@@ -595,13 +578,13 @@ async function refreshUnread(){
   }catch{}
 }
 setInterval(refreshUnread, 10000);
-document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refreshUnread(); ensureNotificationPermission(); });
-refreshUnread(); ensureNotificationPermission();
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refreshUnread(); });
+refreshUnread();
 
 // When opening a chat with someone, mark read
 async function onOpenChatWith(otherId){
   await fetch(API+'/messages/read/'+otherId,{method:'PATCH',headers:{Authorization:'Bearer '+token}});
-  refreshUnread(); ensureNotificationPermission();
+  refreshUnread();
 }
 </script>
 </body>
