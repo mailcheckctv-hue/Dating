@@ -18,3 +18,31 @@ Render sẽ tự dùng `PORT`.
 - Icon chuông ở navbar hiển thị số tin nhắn chưa đọc. Khi có WS tin nhắn mới sẽ tự tăng badge.
 - Kết bạn: sau khi bấm “Thêm bạn” nút chuyển trạng thái, có thể nhắn tin ngay.
 - Cập nhật ảnh đại diện: click biểu tượng máy ảnh trong thẻ hồ sơ.
+
+## Thư mục & chạy trên Render
+
+    - HTML đặt trong `public/` để Express phục vụ file tĩnh.
+
+    - Server giữ nguyên API cũ, có `POST /api/profile/avatar` cho cập nhật ảnh đại diện.
+
+    - Chạy:
+
+      ```
+
+      npm install
+
+      npm start
+
+      ```
+
+    - Biến môi trường: `MONGODB_URI`, `JWT_SECRET`. Render tự cấp `PORT`.
+
+
+## Nâng cấp trong bản này
+
+    - UI responsive mượt hơn, hover nhẹ cho card.
+
+    - Cập nhật avatar có spinner + toast thông báo, tự cache-bust để tránh ảnh cũ.
+
+    - Giữ nguyên đầy đủ: đăng nhập/đăng ký, đăng bài (ảnh/video), reactions, bình luận, bạn bè, hội thoại gần đây, chat realtime WS, badge chưa đọc, VIP modal.
+
