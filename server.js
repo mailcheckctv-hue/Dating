@@ -68,6 +68,29 @@ const Post = mongoose.model('Post', postSchema);
 const Comment = mongoose.model('Comment', commentSchema);
 const Message = mongoose.model('Message', messageSchema);
 
+// ---------- Migration for old data ----------
+async function migrateData(){
+  try {
+    await User.updateMany(
+      { friends: { $exists: false } },
+      { $set: { friends: [] } }
+    );
+    await User.updateMany(
+      { vip: { $exists: false } },
+      { $set: { vip: 'none' } }
+    );
+    await Message.updateMany(
+      { read: { $exists: false } },
+      { $set: { read: false } }
+    );
+    console.log("Migration done");
+  } catch (err){
+    console.error("Migration error", err);
+  }
+}
+migrateData();
+
+
 // ---------- App ----------
 const app = express();
 const server = http.createServer(app);
