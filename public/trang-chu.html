@@ -77,7 +77,7 @@
             <div class="avatar position-relative">
               <img id="profileAvatarImg" src="" alt="" style="display:none">
               <span id="profileAvatarInit">NA</span>
-              <label class="position-absolute bottom-0 end-0 bg-white border rounded-circle p-1 pointer" role="button" aria-label="Cập nhật ảnh" title="Cập nhật ảnh">
+              <label class="position-absolute bottom-0 end-0 bg-white border rounded-circle p-1 pointer" title="Cập nhật ảnh">
                 <i class="fa-solid fa-camera"></i>
                 <input type="file" id="avatarFile" accept="image/*" hidden>
               </label>
@@ -200,7 +200,7 @@
         </ul>
         <div class="mt-3">
           Thanh toán: <b>Vietcombank 1059173949 - Nguyễn Thanh Duy</b>
-          <div class="text-center mt-2"><img loading="lazy" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=1059173949" alt="QR"></div>
+          <div class="text-center mt-2"><img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=1059173949" alt="QR"></div>
         </div>
       </div>
       <div class="modal-footer">
@@ -226,10 +226,10 @@ const fmtNameToInitial = (name) => (name||'NA').split(' ').map(s=>s[0]).join('')
 
 function mediaHTML(fileUrl, fileName){
   if(!fileUrl) return '';
-  if(isVideo(fileUrl)) return `<video controls class="media mt-2" preload="metadata" src="${fileUrl}"></video>`;
+  if(isVideo(fileUrl)) return `<video controls class="media mt-2" src="${fileUrl}"></video>`;
   // Try as image first; if fails, swap to link automatically
   const safeName = (fileName||'Tệp đính kèm').replace(/</g,'&lt;');
-  return `<img loading="lazy" src="${fileUrl}" class="media mt-2 img-fluid" loading="lazy" alt="post" onerror="this.outerHTML='<div class=\'mt-2\'><a href=\'${fileUrl}\' target=\'_blank\'><i class=\'fa-solid fa-paperclip\'></i> ${safeName}</a></div>'">`;
+  return `<img src="${fileUrl}" class="media mt-2" alt="post" onerror="this.outerHTML='<div class=\'mt-2\'><a href=\'${fileUrl}\' target=\'_blank\'><i class=\'fa-solid fa-paperclip\'></i> ${safeName}</a></div>'">`;
 }
 
 // Fetch profile
@@ -249,34 +249,21 @@ function setAvatar(prefix, url, name){
     if(img){ img.src = url; img.style.display='block'; }
     if(initEl){ initEl.style.display='none'; }
     const navWrap = document.getElementById(prefix+'Avatar');
-    if(navWrap && !img && url){ navWrap.innerHTML = '<img loading="lazy" src="'+url+'" alt="avatar">'; }
+    if(navWrap && !img && url){ navWrap.innerHTML = '<img src="'+url+'" alt="avatar">'; }
   }else{
     if(initEl){ initEl.textContent = fmtNameToInitial(name); initEl.style.display='block'; }
   }
 }
 loadProfile();
 
-
-  
-
-// Avatar uploader (camera icon)
+// Avatar uploader
 document.getElementById('avatarFile').addEventListener('change', async (e)=>{
   const file = e.target.files[0];
   if(!file) return;
   const fd = new FormData();
   fd.append('avatar', file);
   const r = await fetch(API+'/profile/avatar', {method:'POST', headers:{Authorization:'Bearer '+token}, body:fd});
-  if(!r.ok){ alert('Tải ảnh thất bại. Vui lòng thử lại.'); return; }
-  const j = await r.json();
-  // Update all avatar spots
-  setAvatar('profile', j.avatarUrl, me.username);
-  setAvatar('nav', j.avatarUrl, me.username);
-  setAvatar('composer', j.avatarUrl, me.username);
-  // Update in-memory 'me'
-  if(j.user) me = j.user;
-});
-
-if(r.ok){
+  if(r.ok){
     const j = await r.json();
     setAvatar('profile', j.avatarUrl, me.username);
     setAvatar('nav', j.avatarUrl, me.username);
@@ -315,7 +302,7 @@ async function loadFeed(){
     card.innerHTML = `
       <div class="card-body">
         <div class="d-flex gap-2 align-items-center">
-          <div class="avatar avatar-sm">${p.author?.avatarUrl?`<img loading="lazy" src="${p.author.avatarUrl}">`:fmtNameToInitial(p.author?.username||'?')}</div>
+          <div class="avatar avatar-sm">${p.author?.avatarUrl?`<img src="${p.author.avatarUrl}">`:fmtNameToInitial(p.author?.username||'?')}</div>
           <div class="flex-grow-1">
             <div class="fw-bold">${p.author?.username||'Người dùng'}</div>
             <div class="text-muted" style="font-size:12px">${new Date(p.createdAt).toLocaleString()}</div>
@@ -366,9 +353,9 @@ async function loadComments(pid){
   wrap.innerHTML = '';
   list.forEach(c=>{
     const text = c.content ? `${c.content.replace(/</g,'&lt;')}` : '';
-    const sticker = c.stickerUrl ? `<div><img loading="lazy" src="${c.stickerUrl}" style="max-width:120px;border-radius:12px"></div>` : '';
+    const sticker = c.stickerUrl ? `<div><img src="${c.stickerUrl}" style="max-width:120px;border-radius:12px"></div>` : '';
     wrap.innerHTML += `<div class="d-flex gap-2 mb-1">
-      <div class="avatar avatar-sm">${c.author?.avatarUrl?`<img loading="lazy" src="${c.author.avatarUrl}">`:fmtNameToInitial(c.author?.username||'?')}</div>
+      <div class="avatar avatar-sm">${c.author?.avatarUrl?`<img src="${c.author.avatarUrl}">`:fmtNameToInitial(c.author?.username||'?')}</div>
       <div><b>${c.author?.username}</b>: ${text} ${sticker}</div>
     </div>`;
   });
@@ -417,7 +404,7 @@ async function loadSuggested(){
     item.className = 'd-flex align-items-center justify-content-between border rounded p-2 mb-2';
     item.innerHTML = `
       <div class="d-flex gap-2 align-items-center">
-        <div class="avatar avatar-sm">${u.avatarUrl?`<img loading="lazy" src="${u.avatarUrl}">`:fmtNameToInitial(u.username)}</div>
+        <div class="avatar avatar-sm">${u.avatarUrl?`<img src="${u.avatarUrl}">`:fmtNameToInitial(u.username)}</div>
         <div>
           <div class="fw-bold">${u.username}</div>
           <div class="text-muted" style="font-size:12px">${u.location||''}</div>
@@ -462,7 +449,7 @@ document.getElementById('btnFriends').onclick = async ()=>{
     div.className = 'd-flex align-items-center justify-content-between border rounded p-2 mb-2';
     div.innerHTML = `
       <div class="d-flex gap-2 align-items-center">
-        <div class="avatar avatar-sm">${u.avatarUrl?`<img loading="lazy" src="${u.avatarUrl}">`:fmtNameToInitial(u.username)}</div>
+        <div class="avatar avatar-sm">${u.avatarUrl?`<img src="${u.avatarUrl}">`:fmtNameToInitial(u.username)}</div>
         <div class="fw-bold">${u.username}</div>
       </div>
       <button class="btn btn-sm btn-pink"><i class="fa-regular fa-message"></i> Nhắn</button>`;
@@ -488,7 +475,7 @@ document.getElementById('btnMessages').onclick = async ()=>{
     row.className = 'd-flex align-items-center justify-content-between border rounded p-2 mb-2';
     row.innerHTML = `
       <div class="d-flex gap-2 align-items-center">
-        <div class="avatar avatar-sm">${c.otherAvatar?`<img loading="lazy" src="${c.otherAvatar}">`:fmtNameToInitial(c.otherName)}</div>
+        <div class="avatar avatar-sm">${c.otherAvatar?`<img src="${c.otherAvatar}">`:fmtNameToInitial(c.otherName)}</div>
         <div>
           <div class="fw-bold">${c.otherName}</div>
           <div class="text-muted" style="font-size:12px">${preview}</div>
@@ -542,7 +529,7 @@ function renderMessage(m){
   bubble.className = 'message-bubble ' + (isMe ? 'msg-me ms-auto text-end' : 'msg-other');
   const safe = (m.content||'').replace(/</g,'&lt;');
   const filePart = m.fileUrl? (isVideo(m.fileUrl)? `<div class="mt-1"><video controls class="media" style="max-height:220px" src="${m.fileUrl}"></video></div>`
-                    : `<div class="mt-1"><img loading="lazy" src="${m.fileUrl}" class="media" style="max-height:220px" onerror="this.outerHTML='<a href=\'${m.fileUrl}\' target=\'_blank\'><i class=\'fa-solid fa-paperclip\'></i> ${m.fileName||'Tệp'}</a>'"></div>` ) : '';
+                    : `<div class="mt-1"><img src="${m.fileUrl}" class="media" style="max-height:220px" onerror="this.outerHTML='<a href=\'${m.fileUrl}\' target=\'_blank\'><i class=\'fa-solid fa-paperclip\'></i> ${m.fileName||'Tệp'}</a>'"></div>` ) : '';
   bubble.innerHTML = `<div class="small text-muted">${new Date(m.createdAt||Date.now()).toLocaleString()}</div>${safe}${filePart}`;
   div.appendChild(bubble);
   div.scrollTop = div.scrollHeight;
