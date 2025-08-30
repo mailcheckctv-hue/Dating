@@ -6,8 +6,6 @@
  *  - POST   /api/friends/:id        (toggle follow/friend request-style add)
  *  - GET    /api/friends            (list mutual friends: users who list each other)
  *  - GET    /api/conversations      (recent chat heads with last message)
- *  - GET    /api/messages/unread-count  (badge count)
- *  - PATCH  /api/messages/read/:otherId (mark a thread read)
  */
 require('dotenv').config();
 const path = require('path');
@@ -65,10 +63,9 @@ const userSchema = new mongoose.Schema({
   gender: { type: String, enum: ['Nam', 'Nữ', 'Khác'], default: 'Khác' },
   avatarUrl: String,
   location: String,
-  income: String, // NEW
-  job: String,    // NEW
+  income: String,
   vip: { type: String, enum: ['none', 'vip-week', 'basic', 'premium'], default: 'none' },
-  friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // NEW: simple friends list
 }, { timestamps: true });
 
 const postSchema = new mongoose.Schema({
@@ -122,12 +119,12 @@ app.get('/healthz', (req, res) => res.json({ ok: true }));
 // ---------- Auth Routes ----------
 app.post('/api/register', async (req, res) => {
   try {
-    const { username, email, password, gender, income, job } = req.body;
+    const { username, email, password, gender } = req.body;
     if (!username || !email || !password) return res.status(400).json({ message: 'Thiếu dữ liệu' });
     const existed = await User.findOne({ email });
     if (existed) return res.status(400).json({ message: 'Email đã tồn tại' });
     const hash = await bcrypt.hash(password, 10);
-    const user = await User.create({ username, email, password: hash, gender, income, job });
+    const user = await User.create({ username, email, password: hash, gender });
     const token = signToken(user);
     res.json({ token, user: { id: user._id, username: user.username, email: user.email } });
   } catch (e) {
@@ -207,7 +204,7 @@ app.get('/api/users/suggested', auth, async (req, res) => {
 });
 
 // ---------- Friends ----------
-// Toggle add/remove friend (simple)
+// Toggle add/remove friend (simple): if id exists in my list -> remove, else add.
 app.post('/api/friends/:id', auth, async (req, res) => {
   const otherId = req.params.id;
   if (otherId === req.user.id) return res.status(400).json({ message: 'Không thể tự kết bạn' });
@@ -219,13 +216,17 @@ app.post('/api/friends/:id', auth, async (req, res) => {
   res.json({ success: true, friends: me.friends });
 });
 
-// List mutual friends
+// List mutual friends: both users include each other in friends[]
 app.get('/api/friends', auth, async (req, res) => {
   const me = await User.findById(req.user.id).lean();
   if (!me) return res.status(404).json({ message: 'Not found' });
-  const candidates = await User.find({ _id: { $in: me.friends } }).select('username avatarUrl friends').lean();
-  const mutual = candidates.filter(u => (u.friends || []).map(x=>x.toString()).includes(req.user.id))
-    .map(u => ({ _id: u._id, username: u.username, avatarUrl: u.avatarUrl }));
+  const candidates = await User.find({ _id: { $in: me.friends } }).select('username avatarUrl').lean();
+  const mutual = [];
+  for (const u of candidates) {
+    const uu = await User.findById(u._id).select('friends username avatarUrl').lean();
+    const list = (uu.friends || []).map(x => x.toString());
+    if (list.includes(req.user.id)) mutual.push({ _id: u._id, username: u.username, avatarUrl: u.avatarUrl });
+  }
   res.json(mutual);
 });
 
@@ -284,7 +285,8 @@ app.get('/api/conversations', auth, async (req, res) => {
   }
 });
 
-// ---------- Comments, Reactions, Delete Post, Unread Messages ----------
+
+// ---------- Comments, Reactions, Delete Post, Unread Messages (NEW) ----------
 const commentSchema = new mongoose.Schema({
   post: { type: mongoose.Schema.Types.ObjectId, ref: 'Post', required: true },
   author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -316,7 +318,7 @@ app.post('/api/posts/:id/comments', auth, async (req, res) => {
   res.json(populated);
 });
 
-// Toggle reaction
+// Toggle reaction with any emoji key: like, heart, haha, wow, sad, angry...
 app.post('/api/posts/:id/react/:emoji', auth, async (req, res) => {
   const { id, emoji } = req.params;
   const post = await Post.findById(id);
@@ -329,7 +331,7 @@ app.post('/api/posts/:id/react/:emoji', auth, async (req, res) => {
   res.json({ reactions: post.reactions });
 });
 
-// Delete own post
+// Delete own post (+ cascade delete comments)
 app.delete('/api/posts/:id', auth, async (req, res) => {
   const p = await Post.findById(req.params.id);
   if (!p) return res.status(404).json({ message: 'Không tìm thấy' });
@@ -353,6 +355,7 @@ app.patch('/api/messages/read/:otherId', auth, async (req, res) => {
   );
   res.json({ success: true });
 });
+
 
 // ---------- VIP Stub ----------
 app.post('/api/upgrade-vip', auth, async (req, res) => {
@@ -428,3 +431,55 @@ wss.on('connection', (socket, req) => {
 server.listen(PORT, () => {
   console.log('Server running on port', PORT);
 });
+
+
+// --- WS Robust Broadcast ---
+try {
+  const wsClients = new Map(); // userId -> Set of sockets
+  if (wss && wss.on) {
+    wss.on('connection', (socket, req) => {
+      try {
+        const url = require('url');
+        const q = url.parse(req.url, true).query || {};
+        const token = q.token || (req.headers['sec-websocket-protocol']||'').split(',').pop()?.trim();
+        let user = null;
+        if (token) {
+          try { user = jwt.verify(token, JWT_SECRET); } catch(e){}
+        }
+        if (!user) { socket.close(); return; }
+        socket._uid = user.id;
+        if (!wsClients.has(user.id)) wsClients.set(user.id, new Set());
+        wsClients.get(user.id).add(socket);
+
+        socket.on('close', () => {
+          const set = wsClients.get(user.id);
+          if (set) {
+            set.delete(socket);
+            if (set.size === 0) wsClients.delete(user.id);
+          }
+        });
+
+        socket.on('message', async (raw) => {
+          try {
+            const data = JSON.parse(raw.toString());
+            if (data.type === 'message' && data.text && data.receiverId) {
+              // Save before broadcast
+              const saved = await Message.create({ sender: user.id, receiver: data.receiverId, text: data.text, read: false });
+              const populated = await saved.populate('sender', 'username avatarUrl');
+              const msgObj = { type: 'message', ...populated.toObject() };
+
+              // Deliver to receiver sockets
+              const recvSet = wsClients.get(data.receiverId) || new Set();
+              recvSet.forEach(s => { if (s.readyState === 1) s.send(JSON.stringify(msgObj)); });
+
+              // Echo to sender sockets
+              const sndSet = wsClients.get(user.id) || new Set();
+              sndSet.forEach(s => { if (s.readyState === 1) s.send(JSON.stringify(msgObj)); });
+            }
+          } catch (e) { console.error('WS message error', e); }
+        });
+      } catch (e) { console.error('WS connection error', e); try { socket.close(); } catch(_){ } }
+    });
+  }
+} catch (e) { console.error('WS attach failed', e); }
+
