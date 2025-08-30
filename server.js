@@ -77,7 +77,7 @@ async function migrateData(){
     );
     await User.updateMany(
       { vip: { $exists: false } },
-      { $set: { vip: 'none' } }
+      { $set: { vip: false } }
     );
     await Message.updateMany(
       { read: { $exists: false } },
