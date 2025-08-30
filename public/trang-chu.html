@@ -221,6 +221,27 @@ let ws = null;
 let chattingWith = null;
 
 // helpers
+// --- Desktop Notifications (optional, safe fallback) ---
+async function ensureNotificationPermission() {
+  try {
+    if (!('Notification' in window)) return false;
+    if (Notification.permission === 'default') {
+      await Notification.requestPermission();
+    }
+    return Notification.permission === 'granted';
+  } catch(_) { return false; }
+}
+function showDeskNotification(title, body) {
+  try {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+      const n = new Notification(title, { body: body||'Tin nhắn mới', icon: (me?.avatarUrl || '/favicon.ico') });
+      setTimeout(()=> n.close(), 6000);
+    }
+  } catch(_) {}
+}
+
+// helpers
 const isVideo = (url='') => /\.(mp4|webm|ogg)$/i.test(url.split('?')[0]);
 const fmtNameToInitial = (name) => (name||'NA').split(' ').map(s=>s[0]).join('').slice(0,2).toUpperCase();
 
@@ -494,12 +515,14 @@ function ensureWS(){
   const proto = location.protocol==='https:'?'wss':'ws';
   ws = new WebSocket(`${proto}://${location.host}/?token=${token}`);
   ws.onmessage = (ev)=>{
+
     const data = JSON.parse(ev.data);
     if(data.type==='message'){
       renderMessage(data);
       // tăng badge nếu tin từ người khác
       if(!chattingWith || (chattingWith.id !== (data.sender?._id || data.sender))){
         bumpBadges();
+      ensureNotificationPermission().then(granted => { if(granted){ showDeskNotification('Tin nhắn mới', (data.sender?.username||'') + ': ' + (data.content||'(đã gửi tệp)')); } });
       }
     }
   };
@@ -560,7 +583,7 @@ document.getElementById('btnPaid').onclick = async ()=>{
 };
 
 // Bell opens messages modal
-document.getElementById('btnBell').onclick = ()=> document.getElementById('btnMessages').click();
+document.getElementById('btnBell').onclick = async ()=> { await ensureNotificationPermission(); document.getElementById('btnMessages').click(); };
 
 // Logout
 document.getElementById('btnLogout').onclick = ()=>{ localStorage.removeItem('token'); location.href='login.html'; };
