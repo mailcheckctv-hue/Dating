@@ -1,16 +1,20 @@
-# LoveConnect - Triển khai nhanh trên Render
+# LoveConnect (Updated)
 
-## Biến môi trường
-- `MONGODB_URI`: chuỗi kết nối MongoDB
-- `JWT_SECRET`: khóa bí mật JWT
-- `PORT`: Render sẽ tự đặt, nhớ dùng `process.env.PORT`
+## Điểm mới
+- UI Bootstrap hiện đại, tối ưu mobile/desktop
+- Cập nhật ảnh đại diện bằng biểu tượng máy ảnh
+- Hiển thị đúng định dạng Ảnh/Video trong feed và chat
+- Kết bạn -> có thể nhắn tin (nút Nhắn luôn hiển thị)
+- Chuông thông báo trên navbar hiển thị số tin nhắn chưa đọc (real-time + polling)
+- Form Đăng nhập/Đăng ký thiết kế chuyên nghiệp
+- Đăng ký thêm trường **Thu nhập** và **Công việc**
+- API giữ nguyên tương thích, thêm `job` trong schema và nhận `income`, `job` ở `/api/register`
 
-## Chạy
-```
-npm install
-npm start
-```
+## Triển khai trên Render
+1. Thiết lập biến môi trường: `MONGODB_URI`, `JWT_SECRET`
+2. `npm install` rồi `npm start`
+3. Thư mục tĩnh: các file HTML nằm trong `public/`
 
-## Thư mục tĩnh
-- Đặt `login.html`, `dang-ky.html`, `trang-chu.html` vào thư mục `public/` nếu muốn server phục vụ trực tiếp.
-- Hiện bản này phục vụ file tĩnh ở thư mục `public` nếu tồn tại.
+## Cấu trúc
+- `server.js` – API + WebSocket
+- `public/login.html`, `public/dang-ky.html`, `public/trang-chu.html`
