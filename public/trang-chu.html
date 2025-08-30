@@ -55,7 +55,7 @@
         <li class="nav-item"><a class="nav-link" href="#" id="btnMessages"><i class="fa-regular fa-message"></i> Tin nhắn</a></li>
         <li class="nav-item"><a class="nav-link" href="#" id="btnVip"><i class="fa-solid fa-crown"></i> Nâng cấp VIP</a></li>
       </ul>
-      <div class="d-flex align-items-center gap-3">        <div class="position-relative"><button class="btn btn-sm" id="btnDiamond" title="Tổng số tin nhắn"><i class="fa-solid fa-gem"></i></button><span class="badge rounded-pill text-bg-primary bell-badge" id="diamondBadge">0</span></div>
+      <div class="d-flex align-items-center gap-3">
         <button class="btn btn-sm bell-btn" id="btnBell" title="Thông báo">
           <i class="fa-regular fa-bell"></i>
           <span class="badge rounded-pill text-bg-danger bell-badge" id="msgBadge">0</span>
@@ -73,7 +73,7 @@
     <div class="col-lg-3">
       <div class="card">
         <div class="card-body">
-          <div class="d-flex align-items-center gap-3">        <div class="position-relative"><button class="btn btn-sm" id="btnDiamond" title="Tổng số tin nhắn"><i class="fa-solid fa-gem"></i></button><span class="badge rounded-pill text-bg-primary bell-badge" id="diamondBadge">0</span></div>
+          <div class="d-flex align-items-center gap-3">
             <div class="avatar position-relative">
               <img id="profileAvatarImg" src="" alt="" style="display:none">
               <span id="profileAvatarInit">NA</span>
@@ -154,7 +154,6 @@
       <i class="fa-solid fa-paperclip"></i>
       <input type="file" id="chatFile" hidden>
     </label>
-    <button class="btn btn-light" id="btnSticker" title="Gửi sticker"><i class="fa-regular fa-face-smile"></i></button>
     <button class="btn btn-pink" id="btnSend"><i class="fa-solid fa-paper-plane"></i></button>
   </div>
 </div>
@@ -212,21 +211,7 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js">
-// Sticker picker
-const tray = document.getElementById('stickerTray');
-document.getElementById('btnSticker').onclick = ()=>{ tray.style.display = tray.style.display==='none'?'block':'none'; };
-tray.querySelectorAll('img').forEach(img => {
-  img.onclick = ()=>{
-    ensureWS();
-    if(!chattingWith){ alert('Hãy chọn người để chat'); return; }
-    const msg = {type:'message', receiverId:chattingWith.id, content:'', stickerUrl: img.src };
-    ws.send(JSON.stringify(msg));
-    tray.style.display='none';
-  };
-});
-
-</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 const API = (window.location.origin) + '/api';
 let token = localStorage.getItem('token');
@@ -550,7 +535,6 @@ function renderMessage(m){
   div.scrollTop = div.scrollHeight;
 }
 document.getElementById('btnSend').onclick = async ()=>{
-  if(!me?.vip){ alert('Bạn cần mua gói VIP để nhắn tin.'); return; }
   if(!chattingWith) return;
   ensureWS();
   const input = document.getElementById('chatInput');
@@ -580,29 +564,10 @@ document.getElementById('btnBell').onclick = ()=> document.getElementById('btnMe
 
 // Logout
 document.getElementById('btnLogout').onclick = ()=>{ localStorage.removeItem('token'); location.href='login.html'; };
-
-// Sticker picker
-const tray = document.getElementById('stickerTray');
-document.getElementById('btnSticker').onclick = ()=>{ tray.style.display = tray.style.display==='none'?'block':'none'; };
-tray.querySelectorAll('img').forEach(img => {
-  img.onclick = ()=>{
-    ensureWS();
-    if(!chattingWith){ alert('Hãy chọn người để chat'); return; }
-    const msg = {type:'message', receiverId:chattingWith.id, content:'', stickerUrl: img.src };
-    ws.send(JSON.stringify(msg));
-    tray.style.display='none';
-  };
-});
-
 </script>
 <script>
-// --- Badges (unread + total message diamond) ---
+// --- Unread messages badge ---
 async function refreshUnread(){
-  try{
-    const r2 = await fetch(API+'/messages/total-count',{headers:{Authorization:'Bearer '+token}});
-    if(r2.ok){ const {count} = await r2.json(); const d = document.getElementById('diamondBadge'); if(d) d.textContent = count; }
-  }catch{}
-
   try{
     const r = await fetch(API+'/messages/unread-count',{headers:{Authorization:'Bearer '+token}});
     if(r.ok){
@@ -622,18 +587,5 @@ async function onOpenChatWith(otherId){
   refreshUnread();
 }
 </script>
-
-<div id="stickerTray" class="position-fixed p-2 bg-white border rounded shadow" style="display:none; right:20px; bottom:430px; width:260px; z-index:1000">
-  <div class="fw-bold mb-2">Sticker</div>
-  <div class="d-flex flex-wrap gap-2">
-    <img src="https://cdn.jsdelivr.net/gh/twitter/twemoji/assets/svg/1f60a.svg" class="pointer" width="44">
-    <img src="https://cdn.jsdelivr.net/gh/twitter/twemoji/assets/svg/1f602.svg" class="pointer" width="44">
-    <img src="https://cdn.jsdelivr.net/gh/twitter/twemoji/assets/svg/1f60d.svg" class="pointer" width="44">
-    <img src="https://cdn.jsdelivr.net/gh/twitter/twemoji/assets/svg/1f389.svg" class="pointer" width="44">
-    <img src="https://cdn.jsdelivr.net/gh/twitter/twemoji/assets/svg/1f525.svg" class="pointer" width="44">
-    <img src="https://cdn.jsdelivr.net/gh/twitter/twemoji/assets/svg/1f44d.svg" class="pointer" width="44">
-  </div>
-</div>
-
 </body>
 </html>
