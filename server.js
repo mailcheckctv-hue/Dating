@@ -1,485 +1,291 @@
 
-/**
- * LoveConnect - Enhanced server.js (avatar, friends, conversations, image-first feed)
- * Keeps all existing routes; adds safe, backward-compatible endpoints:
- *  - POST   /api/profile/avatar     (upload & set avatarUrl)
- *  - POST   /api/friends/:id        (toggle follow/friend request-style add)
- *  - GET    /api/friends            (list mutual friends: users who list each other)
- *  - GET    /api/conversations      (recent chat heads with last message)
- */
+/* LoveConnect server.js – full implementation for current frontend
+   Features: Auth (JWT), Posts, Upload, Friends, Messaging + WebSocket, Profile avatar
+*/
 require('dotenv').config();
-const path = require('path');
-const fs = require('fs');
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
+const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
-const http = require('http');
-const WebSocket = require('ws');
+const { WebSocketServer } = require('ws');
 
 const app = express();
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
-
-// ---------- ENV & Mongo ----------
-const PORT = process.env.PORT || 10000;
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_please_change';
-const MONGO = process.env.MONGODB_URI || process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/loveconnect';
-
-mongoose
-  .connect(MONGO, { dbName: 'loveconnect' })
-  .then(() => console.log('MongoDB connected'))
-  .catch((err) => console.error('Mongo error:', err.message));
-
-// ---------- Middlewares ----------
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '2mb' }));
+app.use('/public', express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public')));
 
-// ensure /uploads exists
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/loveconnect';
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret';
+const PORT = process.env.PORT || 3000;
 
-// Multer storage
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname || '');
-    cb(null, unique + ext);
-  }
-});
-const upload = multer({ storage });
+// ---- Mongo connection ----
+mongoose.set('strictQuery', false);
+mongoose.connect(MONGODB_URI).then(()=>{
+  console.log('Mongo connected');
+}).catch(err=>console.error('Mongo error', err));
 
-// ---------- Schemas ----------
+// ---- Schemas ----
 const userSchema = new mongoose.Schema({
-  username: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  gender: { type: String, enum: ['Nam', 'Nữ', 'Khác'], default: 'Khác' },
+  username: String,
+  email: { type:String, unique:true },
+  password: String,
   avatarUrl: String,
-  location: String,
+  gender: String,
   income: String,
-  vip: { type: String, enum: ['none', 'vip-week', 'basic', 'premium'], default: 'none' },
-  friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // NEW: simple friends list
-}, { timestamps: true });
+  job: String,
+  friends: [{ type: mongoose.Schema.Types.ObjectId, ref:'User' }],
+  isVIP: { type:Boolean, default:false },
+  createdAt: { type: Date, default: Date.now }
+});
 
 const postSchema = new mongoose.Schema({
-  reactions: { type: Object, default: {} },
-  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  user: { type: mongoose.Schema.Types.ObjectId, ref:'User' },
   content: String,
-  fileUrl: String,
-  fileName: String,
-  likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-}, { timestamps: true });
+  mediaUrl: String,
+  createdAt: { type: Date, default: Date.now },
+  reactions: {
+    like:   [{ type: mongoose.Schema.Types.ObjectId, ref:'User' }],
+    heart:  [{ type: mongoose.Schema.Types.ObjectId, ref:'User' }],
+    haha:   [{ type: mongoose.Schema.Types.ObjectId, ref:'User' }],
+    wow:    [{ type: mongoose.Schema.Types.ObjectId, ref:'User' }],
+    sad:    [{ type: mongoose.Schema.Types.ObjectId, ref:'User' }],
+    angry:  [{ type: mongoose.Schema.Types.ObjectId, ref:'User' }],
+  }
+});
 
 const messageSchema = new mongoose.Schema({
-  sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  from: { type: mongoose.Schema.Types.ObjectId, ref:'User' },
+  to:   { type: mongoose.Schema.Types.ObjectId, ref:'User' },
   content: String,
-  fileUrl: String,
-  fileName: String,
-  read: { type: Boolean, default: false },
-}, { timestamps: true });
+  mediaUrl: String,
+  createdAt: { type: Date, default: Date.now },
+  read: { type:Boolean, default:false }
+});
 
 const User = mongoose.model('User', userSchema);
 const Post = mongoose.model('Post', postSchema);
 const Message = mongoose.model('Message', messageSchema);
 
-// ---------- Helpers ----------
-function signToken(user) {
-  return jwt.sign({ id: user._id, email: user.email, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
+// ---- Auth helpers ----
+function signToken(u){ return jwt.sign({ id: u._id, email: u.email }, JWT_SECRET, { expiresIn: '7d' }); }
+function auth(req,res,next){
+  const h = req.headers.authorization || '';
+  const token = h.startsWith('Bearer ') ? h.slice(7) : null;
+  if(!token) return res.status(401).json({message:'No token'});
+  try{ const d = jwt.verify(token, JWT_SECRET); req.userId = d.id; next(); }
+  catch(e){ return res.status(401).json({message:'Invalid token'}); }
 }
-function auth(req, res, next) {
-  const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.substring(7) : null;
-  if (!token) return res.status(401).json({ message: 'Missing token' });
-  try {
-    req.user = jwt.verify(token, JWT_SECRET);
-    next();
-  } catch (e) {
-    return res.status(401).json({ message: 'Invalid token' });
+
+// ---- Multer for uploads ----
+const uploadDir = path.join(__dirname, 'public', 'uploads');
+fs.mkdirSync(uploadDir, { recursive: true });
+const storage = multer.diskStorage({
+  destination: (req, file, cb)=> cb(null, uploadDir),
+  filename: (req, file, cb)=> {
+    const ext = path.extname(file.originalname) || '';
+    cb(null, Date.now() + '-' + Math.random().toString(36).slice(2) + ext);
   }
-}
+});
+const upload = multer({ storage });
 
-// ---------- Static ----------
-const publicDir = path.join(__dirname, 'public');
-app.use('/uploads', express.static(uploadDir));
-if (fs.existsSync(publicDir)) {
-  app.use(express.static(publicDir));
-}
-
-// ---------- Healthcheck ----------
-app.get('/healthz', (req, res) => res.json({ ok: true }));
-
-// ---------- Auth Routes ----------
-app.post('/api/register', async (req, res) => {
-  try {
-    const { username, email, password, gender } = req.body;
-    if (!username || !email || !password) return res.status(400).json({ message: 'Thiếu dữ liệu' });
-    const existed = await User.findOne({ email });
-    if (existed) return res.status(400).json({ message: 'Email đã tồn tại' });
+// ---- Auth routes ----
+app.post('/api/register', async (req,res)=>{
+  try{
+    const { username, email, password, gender, income, job } = req.body;
+    if(!username || !email || !password) return res.status(400).json({message:'Thiếu thông tin'});
+    const ex = await User.findOne({ email });
+    if(ex) return res.status(400).json({message:'Email đã tồn tại'});
     const hash = await bcrypt.hash(password, 10);
-    const user = await User.create({ username, email, password: hash, gender });
-    const token = signToken(user);
-    res.json({ token, user: { id: user._id, username: user.username, email: user.email } });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: 'Lỗi máy chủ' });
-  }
+    const u = await User.create({ username, email, password: hash, gender, income, job, friends:[] });
+    res.json({ message:'OK' });
+  }catch(e){ res.status(500).json({message:'Lỗi server'}); }
 });
 
-app.post('/api/login', async (req, res) => {
-  try {
+app.post('/api/login', async (req,res)=>{
+  try{
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: 'Email hoặc mật khẩu không đúng' });
-    const ok = await bcrypt.compare(password, user.password);
-    if (!ok) return res.status(400).json({ message: 'Email hoặc mật khẩu không đúng' });
-    const token = signToken(user);
-    res.json({ token, user: { id: user._id, username: user.username, email: user.email } });
-  } catch (e) {
-    res.status(500).json({ message: 'Lỗi máy chủ' });
-  }
+    const u = await User.findOne({ email });
+    if(!u) return res.status(400).json({message:'Sai email hoặc mật khẩu'});
+    const ok = await bcrypt.compare(password, u.password || '');
+    if(!ok) return res.status(400).json({message:'Sai email hoặc mật khẩu'});
+    res.json({ token: signToken(u) });
+  }catch(e){ res.status(500).json({message:'Lỗi server'}); }
 });
 
-// ---------- Profile ----------
-app.get('/api/profile', auth, async (req, res) => {
-  const me = await User.findById(req.user.id).lean();
-  res.json(me);
+// ---- Profile ----
+app.get('/api/profile', auth, async (req,res)=>{
+  const u = await User.findById(req.userId).lean();
+  res.json({ _id:u._id, username:u.username, email:u.email, avatarUrl:u.avatarUrl, isVIP:u.isVIP, gender:u.gender, income:u.income, job:u.job });
 });
 
-// NEW: upload avatar
-app.post('/api/profile/avatar', auth, upload.single('avatar'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ message: 'Chưa có ảnh' });
-  const fileUrl = `/uploads/${req.file.filename}`;
-  await User.findByIdAndUpdate(req.user.id, { avatarUrl: fileUrl });
+app.post('/api/profile/avatar', auth, upload.single('avatar'), async (req,res)=>{
+  const fileUrl = '/uploads/' + path.basename(req.file.path);
+  await User.findByIdAndUpdate(req.userId, { avatarUrl: fileUrl });
   res.json({ avatarUrl: fileUrl });
 });
 
-// ---------- Upload (generic file/image) ----------
-app.post('/api/upload', auth, upload.single('file'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ message: 'Chưa có file' });
-  const fileUrl = `/uploads/${req.file.filename}`;
-  res.json({ fileUrl, fileName: req.file.originalname || req.file.filename });
+// ---- Upload generic ----
+app.post('/api/upload', auth, upload.single('file'), async (req,res)=>{
+  const fileUrl = '/uploads/' + path.basename(req.file.path);
+  res.json({ url: fileUrl });
 });
 
-// ---------- Posts ----------
-app.get('/api/posts', auth, async (req, res) => {
-  const posts = await Post.find().sort({ createdAt: -1 }).limit(50).populate('author', 'username avatarUrl').lean();
+// ---- Posts ----
+app.get('/api/posts', auth, async (req,res)=>{
+  const me = await User.findById(req.userId);
+  const ids = [me._id, ...me.friends];
+  const posts = await Post.find({ user: { $in: ids } })
+    .sort({ createdAt: -1 }).limit(100)
+    .populate('user','username avatarUrl').lean();
   res.json(posts);
 });
 
-app.post('/api/posts', auth, upload.single('file'), async (req, res) => {
-  try {
-    let fileUrl, fileName;
-    if (req.file) {
-      fileUrl = `/uploads/${req.file.filename}`;
-      fileName = req.file.originalname || req.file.filename;
-    } else if (req.body.fileUrl) {
-      fileUrl = req.body.fileUrl;
-      fileName = req.body.fileName;
-    }
-    const post = await Post.create({
-      author: req.user.id,
-      content: req.body.content || '',
-      fileUrl, fileName
-    });
-    const populated = await post.populate('author', 'username avatarUrl');
-    res.json(populated);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: 'Không tạo được bài viết' });
-  }
+app.post('/api/posts', auth, async (req,res)=>{
+  const { content, mediaUrl } = req.body;
+  const p = await Post.create({ user:req.userId, content, mediaUrl, reactions:{} });
+  const out = await Post.findById(p._id).populate('user','username avatarUrl').lean();
+  res.json(out);
 });
 
-// ---------- Suggested users ----------
-app.get('/api/users/suggested', auth, async (req, res) => {
-  const users = await User.find({ _id: { $ne: req.user.id } }).select('username avatarUrl gender location').limit(12).lean();
-  res.json(users);
-});
-
-// ---------- Friends ----------
-// Toggle add/remove friend (simple): if id exists in my list -> remove, else add.
-app.post('/api/friends/:id', auth, async (req, res) => {
-  const otherId = req.params.id;
-  if (otherId === req.user.id) return res.status(400).json({ message: 'Không thể tự kết bạn' });
-  const me = await User.findById(req.user.id);
-  const idx = me.friends.findIndex(f => f.toString() === otherId);
-  if (idx >= 0) me.friends.splice(idx, 1);
-  else me.friends.push(otherId);
-  await me.save();
-  res.json({ success: true, friends: me.friends });
-});
-
-// List mutual friends: both users include each other in friends[]
-app.get('/api/friends', auth, async (req, res) => {
-  const me = await User.findById(req.user.id).lean();
-  if (!me) return res.status(404).json({ message: 'Not found' });
-  const candidates = await User.find({ _id: { $in: me.friends } }).select('username avatarUrl').lean();
-  const mutual = [];
-  for (const u of candidates) {
-    const uu = await User.findById(u._id).select('friends username avatarUrl').lean();
-    const list = (uu.friends || []).map(x => x.toString());
-    if (list.includes(req.user.id)) mutual.push({ _id: u._id, username: u.username, avatarUrl: u.avatarUrl });
-  }
-  res.json(mutual);
-});
-
-// ---------- Messages (REST for history) ----------
-app.get('/api/messages/:otherId', auth, async (req, res) => {
-  const other = req.params.otherId;
-  const msgs = await Message.find({
-    $or: [
-      { sender: req.user.id, receiver: other },
-      { sender: other, receiver: req.user.id }
-    ]
-  }).sort({ createdAt: 1 }).lean();
-  res.json(msgs);
-});
-
-// NEW: conversation heads (last message per peer)
-app.get('/api/conversations', auth, async (req, res) => {
-  try {
-    const pipeline = [
-      { $match: { $or: [ { sender: new mongoose.Types.ObjectId(req.user.id) }, { receiver: new mongoose.Types.ObjectId(req.user.id) } ] } },
-      { $sort: { createdAt: -1 } },
-      { $group: {
-          _id: {
-            other: {
-              $cond: [
-                { $eq: ['$sender', new mongoose.Types.ObjectId(req.user.id)] },
-                '$receiver', '$sender'
-              ]
-            }
-          },
-          lastMessage: { $first: '$$ROOT' }
-        }
-      },
-      { $lookup: {
-          from: 'users',
-          localField: '_id.other',
-          foreignField: '_id',
-          as: 'otherUser'
-        }
-      },
-      { $unwind: '$otherUser' },
-      { $project: {
-          otherId: '$_id.other',
-          otherName: '$otherUser.username',
-          otherAvatar: '$otherUser.avatarUrl',
-          lastMessage: 1
-        }
-      },
-      { $limit: 50 }
-    ];
-    const conv = await Message.aggregate(pipeline);
-    res.json(conv);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: 'Không lấy được danh sách hội thoại' });
-  }
-});
-
-
-// ---------- Comments, Reactions, Delete Post, Unread Messages (NEW) ----------
-const commentSchema = new mongoose.Schema({
-  post: { type: mongoose.Schema.Types.ObjectId, ref: 'Post', required: true },
-  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  content: { type: String, default: '' },
-  stickerUrl: { type: String, default: '' }
-}, { timestamps: true });
-const Comment = mongoose.model('Comment', commentSchema);
-
-app.get('/api/posts/:id/comments', auth, async (req, res) => {
-  const list = await Comment.find({ post: req.params.id })
-    .sort({ createdAt: 1 })
-    .populate('author', 'username avatarUrl')
-    .lean();
-  res.json(list);
-});
-
-app.post('/api/posts/:id/comments', auth, async (req, res) => {
-  const body = req.body || {};
-  if ((!body.content || !body.content.trim()) && !body.stickerUrl) {
-    return res.status(400).json({ message: 'Nội dung trống' });
-  }
-  const c = await Comment.create({
-    post: req.params.id,
-    author: req.user.id,
-    content: (body.content||'').trim(),
-    stickerUrl: body.stickerUrl || ''
-  });
-  const populated = await c.populate('author', 'username avatarUrl');
-  res.json(populated);
-});
-
-// Toggle reaction with any emoji key: like, heart, haha, wow, sad, angry...
-app.post('/api/posts/:id/react/:emoji', auth, async (req, res) => {
-  const { id, emoji } = req.params;
-  const post = await Post.findById(id);
-  if (!post) return res.status(404).json({ message: 'Không tìm thấy bài viết' });
-  if (!post.reactions) post.reactions = {};
-  const set = new Set((post.reactions[emoji] || []).map(u => u.toString()));
-  if (set.has(req.user.id)) set.delete(req.user.id); else set.add(req.user.id);
-  post.reactions[emoji] = Array.from(set);
-  await post.save();
-  res.json({ reactions: post.reactions });
-});
-
-// Delete own post (+ cascade delete comments)
-app.delete('/api/posts/:id', auth, async (req, res) => {
+app.delete('/api/posts/:id', auth, async (req,res)=>{
   const p = await Post.findById(req.params.id);
-  if (!p) return res.status(404).json({ message: 'Không tìm thấy' });
-  if (p.author.toString() !== req.user.id) return res.status(403).json({ message: 'Không có quyền' });
-  await Comment.deleteMany({ post: p._id });
+  if(!p || p.user.toString() !== req.userId) return res.status(403).json({message:'Không có quyền'});
   await p.deleteOne();
-  res.json({ success: true });
+  res.json({ ok:true });
 });
 
-// Unread messages count
-app.get('/api/messages/unread-count', auth, async (req, res) => {
-  const count = await Message.countDocuments({ receiver: req.user.id, read: false });
-  res.json({ count });
+app.post('/api/posts/:id/react', auth, async (req,res)=>{
+  const { type } = req.body;
+  const types = ['like','heart','haha','wow','sad','angry'];
+  if(!types.includes(type)) return res.status(400).json({message:'Loại reaction không hợp lệ'});
+  const p = await Post.findById(req.params.id);
+  if(!p) return res.status(404).json({message:'Không tìm thấy bài viết'});
+  // toggle
+  types.forEach(t => { p.reactions[t] = p.reactions[t] || []; });
+  const arr = p.reactions[type];
+  const i = arr.findIndex(x => x.toString()===req.userId);
+  if(i>=0) arr.splice(i,1); else arr.push(req.userId);
+  await p.save();
+  res.json({ ok:true });
 });
 
-// Mark conversation as read
-app.patch('/api/messages/read/:otherId', auth, async (req, res) => {
-  await Message.updateMany(
-    { sender: req.params.otherId, receiver: req.user.id, read: false },
-    { $set: { read: true } }
-  );
-  res.json({ success: true });
+// ---- Friends ----
+app.get('/api/users/suggested', auth, async (req,res)=>{
+  const me = await User.findById(req.userId).lean();
+  const sug = await User.find({ _id: { $ne: me._id, $nin: me.friends || [] } })
+        .select('username avatarUrl email').limit(10).lean();
+  res.json(sug);
 });
 
-
-// ---------- VIP Stub ----------
-app.post('/api/upgrade-vip', auth, async (req, res) => {
-  const { plan } = req.body;
-  await User.findByIdAndUpdate(req.user.id, { vip: plan || 'vip-week' });
-  res.json({ success: true });
+app.post('/api/friends/:id', auth, async (req,res)=>{
+  const otherId = req.params.id;
+  if(otherId===req.userId) return res.status(400).json({message:'Không thể tự kết bạn'});
+  await User.findByIdAndUpdate(req.userId, { $addToSet: { friends: otherId } });
+  await User.findByIdAndUpdate(otherId, { $addToSet: { friends: req.userId } });
+  res.json({ ok:true });
 });
 
-// ---------- Default routes ----------
-app.get('/', (req, res) => {
-  const loginPath = path.join(publicDir, 'login.html');
-  if (fs.existsSync(loginPath)) return res.sendFile(loginPath);
-  res.send('LoveConnect API is running.');
+app.get('/api/friends', auth, async (req,res)=>{
+  const me = await User.findById(req.userId).populate('friends','username avatarUrl email').lean();
+  res.json(me.friends || []);
 });
 
-// ---------- WebSocket ----------
-const clients = new Map(); // userId -> ws
-
-function wsAuth(token) {
-  try {
-    return jwt.verify(token, JWT_SECRET);
-  } catch {
-    return null;
-  }
+// ---- Messaging ----
+async function lastMessageBetween(a,b){
+  return await Message.findOne({ $or:[ {from:a,to:b}, {from:b,to:a} ] }).sort({createdAt:-1}).lean();
 }
 
-wss.on('connection', (socket, req) => {
-  const params = new URLSearchParams((req.url || '').split('?')[1]);
-  const token = params.get('token');
-  const user = wsAuth(token);
-  if (!user) {
-    socket.close();
-    return;
-  }
-  clients.set(user.id, socket);
+app.get('/api/conversations', auth, async (req,res)=>{
+  const myId = new mongoose.Types.ObjectId(req.userId);
+  const pipeline = [
+    { $match: { $or:[ {from: myId}, {to: myId} ] } },
+    { $sort: { createdAt: -1 } },
+    { $group: {
+        _id: { $cond: [ { $eq: ['$from', myId] }, '$to', '$from' ] },
+        last: { $first: '$$ROOT' },
+        unread: { $sum: { $cond: [ { $and: [ { $eq: ['$to', myId] }, { $eq: ['$read', false] } ] }, 1, 0 ] } }
+    } }
+  ];
+  const rows = await Message.aggregate(pipeline);
+  const ids = rows.map(r=>r._id);
+  const users = await User.find({ _id: { $in: ids } }).select('username avatarUrl').lean();
+  const map = new Map(users.map(u=>[u._id.toString(),u]));
+  const result = rows.map(r=>({ user: map.get(r._id.toString()), last: r.last, unread: r.unread }));
+  res.json(result);
+});
 
-  socket.on('message', async (msg) => {
-    try {
-      const data = JSON.parse(msg.toString());
-      if (data.type === 'message') {
-        const payload = {
-          sender: user.id,
-          receiver: data.receiverId,
-          content: data.content || '',
-          fileUrl: data.fileUrl,
-          fileName: data.fileName
-        };
-        const saved = await Message.create(payload);
-        const sendObj = {
-          type: 'message',
-          _id: saved._id,
-          sender: { _id: user.id, username: user.username },
-          receiver: data.receiverId,
-          content: payload.content,
-          fileUrl: payload.fileUrl,
-          fileName: payload.fileName,
-          createdAt: saved.createdAt
-        };
-        const rc = clients.get(data.receiverId);
-        if (rc && rc.readyState === WebSocket.OPEN) rc.send(JSON.stringify(sendObj));
-        if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(sendObj));
-      }
-    } catch (e) {
-      console.error('WS error', e.message);
+app.get('/api/messages/:userId', auth, async (req,res)=>{
+  const other = req.params.userId;
+  const msgs = await Message.find({ $or:[ {from:req.userId,to:other}, {from:other,to:req.userId} ] })
+    .sort({ createdAt: -1 }).limit(100).lean();
+  res.json(msgs.reverse());
+});
+
+app.post('/api/messages/:userId', auth, async (req,res)=>{
+  const other = req.params.userId;
+  const { content, mediaUrl } = req.body;
+  const m = await Message.create({ from:req.userId, to:other, content, mediaUrl });
+  // Push via WS
+  pushToUser(other, { type:'message', sender: req.userId, content, mediaUrl, createdAt: m.createdAt });
+  res.json(m);
+});
+
+app.get('/api/messages/unread-count', auth, async (req,res)=>{
+  const c = await Message.countDocuments({ to:req.userId, read:false });
+  res.json({ count:c });
+});
+
+app.post('/api/messages/read/:userId', auth, async (req,res)=>{
+  const other = req.params.userId;
+  await Message.updateMany({ from:other, to:req.userId, read:false }, { $set:{ read:true } });
+  res.json({ ok:true });
+});
+
+// ---- VIP ----
+app.post('/api/upgrade-vip', auth, async (req,res)=>{
+  await User.findByIdAndUpdate(req.userId, { isVIP:true });
+  res.json({ ok:true });
+});
+
+// ---- Serve pages ----
+app.get('/', (req,res)=> res.sendFile(path.join(__dirname,'public','login.html')));
+
+// ---- Start HTTP server ----
+const server = app.listen(PORT, ()=> console.log('Server listening on', PORT));
+
+// ---- WebSocket ----
+const wss = new WebSocketServer({ server });
+const sockets = new Map(); // userId -> ws
+
+wss.on('connection', (ws, req) => {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const token = url.searchParams.get('token');
+  let userId = null;
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    userId = payload.id;
+    sockets.set(userId, ws);
+    ws.on('close', ()=> sockets.delete(userId));
+  } catch(e){
+    ws.close();
+  }
+});
+
+function pushToUser(uid, payload){
+  const ws = sockets.get(uid?.toString());
+  if(ws && ws.readyState===1){
+    if(payload.sender && typeof payload.sender === 'string'){
+      // enrich sender
+      User.findById(payload.sender).select('username avatarUrl').lean().then(u => {
+        ws.send(JSON.stringify({ ...payload, sender: u }));
+      }).catch(()=> ws.send(JSON.stringify(payload)));
+    }else{
+      ws.send(JSON.stringify(payload));
     }
-  });
-
-  socket.on('close', () => {
-    clients.delete(user.id);
-  });
-});
-
-server.listen(PORT, () => {
-  console.log('Server running on port', PORT);
-});
-
-
-// --- WS Robust Broadcast ---
-try {
-  const wsClients = new Map(); // userId -> Set of sockets
-  if (wss && wss.on) {
-    wss.on('connection', (socket, req) => {
-      try {
-        const url = require('url');
-        const q = url.parse(req.url, true).query || {};
-        const token = q.token || (req.headers['sec-websocket-protocol']||'').split(',').pop()?.trim();
-        let user = null;
-        if (token) {
-          try { user = jwt.verify(token, JWT_SECRET); } catch(e){}
-        }
-        if (!user) { socket.close(); return; }
-        socket._uid = user.id;
-        if (!wsClients.has(user.id)) wsClients.set(user.id, new Set());
-        wsClients.get(user.id).add(socket);
-
-        socket.on('close', () => {
-          const set = wsClients.get(user.id);
-          if (set) {
-            set.delete(socket);
-            if (set.size === 0) wsClients.delete(user.id);
-          }
-        });
-
-        socket.on('message', async (raw) => {
-          try {
-            const data = JSON.parse(raw.toString());
-            if (data.type === 'message' && data.text && data.receiverId) {
-              // Save before broadcast
-              const saved = await Message.create({ sender: user.id, receiver: data.receiverId, text: data.text, read: false });
-              const populated = await saved.populate('sender', 'username avatarUrl');
-              const msgObj = { type: 'message', ...populated.toObject() };
-
-              // Deliver to receiver sockets
-              const recvSet = wsClients.get(data.receiverId) || new Set();
-              recvSet.forEach(s => { if (s.readyState === 1) s.send(JSON.stringify(msgObj)); });
-
-              // Echo to sender sockets
-              const sndSet = wsClients.get(user.id) || new Set();
-              sndSet.forEach(s => { if (s.readyState === 1) s.send(JSON.stringify(msgObj)); });
-            }
-          } catch (e) { console.error('WS message error', e); }
-        });
-      } catch (e) { console.error('WS connection error', e); try { socket.close(); } catch(_){ } }
-    });
   }
-} catch (e) { console.error('WS attach failed', e); }
-
+}
