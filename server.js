@@ -244,6 +244,16 @@ app.get('/api/users/suggested', auth, async (req, res)=>{
 });
 
 // ---------- Messages ----------
+app.get('/api/messages/unread-count', auth, async (req, res)=>{
+  const count = await Message.countDocuments({ receiver: req.user.id, read: false });
+  res.json({ count });
+});
+
+app.get('/api/messages/total-count', auth, async (req, res)=>{
+  const count = await Message.countDocuments({ $or: [{ sender: req.user.id }, { receiver: req.user.id }] });
+  res.json({ count });
+});
+
 app.get('/api/messages/:otherId', auth, async (req, res) => {
   const otherId = req.params.otherId;
   const list = await Message.find({ 
@@ -262,13 +272,11 @@ app.patch('/api/messages/read/:otherId', auth, async (req, res)=>{
 });
 
 // unread count
-app.get('/api/messages/unread-count', auth, async (req, res)=>{
   const count = await Message.countDocuments({ receiver: req.user.id, read: false });
   res.json({ count });
 });
 
 // TOTAL message counter (diamond)
-app.get('/api/messages/total-count', auth, async (req, res)=>{
   const count = await Message.countDocuments({ 
     $or: [{ sender: req.user.id }, { receiver: req.user.id }]
   });
