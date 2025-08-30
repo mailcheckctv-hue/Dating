@@ -39,9 +39,29 @@
     .logout-btn{border:2px solid #fff !important; background:transparent !important}
     .bell-btn{position:relative}
     .bell-badge{position:absolute; top:-6px; right:-6px}
+  
+    /* Avatar spinner overlay */
+    .avatar-loader {
+      position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+      background:rgba(255,255,255,.6); border-radius:50%;
+    }
+    .avatar-loader .ring {
+      width:26px; height:26px; border-radius:50%; border:3px solid #ffd0dd; border-top-color:#ff3b6b;
+      animation:spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Subtle hover for cards and buttons */
+    .card:hover{transform:translateY(-1px); transition:.15s ease; box-shadow:0 10px 28px rgba(149,157,165,.25)}
+
   </style>
 </head>
 <body>
+
+<div aria-live="polite" aria-atomic="true" class="position-fixed top-0 end-0 p-3" style="z-index:1080">
+  <div id="toastStack"></div>
+</div>
+
 <nav class="navbar navbar-expand-lg sticky-top">
   <div class="container">
     <a class="navbar-brand fw-bold" href="#"><i class="fa-solid fa-heart"></i> LoveConnect</a>
@@ -74,7 +94,7 @@
       <div class="card">
         <div class="card-body">
           <div class="d-flex align-items-center gap-3">
-            <div class="avatar position-relative">
+            <div class="avatar position-relative"><div class="avatar-loader" id="avatarLoader"><div class="ring"></div></div>
               <img id="profileAvatarImg" src="" alt="" style="display:none">
               <span id="profileAvatarInit">NA</span>
               <label class="position-absolute bottom-0 end-0 bg-white border rounded-circle p-1 pointer" title="Cập nhật ảnh">
@@ -217,6 +237,34 @@ const API = (window.location.origin) + '/api';
 let token = localStorage.getItem('token');
 if(!token){ window.location.href = 'login.html'; }
 let me = null;
+
+// Toast helper
+function showToast(message, variant='success'){
+  const id = 't'+Date.now()+Math.random().toString(16).slice(2);
+  const bg = variant==='success' ? 'bg-success' : (variant==='error' ? 'bg-danger' : 'bg-secondary');
+  const html = `<div class="toast ${bg} text-white mb-2" id="${id}" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body">${message}</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>`;
+  const stack = document.getElementById('toastStack');
+  if(stack){ stack.insertAdjacentHTML('beforeend', html);
+    const el = document.getElementById(id);
+    const t = new bootstrap.Toast(el, { delay: 2200 });
+
+    t.show();
+  } else { alert(message); }
+}
+
+// Small helper to add cache-buster to image URLs
+function bust(url){
+  if(!url) return url;
+  const s = url.includes('?') ? '&' : '?';
+  return url + s + 't=' + Date.now();
+}
+
+
 let ws = null;
 let chattingWith = null;
 
@@ -235,6 +283,7 @@ function mediaHTML(fileUrl, fileName){
 // Fetch profile
 async function loadProfile(){
   const r = await fetch(API+'/profile', {headers:{Authorization:'Bearer '+token}});
+
   if(!r.ok){ localStorage.removeItem('token'); return window.location.href='login.html'; }
   me = await r.json();
   setAvatar('profile', me.avatarUrl, me.username);
@@ -242,7 +291,10 @@ async function loadProfile(){
   setAvatar('composer', me.avatarUrl, me.username);
   document.getElementById('profileName').textContent = me.username;
 }
+
 function setAvatar(prefix, url, name){
+  url = url ? bust(url) : url;
+
   const img = document.getElementById(prefix+'AvatarImg');
   const initEl = document.getElementById(prefix+(prefix==='nav'?'Initial':'AvatarInit'));
   if(url){
@@ -251,6 +303,8 @@ function setAvatar(prefix, url, name){
     const navWrap = document.getElementById(prefix+'Avatar');
     if(navWrap && !img && url){ navWrap.innerHTML = '<img src="'+url+'" alt="avatar">'; }
   }else{
+    try { if(loader) loader.style.display='none'; } catch(_){}
+    showToast('Cập nhật ảnh đại diện thất bại','error');
     if(initEl){ initEl.textContent = fmtNameToInitial(name); initEl.style.display='block'; }
   }
 }
@@ -258,20 +312,29 @@ loadProfile();
 
 // Avatar uploader
 document.getElementById('avatarFile').addEventListener('change', async (e)=>{
+  const loader = document.getElementById('avatarLoader');
+  try { if(loader) loader.style.display='flex'; } catch(_){}
+
   const file = e.target.files[0];
   if(!file) return;
   const fd = new FormData();
   fd.append('avatar', file);
   const r = await fetch(API+'/profile/avatar', {method:'POST', headers:{Authorization:'Bearer '+token}, body:fd});
+
   if(r.ok){
+    try { if(loader) loader.style.display='none'; } catch(_){}
+    showToast('Cập nhật ảnh đại diện thành công!','success');
     const j = await r.json();
     setAvatar('profile', j.avatarUrl, me.username);
     setAvatar('nav', j.avatarUrl, me.username);
     setAvatar('composer', j.avatarUrl, me.username);
   }else{
+    try { if(loader) loader.style.display='none'; } catch(_){}
+    showToast('Cập nhật ảnh đại diện thất bại','error');
     alert('Cập nhật ảnh đại diện thất bại');
   }
 });
+
 
 // Feed
 const REACTIONS = ['like','heart','haha','wow','sad','angry'];
@@ -289,6 +352,7 @@ function iconFor(e){
 
 async function loadFeed(){
   const r = await fetch(API+'/posts', {headers:{Authorization:'Bearer '+token}});
+
   const posts = await r.json();
   document.getElementById('statPosts').textContent = posts.length;
   const container = document.getElementById('feed');
@@ -332,22 +396,26 @@ async function loadFeed(){
     const fileInput = document.getElementById('cmtSticker'+p._id);
     fileInput.addEventListener('change', ()=> uploadStickerAndComment(p._id, fileInput.files[0]));
   });
+
 }
 loadFeed();
 
 async function deletePost(id){
   if(!confirm('Xóa bài viết này?')) return;
   const r = await fetch(API+'/posts/'+id,{method:'DELETE',headers:{Authorization:'Bearer '+token}});
+
   if(r.ok) loadFeed();
 }
 
 async function reactPost(id,emoji){
   await fetch(API+'/posts/'+id+'/react/'+emoji,{method:'POST',headers:{Authorization:'Bearer '+token}});
+
   loadFeed();
 }
 
 async function loadComments(pid){
   const r = await fetch(API+'/posts/'+pid+'/comments',{headers:{Authorization:'Bearer '+token}});
+
   const list = await r.json();
   const wrap = document.getElementById('comments'+pid);
   wrap.innerHTML = '';
@@ -359,6 +427,7 @@ async function loadComments(pid){
       <div><b>${c.author?.username}</b>: ${text} ${sticker}</div>
     </div>`;
   });
+
 }
 
 async function postComment(pid){
@@ -366,7 +435,10 @@ async function postComment(pid){
   const txt = input.value.trim();
   if(!txt) return;
   const r = await fetch(API+'/posts/'+pid+'/comments',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({content:txt})});
-  if(r.ok){ input.value=''; loadComments(pid); }
+
+  if(r.ok){
+    try { if(loader) loader.style.display='none'; } catch(_){}
+    showToast('Cập nhật ảnh đại diện thành công!','success'); input.value=''; loadComments(pid); }
 }
 
 async function uploadStickerAndComment(pid, file){
@@ -374,9 +446,11 @@ async function uploadStickerAndComment(pid, file){
   const fd = new FormData();
   fd.append('file', file);
   const up = await fetch(API+'/upload', {method:'POST', headers:{Authorization:'Bearer '+token}, body:fd});
+
   if(up.ok){
     const j = await up.json();
     const r = await fetch(API+'/posts/'+pid+'/comments',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({stickerUrl:j.fileUrl})});
+
     if(r.ok) loadComments(pid);
   }
 }
@@ -389,12 +463,16 @@ document.getElementById('btnPost').onclick = async () => {
   fd.append('content', content);
   if(file) fd.append('file', file);
   const r = await fetch(API+'/posts', {method:'POST', headers:{Authorization:'Bearer '+token}, body: fd});
-  if(r.ok){ document.getElementById('composerText').value=''; document.getElementById('composerFile').value=''; loadFeed(); }
+
+  if(r.ok){
+    try { if(loader) loader.style.display='none'; } catch(_){}
+    showToast('Cập nhật ảnh đại diện thành công!','success'); document.getElementById('composerText').value=''; document.getElementById('composerFile').value=''; loadFeed(); }
 }
 
 // Suggestions
 async function loadSuggested(){
   const r = await fetch(API+'/users/suggested', {headers:{Authorization:'Bearer '+token}});
+
   const users = await r.json();
   document.getElementById('statFriends').textContent = users.length;
   const wrap = document.getElementById('suggestions');
@@ -427,11 +505,13 @@ async function loadSuggested(){
     chatBtn.onclick = () => openChat(u._id, u.username);
     wrap.appendChild(item);
   });
+
 }
 loadSuggested();
 
 async function toggleFriend(uid){
   const r = await fetch(API+'/friends/'+uid, {method:'POST', headers:{Authorization:'Bearer '+token}});
+
   return r.ok;
 }
 
@@ -441,6 +521,7 @@ document.getElementById('btnFriends').onclick = async ()=>{
   const body = document.getElementById('friendsBody');
   body.innerHTML = 'Đang tải...';
   const r = await fetch(API+'/friends', {headers:{Authorization:'Bearer '+token}});
+
   const list = await r.json();
   if(!list.length){ body.innerHTML = '<div class="text-center text-muted">Chưa có bạn bè.</div>'; return; }
   body.innerHTML = '';
@@ -456,6 +537,7 @@ document.getElementById('btnFriends').onclick = async ()=>{
     div.querySelector('button').onclick = () => { bootstrap.Modal.getInstance(document.getElementById('friendsModal')).hide(); openChat(u._id, u.username); };
     body.appendChild(div);
   });
+
 };
 
 // Messages modal (recent history)
@@ -465,6 +547,7 @@ document.getElementById('btnMessages').onclick = async ()=>{
   const body = document.getElementById('messagesBody');
   body.innerHTML = 'Đang tải...';
   const r = await fetch(API+'/conversations', {headers:{Authorization:'Bearer '+token}});
+
   const list = await r.json();
   if(!list.length){ body.innerHTML = '<div class="text-center text-muted">Chưa có hội thoại.</div>'; return; }
   body.innerHTML = '';
@@ -485,6 +568,7 @@ document.getElementById('btnMessages').onclick = async ()=>{
     row.querySelector('button').onclick = () => { bootstrap.Modal.getInstance(document.getElementById('messagesModal')).hide(); openChat(c.otherId, c.otherName); };
     body.appendChild(row);
   });
+
 };
 
 // Chat
@@ -543,6 +627,7 @@ document.getElementById('btnSend').onclick = async ()=>{
   if(file){
     const fd = new FormData(); fd.append('file', file);
     const up = await fetch(API+'/upload', {method:'POST', headers:{Authorization:'Bearer '+token}, body:fd});
+
     const j = await up.json(); fileUrl = j.fileUrl; fileName = j.fileName;
     document.getElementById('chatFile').value='';
   }
@@ -555,6 +640,7 @@ document.getElementById('btnSend').onclick = async ()=>{
 document.getElementById('btnVip').onclick = ()=> new bootstrap.Modal('#vipModal').show();
 document.getElementById('btnPaid').onclick = async ()=>{
   await fetch(API+'/upgrade-vip', {method:'POST', headers:{'Content-Type':'application/json', Authorization:'Bearer '+token}, body:JSON.stringify({plan:'vip-week'})});
+
   alert('Đã ghi nhận, admin sẽ duyệt sớm!');
   bootstrap.Modal.getInstance(document.getElementById('vipModal')).hide();
 };
@@ -570,7 +656,10 @@ document.getElementById('btnLogout').onclick = ()=>{ localStorage.removeItem('to
 async function refreshUnread(){
   try{
     const r = await fetch(API+'/messages/unread-count',{headers:{Authorization:'Bearer '+token}});
+
     if(r.ok){
+    try { if(loader) loader.style.display='none'; } catch(_){}
+    showToast('Cập nhật ảnh đại diện thành công!','success');
       const {count} = await r.json();
       const b = document.getElementById('msgBadge');
       if(b) b.textContent = count;
@@ -579,11 +668,13 @@ async function refreshUnread(){
 }
 setInterval(refreshUnread, 10000);
 document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refreshUnread(); });
+
 refreshUnread();
 
 // When opening a chat with someone, mark read
 async function onOpenChatWith(otherId){
   await fetch(API+'/messages/read/'+otherId,{method:'PATCH',headers:{Authorization:'Bearer '+token}});
+
   refreshUnread();
 }
 </script>
