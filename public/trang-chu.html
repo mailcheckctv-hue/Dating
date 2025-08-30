@@ -25,6 +25,7 @@
     .avatar, .avatar img{width:56px;height:56px;border-radius:50%}
     .avatar{background:#6b7cff;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden}
     .avatar-sm, .avatar-sm img{width:36px;height:36px}
+    .pointer{cursor:pointer}
     .message-bubble{max-width:80%; padding:.5rem .75rem; border-radius:12px; margin-bottom:.35rem}
     .msg-me{background:#ffeff4; margin-left:auto}
     .msg-other{background:#eef1ff}
@@ -36,6 +37,8 @@
     .btn-pink:hover{background:#ff2e60;color:#fff}
     .media{border-radius:12px; max-height:520px; object-fit:cover; width:100%}
     .logout-btn{border:2px solid #fff !important; background:transparent !important}
+    .bell-btn{position:relative}
+    .bell-badge{position:absolute; top:-6px; right:-6px}
   </style>
 </head>
 <body>
@@ -50,12 +53,13 @@
         <li class="nav-item"><a class="nav-link active" href="trang-chu.html"><i class="fa-solid fa-house"></i> Trang chủ</a></li>
         <li class="nav-item"><a class="nav-link" href="#" id="btnFriends"><i class="fa-solid fa-user-group"></i> Bạn bè</a></li>
         <li class="nav-item"><a class="nav-link" href="#" id="btnMessages"><i class="fa-regular fa-message"></i> Tin nhắn</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" id="btnVip"><i class="fa-solid fa-crown"></i> Nâng cấp VIP</a></li>
       </ul>
       <div class="d-flex align-items-center gap-3">
-        <div class="position-relative me-1 pointer" id="bellArea" title="Thông báo">
-          <i class="fa-solid fa-bell"></i>
-          <span class="badge rounded-pill text-bg-danger position-absolute top-0 start-100 translate-middle" id="msgBadge">0</span>
-        </div>
+        <button class="btn btn-sm bell-btn" id="btnBell" title="Thông báo">
+          <i class="fa-regular fa-bell"></i>
+          <span class="badge rounded-pill text-bg-danger bell-badge" id="msgBadge">0</span>
+        </button>
         <div class="avatar avatar-sm" id="navAvatar"><span id="navInitial">NA</span></div>
         <button class="btn btn-sm logout-btn" id="btnLogout"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</button>
       </div>
@@ -180,6 +184,33 @@
   </div>
 </div>
 
+<!-- VIP Modal -->
+<div class="modal fade" id="vipModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-crown text-warning"></i> Nâng cấp VIP</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <ul class="list-group">
+          <li class="list-group-item d-flex justify-content-between align-items-center">VIP Week <span class="badge text-bg-danger">50.000đ/tuần</span></li>
+          <li class="list-group-item d-flex justify-content-between align-items-center">Basic <span class="badge text-bg-primary">199.000đ/tháng</span></li>
+          <li class="list-group-item d-flex justify-content-between align-items-center">Premium <span class="badge text-bg-success">499.000đ/tháng</span></li>
+        </ul>
+        <div class="mt-3">
+          Thanh toán: <b>Vietcombank 1059173949 - Nguyễn Thanh Duy</b>
+          <div class="text-center mt-2"><img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=1059173949" alt="QR"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Trở lại</button>
+        <button class="btn btn-pink" id="btnPaid">Đã thanh toán</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 const API = (window.location.origin) + '/api';
@@ -189,9 +220,17 @@ let me = null;
 let ws = null;
 let chattingWith = null;
 
-const isImg = (url='') => /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url.split('?')[0]);
+// helpers
 const isVideo = (url='') => /\.(mp4|webm|ogg)$/i.test(url.split('?')[0]);
 const fmtNameToInitial = (name) => (name||'NA').split(' ').map(s=>s[0]).join('').slice(0,2).toUpperCase();
+
+function mediaHTML(fileUrl, fileName){
+  if(!fileUrl) return '';
+  if(isVideo(fileUrl)) return `<video controls class="media mt-2" src="${fileUrl}"></video>`;
+  // Try as image first; if fails, swap to link automatically
+  const safeName = (fileName||'Tệp đính kèm').replace(/</g,'&lt;');
+  return `<img src="${fileUrl}" class="media mt-2" alt="post" onerror="this.outerHTML='<div class=\'mt-2\'><a href=\'${fileUrl}\' target=\'_blank\'><i class=\'fa-solid fa-paperclip\'></i> ${safeName}</a></div>'">`;
+}
 
 // Fetch profile
 async function loadProfile(){
@@ -210,9 +249,7 @@ function setAvatar(prefix, url, name){
     if(img){ img.src = url; img.style.display='block'; }
     if(initEl){ initEl.style.display='none'; }
     const navWrap = document.getElementById(prefix+'Avatar');
-    if(navWrap && !img && url){
-      navWrap.innerHTML = '<img src=\"'+url+'\" alt=\"avatar\">';
-    }
+    if(navWrap && !img && url){ navWrap.innerHTML = '<img src="'+url+'" alt="avatar">'; }
   }else{
     if(initEl){ initEl.textContent = fmtNameToInitial(name); initEl.style.display='block'; }
   }
@@ -235,9 +272,6 @@ document.getElementById('avatarFile').addEventListener('change', async (e)=>{
     alert('Cập nhật ảnh đại diện thất bại');
   }
 });
-
-// Bell opens messages modal
-document.getElementById('bellArea').onclick = ()=> document.getElementById('btnMessages').click();
 
 // Feed
 const REACTIONS = ['like','heart','haha','wow','sad','angry'];
@@ -262,11 +296,7 @@ async function loadFeed(){
   posts.forEach(p=>{
     const card = document.createElement('div');
     card.className = 'card mb-3';
-    const media = p.fileUrl ? (
-      isImg(p.fileUrl) ? `<img src="${p.fileUrl}" class="media mt-2" alt="post">`
-      : isVideo(p.fileUrl) ? `<video controls class="media mt-2" src="${p.fileUrl}"></video>`
-      : `<div class="mt-2"><a href="${p.fileUrl}" target="_blank"><i class="fa-solid fa-paperclip"></i> ${p.fileName||'Tệp đính kèm'}</a></div>`
-    ) : '';
+    const media = p.fileUrl ? mediaHTML(p.fileUrl, p.fileName) : '';
     const isOwner = (me && (p.author?._id===me._id || p.author===me.id));
     const actions = `${isOwner?`<button class="btn btn-sm btn-outline-danger ms-auto" onclick="deletePost('${p._id}')"><i class="fa-solid fa-trash"></i></button>`:''}`;
     card.innerHTML = `
@@ -345,8 +375,8 @@ async function uploadStickerAndComment(pid, file){
   fd.append('file', file);
   const up = await fetch(API+'/upload', {method:'POST', headers:{Authorization:'Bearer '+token}, body:fd});
   if(up.ok){
-    const data = await up.json();
-    const r = await fetch(API+'/posts/'+pid+'/comments',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({stickerUrl:data.fileUrl})});
+    const j = await up.json();
+    const r = await fetch(API+'/posts/'+pid+'/comments',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({stickerUrl:j.fileUrl})});
     if(r.ok) loadComments(pid);
   }
 }
@@ -381,21 +411,28 @@ async function loadSuggested(){
         </div>
       </div>
       <div class="d-flex gap-2">
-        <button class="btn btn-sm btn-outline-secondary" data-id="${u._id}" data-name="${u.username}"><i class="fa-solid fa-user-plus"></i></button>
-        <button class="btn btn-sm btn-pink" data-chat-id="${u._id}" data-name="${u.username}"><i class="fa-regular fa-message"></i> Nhắn</button>
+        <button class="btn btn-sm btn-outline-secondary btn-add" data-id="${u._id}" data-name="${u.username}"><i class="fa-solid fa-user-plus"></i></button>
+        <button class="btn btn-sm btn-pink btn-chat" data-chat-id="${u._id}" data-name="${u.username}"><i class="fa-regular fa-message"></i> Nhắn</button>
       </div>`;
-    item.querySelector('button.btn-outline-secondary').onclick = () => toggleFriend(u._id, item);
-    item.querySelector('button.btn-pink').onclick = () => openChat(u._id, u.username);
+    const addBtn = item.querySelector('.btn-add');
+    const chatBtn = item.querySelector('.btn-chat');
+    addBtn.onclick = async () => {
+      const ok = await toggleFriend(u._id);
+      if(ok){
+        // chuyển trạng thái: đã có thể nhắn tin
+        addBtn.disabled = true;
+        addBtn.innerHTML = '<i class="fa-solid fa-user-check"></i>';
+      }
+    };
+    chatBtn.onclick = () => openChat(u._id, u.username);
     wrap.appendChild(item);
   });
 }
 loadSuggested();
 
-async function toggleFriend(uid, rowEl){
+async function toggleFriend(uid){
   const r = await fetch(API+'/friends/'+uid, {method:'POST', headers:{Authorization:'Bearer '+token}});
-  if(r.ok){
-    rowEl.classList.toggle('border-success');
-  }
+  return r.ok;
 }
 
 // Friends modal
@@ -422,6 +459,7 @@ document.getElementById('btnFriends').onclick = async ()=>{
 };
 
 // Messages modal (recent history)
+function openMessagesModal(){ document.getElementById('btnMessages').click(); }
 document.getElementById('btnMessages').onclick = async ()=>{
   new bootstrap.Modal('#messagesModal').show();
   const body = document.getElementById('messagesBody');
@@ -459,13 +497,18 @@ function ensureWS(){
     const data = JSON.parse(ev.data);
     if(data.type==='message'){
       renderMessage(data);
-      // increase both side badges
-      const b1 = document.getElementById('badgeNoti');
-      const b2 = document.getElementById('msgBadge');
-      if(b1) b1.textContent = (+b1.textContent + 1);
-      if(b2) b2.textContent = (+b2.textContent + 1);
+      // tăng badge nếu tin từ người khác
+      if(!chattingWith || (chattingWith.id !== (data.sender?._id || data.sender))){
+        bumpBadges();
+      }
     }
   };
+}
+function bumpBadges(){
+  const b1 = document.getElementById('badgeNoti');
+  const b2 = document.getElementById('msgBadge');
+  if(b1) b1.textContent = (+b1.textContent + 1);
+  if(b2) b2.textContent = (+b2.textContent + 1);
 }
 function openChat(id,name){
   chattingWith = {id, name};
@@ -476,7 +519,7 @@ function openChat(id,name){
   // load history
   fetch(API+'/messages/'+id, {headers:{Authorization:'Bearer '+token}})
     .then(r=>r.json()).then(list => list.forEach(renderMessage));
-  onOpenChatWith(id); // mark read & reset badge
+  onOpenChatWith(id);
 }
 function renderMessage(m){
   const meId = me?._id || me?.id;
@@ -485,9 +528,8 @@ function renderMessage(m){
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble ' + (isMe ? 'msg-me ms-auto text-end' : 'msg-other');
   const safe = (m.content||'').replace(/</g,'&lt;');
-  const filePart = m.fileUrl? (isImg(m.fileUrl)? `<div class="mt-1"><img src="${m.fileUrl}" class="media" style="max-height:220px"></div>`
-                    : isVideo(m.fileUrl)? `<div class="mt-1"><video controls class="media" style="max-height:220px" src="${m.fileUrl}"></video></div>`
-                    : `<div><a href="${m.fileUrl}" target="_blank"><i class="fa-solid fa-paperclip"></i> ${m.fileName||'Tệp'}</a></div>` ) : '';
+  const filePart = m.fileUrl? (isVideo(m.fileUrl)? `<div class="mt-1"><video controls class="media" style="max-height:220px" src="${m.fileUrl}"></video></div>`
+                    : `<div class="mt-1"><img src="${m.fileUrl}" class="media" style="max-height:220px" onerror="this.outerHTML='<a href=\'${m.fileUrl}\' target=\'_blank\'><i class=\'fa-solid fa-paperclip\'></i> ${m.fileName||'Tệp'}</a>'"></div>` ) : '';
   bubble.innerHTML = `<div class="small text-muted">${new Date(m.createdAt||Date.now()).toLocaleString()}</div>${safe}${filePart}`;
   div.appendChild(bubble);
   div.scrollTop = div.scrollHeight;
@@ -509,20 +551,29 @@ document.getElementById('btnSend').onclick = async ()=>{
   input.value='';
 }
 
+// VIP Modal
+document.getElementById('btnVip').onclick = ()=> new bootstrap.Modal('#vipModal').show();
+document.getElementById('btnPaid').onclick = async ()=>{
+  await fetch(API+'/upgrade-vip', {method:'POST', headers:{'Content-Type':'application/json', Authorization:'Bearer '+token}, body:JSON.stringify({plan:'vip-week'})});
+  alert('Đã ghi nhận, admin sẽ duyệt sớm!');
+  bootstrap.Modal.getInstance(document.getElementById('vipModal')).hide();
+};
+
+// Bell opens messages modal
+document.getElementById('btnBell').onclick = ()=> document.getElementById('btnMessages').click();
+
 // Logout
 document.getElementById('btnLogout').onclick = ()=>{ localStorage.removeItem('token'); location.href='login.html'; };
 </script>
 <script>
-// --- Unread messages badge & mark-read hook ---
+// --- Unread messages badge ---
 async function refreshUnread(){
   try{
     const r = await fetch(API+'/messages/unread-count',{headers:{Authorization:'Bearer '+token}});
     if(r.ok){
       const {count} = await r.json();
-      const b1 = document.getElementById('msgBadge');
-      const b2 = document.getElementById('badgeNoti');
-      if(b1) b1.textContent = count;
-      if(b2) b2.textContent = count;
+      const b = document.getElementById('msgBadge');
+      if(b) b.textContent = count;
     }
   }catch{}
 }
@@ -530,6 +581,7 @@ setInterval(refreshUnread, 10000);
 document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refreshUnread(); });
 refreshUnread();
 
+// When opening a chat with someone, mark read
 async function onOpenChatWith(otherId){
   await fetch(API+'/messages/read/'+otherId,{method:'PATCH',headers:{Authorization:'Bearer '+token}});
   refreshUnread();
