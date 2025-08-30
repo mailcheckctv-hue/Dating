@@ -53,15 +53,7 @@ const storage = multer.diskStorage({
     cb(null, unique + ext);
   }
 });
-const upload = multer({ 
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
-  fileFilter: (req, file, cb) => {
-    const ok = /\.(png|jpe?g|gif|webp|mp4|webm|ogg|mov|heic)$/i.test(file.originalname || '');
-    if (ok) return cb(null, true);
-    cb(new Error('Định dạng không hỗ trợ'));
-  }
-});
+const upload = multer({ storage });
 
 // ---------- Schemas ----------
 const userSchema = new mongoose.Schema({
@@ -116,11 +108,7 @@ function auth(req, res, next) {
 
 // ---------- Static ----------
 const publicDir = path.join(__dirname, 'public');
-app.use('/uploads', (req, res, next) => {
-  // 7 ngày cache ảnh/video
-  res.set('Cache-Control', 'public, max-age=604800, immutable');
-  next();
-}, express.static(uploadDir));
+app.use('/uploads', express.static(uploadDir));
 if (fs.existsSync(publicDir)) {
   app.use(express.static(publicDir));
 }
@@ -169,8 +157,8 @@ app.get('/api/profile', auth, async (req, res) => {
 app.post('/api/profile/avatar', auth, upload.single('avatar'), async (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'Chưa có ảnh' });
   const fileUrl = `/uploads/${req.file.filename}`;
-  const user = await User.findByIdAndUpdate(req.user.id, { avatarUrl: fileUrl }, { new: true }).lean();
-  res.json({ avatarUrl: fileUrl, user });
+  await User.findByIdAndUpdate(req.user.id, { avatarUrl: fileUrl });
+  res.json({ avatarUrl: fileUrl });
 });
 
 // ---------- Upload (generic file/image) ----------
