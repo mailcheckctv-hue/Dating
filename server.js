@@ -347,6 +347,17 @@ app.get('/api/messages/unread-count', auth, async (req, res) => {
   res.json({ count });
 });
 
+// Sent messages count (per user)
+app.get('/api/messages/sent-count', auth, async (req, res) => {
+  try{
+    const count = await Message.countDocuments({ sender: req.user.id });
+    res.json({ count });
+  }catch(e){
+    res.status(500).json({ message: 'Không đếm được tin đã gửi' });
+  }
+});
+
+
 // Mark conversation as read
 app.patch('/api/messages/read/:otherId', auth, async (req, res) => {
   await Message.updateMany(
