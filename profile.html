@@ -29,6 +29,20 @@
       <input type="text" id="targetUserId" placeholder="User ID" style="width:250px;" />
       <input type="number" id="newLimit" placeholder="Hạn mức mới" />
       <button onclick="setUserLimit()">Cập nhật hạn mức</button>
+      <button id="resetLimitBtn" onclick="resetUserDaily()">Reset bộ đếm</button>
+      <script>
+      async function resetUserDaily(){
+        const userId = document.getElementById('targetUserId').value.trim();
+        const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+        const res = await fetch('/api/admin/reset-daily/' + userId, {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        document.getElementById('limitResult').innerText = JSON.stringify(data);
+      }
+      </script>
+
       <div id="limitResult"></div>
     </div>
     <script>
