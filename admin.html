@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Dashboard</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' }
+  </script>
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
+  <style>
+    body { background-color: #0f172a; /* slate-900 */ color: #e5e7eb; } /* gray-200 */
+    .card-dark { background: #111827; border: 1px solid #1f2937; } /* tailwind gray-900/800 */
+    .muted { color: #9ca3af; }
+    .btn-outline-light { border-color: #4b5563; }
+  </style>
+</head>
+<body class="min-h-full">
+  <!-- NAVBAR -->
+  <nav class="w-full bg-gray-900 border-b border-gray-800">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white font-bold">A</span>
+        <span class="text-xl font-semibold">Admin Dashboard</span>
+        <span id="adminBadge" class="ml-2 text-xs px-2 py-1 rounded bg-emerald-700 hidden">Admin</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="/" class="btn btn-sm btn-outline-light">Trang chủ</a>
+        <span id="currentUser" class="muted text-sm"></span>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-5 gap-6">
+    <!-- SIDEBAR -->
+    <aside class="md:col-span-1">
+      <div class="rounded-2xl card-dark p-4">
+        <div class="text-xs uppercase tracking-wider muted mb-2">Menu</div>
+        <ul class="space-y-1">
+          <li><button class="w-full text-left px-3 py-2 rounded hover:bg-gray-800" onclick="showTab('dashboard')">Dashboard</button></li>
+          <li><button class="w-full text-left px-3 py-2 rounded hover:bg-gray-800" onclick="showTab('users')">Users</button></li>
+          <li><button class="w-full text-left px-3 py-2 rounded hover:bg-gray-800" onclick="showTab('settings')">Settings</button></li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="md:col-span-4 space-y-6">
+      <!-- DASHBOARD CARDS -->
+      <section id="tab-dashboard" class="rounded-2xl card-dark p-5">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="text-lg font-semibold">Tổng quan</h2>
+          <button class="btn btn-sm btn-outline-light" onclick="reloadData()">Tải lại</button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="rounded-xl p-4 bg-gray-800/50 border border-gray-700">
+            <div class="muted text-sm">Tổng số user</div>
+            <div id="statTotalUsers" class="text-3xl font-bold mt-2">—</div>
+          </div>
+          <div class="rounded-xl p-4 bg-gray-800/50 border border-gray-700">
+            <div class="muted text-sm">Tổng số tin nhắn hôm nay</div>
+            <div id="statTotalSentToday" class="text-3xl font-bold mt-2">—</div>
+          </div>
+          <div class="rounded-xl p-4 bg-gray-800/50 border border-gray-700">
+            <div class="muted text-sm">Số user vượt hạn mức</div>
+            <div id="statExceeded" class="text-3xl font-bold mt-2">—</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- USERS TABLE -->
+      <section id="tab-users" class="rounded-2xl card-dark p-5">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="text-lg font-semibold">Quản lý người dùng</h2>
+          <div class="flex gap-2">
+            <input id="searchBox" type="text" placeholder="Tìm theo username/email/ID" class="form-control form-control-sm bg-gray-900 text-gray-100 border-gray-700" oninput="filterTable()" />
+            <button class="btn btn-sm btn-outline-light" onclick="reloadData()">Tải lại</button>
+          </div>
+        </div>
+        <div class="table-responsive rounded-xl overflow-hidden" style="border:1px solid #374151">
+          <table class="table table-dark table-hover align-middle mb-0" id="usersTable">
+            <thead>
+              <tr>
+                <th style="min-width: 200px;">User</th>
+                <th>Role</th>
+                <th>Sent Today</th>
+                <th>Limit</th>
+                <th style="width:200px">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersBody">
+              <tr><td colspan="5" class="text-center py-4">Đang tải...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SETTINGS (placeholder) -->
+      <section id="tab-settings" class="rounded-2xl card-dark p-5 hidden">
+        <h2 class="text-lg font-semibold mb-3">Cài đặt</h2>
+        <p class="muted">Khu vực này sẽ được phát triển thêm trong giai đoạn sau.</p>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal: Set Limit -->
+  <div class="modal fade" id="setLimitModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content" style="background:#0b1220; color:#e5e7eb; border:1px solid #1f2937;">
+        <div class="modal-header border-gray-800">
+          <h5 class="modal-title">Cập nhật hạn mức</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">User ID</label>
+            <input id="modalUserId" type="text" class="form-control bg-gray-900 text-gray-100 border-gray-700" readonly />
+          </div>
+          <div>
+            <label class="form-label">Hạn mức mới</label>
+            <input id="modalNewLimit" type="number" min="0" class="form-control bg-gray-900 text-gray-100 border-gray-700" placeholder="VD: 20" />
+          </div>
+        </div>
+        <div class="modal-footer border-gray-800">
+          <button class="btn btn-outline-light" data-bs-dismiss="modal">Huỷ</button>
+          <button class="btn btn-primary" onclick="confirmSetLimit()">Cập nhật</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+let usersCache = [];
+let token = localStorage.getItem('token') || localStorage.getItem('authToken');
+const setLimitModal = new bootstrap.Modal('#setLimitModal');
+
+function showTab(name){
+  document.getElementById('tab-dashboard').classList.toggle('hidden', name!=='dashboard');
+  document.getElementById('tab-users').classList.toggle('hidden', name!=='users');
+  document.getElementById('tab-settings').classList.toggle('hidden', name!=='settings');
+}
+
+async function ensureAdmin(){
+  try {
+    if(!token){ window.location.href='/login.html'; return; }
+    const res = await fetch('/api/profile', { headers: { 'Authorization': 'Bearer ' + token } });
+    if(!res.ok){ window.location.href='/login.html'; return; }
+    const me = await res.json();
+    document.getElementById('currentUser').textContent = me.username || me.email || me._id;
+    if(me.role==='admin' || me.role==='superadmin'){
+      document.getElementById('adminBadge').classList.remove('hidden');
+      return true;
+    }
+  } catch(e){}
+  window.location.href = '/';
+  return false;
+}
+
+function renderStats(users){
+  const totalUsers = users.length;
+  let totalSentToday = 0, exceeded = 0;
+  for(const u of users){
+    const sent = u.dailySent || 0;
+    const limit = u.dailyLimit ?? 0;
+    totalSentToday += sent;
+    if(limit >= 0 && sent > limit) exceeded++;
+  }
+  document.getElementById('statTotalUsers').textContent = String(totalUsers);
+  document.getElementById('statTotalSentToday').textContent = String(totalSentToday);
+  document.getElementById('statExceeded').textContent = String(exceeded);
+}
+
+function userDisplay(u){
+  const label = u.username || u.email || u._id;
+  const idShort = String(u._id).slice(-6);
+  return \`\${label}  ·  <span class="muted">#\${idShort}</span>\`;
+}
+
+function renderUsers(users){
+  const tbody = document.getElementById('usersBody');
+  if(!users || users.length===0){
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">Không có dữ liệu</td></tr>';
+    return;
+  }
+  tbody.innerHTML = users.map(u => {
+    const exceeded = (u.dailyLimit ?? 0) >= 0 && (u.dailySent||0) > (u.dailyLimit||0);
+    return \`
+      <tr>
+        <td>
+          <div class="font-medium">\${u.username || u.email || u._id}</div>
+          <div class="muted text-xs">\${u._id}</div>
+        </td>
+        <td>\${u.role}</td>
+        <td class="\${exceeded ? 'text-danger fw-bold' : ''}">\${u.dailySent ?? 0}</td>
+        <td>\${u.dailyLimit ?? 0}</td>
+        <td>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-light" onclick="openSetLimit('\${u._id}', \${u.dailyLimit ?? 0})">Set Limit</button>
+            <button class="btn btn-sm btn-outline-light" onclick="resetQuota('\${u._id}')">Reset</button>
+          </div>
+        </td>
+      </tr>\`;
+  }).join('');
+}
+
+function filterTable(){
+  const q = (document.getElementById('searchBox').value || '').toLowerCase().trim();
+  if(!q){ renderUsers(usersCache); return; }
+  const filtered = usersCache.filter(u => {
+    return (u.username||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q) || String(u._id).includes(q);
+  });
+  renderUsers(filtered);
+  renderStats(filtered);
+}
+
+async function reloadData(){
+  const res = await fetch('/api/admin/users', { headers: { 'Authorization': 'Bearer ' + token } });
+  const data = await res.json();
+  usersCache = Array.isArray(data) ? data : (data.users || []);
+  renderUsers(usersCache);
+  renderStats(usersCache);
+}
+
+function openSetLimit(userId, currentLimit){
+  document.getElementById('modalUserId').value = userId;
+  document.getElementById('modalNewLimit').value = currentLimit ?? 0;
+  setLimitModal.show();
+}
+
+async function confirmSetLimit(){
+  const userId = document.getElementById('modalUserId').value;
+  const newLimit = parseInt(document.getElementById('modalNewLimit').value || '0', 10);
+  const res = await fetch('/api/admin/set-limit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify({ userId, limit: newLimit })
+  });
+  if(!res.ok){ alert('Cập nhật thất bại'); return; }
+  setLimitModal.hide();
+  await reloadData();
+}
+
+async function resetQuota(userId){
+  if(!confirm('Reset bộ đếm hôm nay cho user này?')) return;
+  const res = await fetch('/api/admin/reset-daily/' + userId, {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  if(!res.ok){ alert('Reset thất bại'); return; }
+  await reloadData();
+}
+
+(async function init(){
+  showTab('dashboard');
+  const ok = await ensureAdmin();
+  if(!ok) return;
+  await reloadData();
+})();
+</script>
+</body>
+</html>
