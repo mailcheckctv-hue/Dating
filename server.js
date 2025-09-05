@@ -686,6 +686,7 @@ app.get('/admin', (req, res) => {
   const path = require('path');
   res.sendFile(path.join(__dirname, 'admin.html'));
 });
->>>>>>> fffda48 (Fix HTML routes and static file serving)
+fffda48 (Fix HTML routes and static file serving)
 
 server.listen(PORT, () => console.log('Server running on port', PORT));
+
