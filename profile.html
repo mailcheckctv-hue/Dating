@@ -14,7 +14,7 @@
   (async function(){
     const API_PROFILE = '/api/profile';
     const API_LIMITS = '/api/profile/limits';
-    const token = localStorage.getItem('authToken') || (document.cookie.match(/(?:^|; )token=([^;]+)/) || [])[1];
+    const token = localStorage.getItem('token') || localStorage.getItem('authToken') || (document.cookie.match(/(?:^|; )token=([^;]+)/) || [])[1];
     if(!token){ document.getElementById('profile_card').innerHTML = '<p>Vui lòng đăng nhập để xem profile.</p>'; return; }
     try{
       const [pRes, lRes] = await Promise.all([ fetch(API_PROFILE, { headers:{ 'Authorization': 'Bearer '+token } }), fetch(API_LIMITS, { headers:{ 'Authorization': 'Bearer '+token } }) ]);
@@ -23,5 +23,39 @@
     }catch(e){ console.warn(e); }
   })();
   </script>
+
+    <div id="adminLimitSection" style="margin-top:20px; border:1px solid #ccc; padding:10px; display:none;">
+      <h3>Admin: Đặt hạn mức cho user</h3>
+      <input type="text" id="targetUserId" placeholder="User ID" style="width:250px;" />
+      <input type="number" id="newLimit" placeholder="Hạn mức mới" />
+      <button onclick="setUserLimit()">Cập nhật hạn mức</button>
+      <div id="limitResult"></div>
+    </div>
+    <script>
+    async function setUserLimit(){
+      const userId = document.getElementById('targetUserId').value.trim();
+      const newLimit = parseInt(document.getElementById('newLimit').value.trim());
+      const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+      const res = await fetch('/api/admin/set-limit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ userId, limit: newLimit })
+      });
+      const data = await res.json();
+      document.getElementById('limitResult').innerText = JSON.stringify(data);
+    }
+    // Hiển thị khu vực admin nếu role = admin/superadmin
+    (async ()=>{
+      try{
+        const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+        const res = await fetch('/api/profile', { headers: { 'Authorization': 'Bearer ' + token } });
+        const me = await res.json();
+        if(me.role==='admin' || me.role==='superadmin'){
+          document.getElementById('adminLimitSection').style.display='block';
+        }
+      }catch(e){}
+    })();
+    </script>
+
 </body>
 </html>

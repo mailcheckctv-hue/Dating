@@ -199,20 +199,6 @@ async function tryConsumeDaily(userId) {
   return !!updated;
 }
 
-/**
- * Stage1 alias helper: checkDailyLimit(userId, ws?)
- * - Returns true if the user can send a message (and consumes 1 unit).
- * - If over quota and a WebSocket is provided, it will send an error payload.
- */
-async function checkDailyLimit(userId, ws) {
-  const ok = await tryConsumeDaily(userId);
-  if (!ok && ws && ws.readyState && ws.readyState === WebSocket.OPEN) {
-    try { ws.send(JSON.stringify({ type: 'error', code: 'quota_exceeded', message: 'Bạn đã vượt hạn mức tin nhắn hôm nay.' })); } catch {}
-  }
-  return ok;
-}
-
-
 async function getDailyStatus(userId) {
   await resetIfNeeded(userId);
   const u = await User.findById(userId).select('dailySent dailyLimit dailyResetAt').lean();
@@ -295,15 +281,6 @@ app.get('/api/profile', auth, async (req,res)=>{
   const me = await User.findById(req.user.id).lean();
   res.json(me);
 });
-// Daily quota status for current user
-app.get('/api/profile/limits', auth, async (req,res)=>{
-  try {
-    const status = await getDailyStatus(req.user.id);
-    if (!status) return res.status(404).json({ message: 'Không tìm thấy người dùng' });
-    res.json(status);
-  } catch(e){ console.error(e); res.status(500).json({ message: 'Lỗi máy chủ' }); }
-});
-
 
 app.post('/api/profile/avatar', auth, upload.single('avatar'), async (req,res)=>{
   if (!req.file) return res.status(400).json({ message: 'Chưa có ảnh' });
@@ -671,14 +648,4 @@ wss.on('connection', (socket, req) => {
 });
 
 // ---------- Start ----------
-
-
-// Alias: /api/me/quota -> same as /api/profile/limits
-app.get('/api/me/quota', auth, async (req,res)=>{
-  try {
-    const status = await getDailyStatus(req.user.id);
-    if (!status) return res.status(404).json({ message: 'Không tìm thấy user' });
-    res.json(status);
-  } catch(e){ console.error(e); res.status(500).json({ message: 'Lỗi máy chủ' }); }
-});
 server.listen(PORT, () => console.log('Server running on port', PORT));

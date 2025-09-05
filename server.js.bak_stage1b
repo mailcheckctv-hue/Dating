@@ -671,14 +671,4 @@ wss.on('connection', (socket, req) => {
 });
 
 // ---------- Start ----------
-
-
-// Alias: /api/me/quota -> same as /api/profile/limits
-app.get('/api/me/quota', auth, async (req,res)=>{
-  try {
-    const status = await getDailyStatus(req.user.id);
-    if (!status) return res.status(404).json({ message: 'Không tìm thấy user' });
-    res.json(status);
-  } catch(e){ console.error(e); res.status(500).json({ message: 'Lỗi máy chủ' }); }
-});
 server.listen(PORT, () => console.log('Server running on port', PORT));
