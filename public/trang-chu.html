@@ -827,5 +827,30 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 </script>
 
+
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  try {
+    const res = await fetch("/api/profile");
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.role === "admin" || data.role === "superadmin") {
+      // Tìm nút Nâng cấp VIP
+      const vipBtn = Array.from(document.querySelectorAll("a"))
+        .find(a => a.textContent.includes("Nâng cấp VIP"));
+      if (vipBtn) {
+        const adminLink = document.createElement("a");
+        adminLink.href = "/admin";
+        adminLink.textContent = "🛡️ Admin Dashboard";
+        adminLink.className = "ml-2 bg-gray-800 text-white rounded px-3 py-1 hover:bg-gray-700 transition";
+        vipBtn.insertAdjacentElement("afterend", adminLink);
+      }
+    }
+  } catch (err) {
+    console.error("Error loading profile:", err);
+  }
+});
+</script>
+
 </body>
 </html>
