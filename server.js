@@ -681,13 +681,11 @@ app.get('/api/me/quota', auth, async (req,res)=>{
     res.json(status);
   } catch(e){ console.error(e); res.status(500).json({ message: 'Lỗi máy chủ' }); }
 });
-<<<<<<< HEAD
-=======
-
 
 app.get('/admin', (req, res) => {
   const path = require('path');
   res.sendFile(path.join(__dirname, 'admin.html'));
 });
 >>>>>>> fffda48 (Fix HTML routes and static file serving)
+
 server.listen(PORT, () => console.log('Server running on port', PORT));
