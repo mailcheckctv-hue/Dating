@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LoveConnect - Đăng ký</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <style>
+    :root{--pink:#ff3b6b}
+    body{min-height:100vh; background:linear-gradient(135deg,#ffe4ec,#f3f5ff)}
+    .card{border:0; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,.08)}
+    .brand{font-weight:800; color:var(--pink)}
+    .btn-pink{background:var(--pink); color:#fff; border-radius:12px}
+    .btn-pink:hover{background:#ff2e60; color:#fff}
+  </style>
+</head>
+<body class="d-flex align-items-center">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-8 col-lg-6">
+        <div class="text-center mb-3 brand"><i class="fa-solid fa-heart"></i> LoveConnect</div>
+        <div class="card p-4 p-md-5">
+          <h4 class="mb-3 text-center">Tạo tài khoản</h4>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Tên hiển thị</label>
+              <input type="text" class="form-control" id="username" placeholder="VD: Minh Anh" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Giới tính</label>
+              <select id="gender" class="form-select">
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
+                <option value="Khác">Khác</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Email</label>
+              <input type="email" class="form-control" id="email" placeholder="name@email.com" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Mật khẩu</label>
+              <input type="password" class="form-control" id="password" placeholder="••••••••" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Thu nhập</label>
+              <select id="income" class="form-select">
+                <option value="">Chọn mức</option>
+                <option>Dưới 10 triệu</option>
+                <option>10 - 20 triệu</option>
+                <option>20 - 50 triệu</option>
+                <option>Trên 50 triệu</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Công việc</label>
+              <input type="text" id="job" class="form-control" placeholder="VD: Kỹ sư, Kinh doanh...">
+            </div>
+          </div>
+          <button class="btn btn-pink w-100 mt-3" id="btnRegister"><i class="fa-solid fa-user-plus"></i> Đăng ký</button>
+          <div class="text-center mt-3">
+            Đã có tài khoản? <a href="login.html">Đăng nhập</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const API_BASE = window.location.origin;
+    document.getElementById('btnRegister').onclick = register;
+    async function register(){
+      const username = document.getElementById('username').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const gender = document.getElementById('gender').value;
+      const income = document.getElementById('income').value;
+      const job = document.getElementById('job').value.trim();
+      if(!username || !email || !password){ alert('Vui lòng nhập đủ thông tin'); return; }
+      try {
+        const res = await fetch(`${API_BASE}/api/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, email, password, gender, income, job })
+        });
+        const data = await res.json();
+        if(res.ok){
+          alert('Đăng ký thành công! Vui lòng đăng nhập.');
+          window.location.href = 'login.html';
+        }else{
+          alert(data.message || 'Đăng ký thất bại!');
+        }
+      } catch(e){ alert('Lỗi kết nối server!'); }
+    }
+  </script>
+</body>
+</html>
