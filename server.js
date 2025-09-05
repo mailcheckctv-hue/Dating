@@ -682,10 +682,9 @@ app.get('/api/me/quota', auth, async (req,res)=>{
   } catch(e){ console.error(e); res.status(500).json({ message: 'Lỗi máy chủ' }); }
 });
 
+
 app.get('/admin', (req, res) => {
   const path = require('path');
   res.sendFile(path.join(__dirname, 'admin.html'));
 });
 server.listen(PORT, () => console.log('Server running on port', PORT));
-
-

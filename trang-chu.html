@@ -795,5 +795,37 @@ async function onOpenChatWith(otherId){
   refreshUnread();
 }
 </script>
+
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  try {
+    const res = await fetch("/api/profile");
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.role === "admin" || data.role === "superadmin") {
+      const vipBtn = Array.from(document.querySelectorAll("a"))
+        .find(a => a.textContent.includes("Nâng cấp VIP"));
+      if (vipBtn && vipBtn.parentElement) {
+        const adminLink = document.createElement("a");
+        adminLink.href = "/admin";
+        adminLink.innerHTML = "🛡️ Admin Dashboard";
+        adminLink.style.backgroundColor = "#2d2d2d";
+        adminLink.style.color = "#fff";
+        adminLink.style.borderRadius = "6px";
+        adminLink.style.padding = "6px 12px";
+        adminLink.style.marginLeft = "8px";
+        adminLink.style.textDecoration = "none";
+        adminLink.style.display = "inline-block";
+        adminLink.onmouseover = () => adminLink.style.backgroundColor = "#444";
+        adminLink.onmouseout = () => adminLink.style.backgroundColor = "#2d2d2d";
+        vipBtn.parentElement.appendChild(adminLink);
+      }
+    }
+  } catch (err) {
+    console.error("Error loading profile:", err);
+  }
+});
+</script>
+
 </body>
 </html>
