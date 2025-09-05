@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard</title>
+  <!-- TailwindCSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #1e293b; color: #e2e8f0; }
+    .card-dark { background-color: #334155; color: #e2e8f0; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">Admin Dashboard</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link" href="/">Trang chủ</a></li>
+          <li class="nav-item"><span id="adminName" class="nav-link"></span></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Dashboard content -->
+  <main class="flex-grow container my-4">
+    <!-- Stats cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div class="card card-dark p-4 text-center">
+        <h5 class="text-xl">Tổng số user</h5>
+        <p id="statTotalUsers" class="text-2xl font-bold">0</p>
+      </div>
+      <div class="card card-dark p-4 text-center">
+        <h5 class="text-xl">Tổng tin nhắn hôm nay</h5>
+        <p id="statTotalMsgs" class="text-2xl font-bold">0</p>
+      </div>
+      <div class="card card-dark p-4 text-center">
+        <h5 class="text-xl">User vượt hạn mức</h5>
+        <p id="statExceeded" class="text-2xl font-bold">0</p>
+      </div>
+    </div>
+
+    <!-- User table -->
+    <div class="card card-dark p-4">
+      <h4 class="mb-3">Quản lý người dùng</h4>
+      <table class="table table-dark table-striped" id="usersTable">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Role</th>
+            <th>SentToday</th>
+            <th>DailyLimit</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- Set Limit Modal -->
+  <div class="modal fade" id="setLimitModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content bg-dark text-light">
+        <div class="modal-header">
+          <h5 class="modal-title">Đặt hạn mức</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="number" id="newLimitInput" class="form-control" placeholder="Nhập hạn mức mới" />
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button type="button" class="btn btn-primary" id="confirmSetLimitBtn">Xác nhận</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    let token = localStorage.getItem('token');
+    let currentUserId = null;
+
+    async function checkProfile() {
+      const res = await fetch('/api/profile', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!res.ok) { window.location.href = '/'; return; }
+      const data = await res.json();
+      if (!['admin','superadmin'].includes(data.role)) {
+        window.location.href = '/';
+        return;
+      }
+      document.getElementById('adminName').innerText = data.username + ' (' + data.role + ')';
+      loadUsers();
+    }
+
+    async function loadUsers() {
+      const res = await fetch('/api/admin/users', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!res.ok) { return; }
+      const users = await res.json();
+      const tbody = document.querySelector('#usersTable tbody');
+      tbody.innerHTML = '';
+      let totalMsgs = 0, exceeded = 0;
+      users.forEach(u => {
+        totalMsgs += u.sentToday;
+        if (u.sentToday > u.dailyLimit) exceeded++;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${u._id}</td>
+          <td>${u.username || u.email}</td>
+          <td>${u.role}</td>
+          <td>${u.sentToday}</td>
+          <td>${u.dailyLimit}</td>
+          <td>
+            <button class="btn btn-sm btn-warning me-2" onclick="openSetLimit('${u._id}')">Set Limit</button>
+            <button class="btn btn-sm btn-danger" onclick="resetQuota('${u._id}')">Reset</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+      document.getElementById('statTotalUsers').innerText = users.length;
+      document.getElementById('statTotalMsgs').innerText = totalMsgs;
+      document.getElementById('statExceeded').innerText = exceeded;
+    }
+
+    function openSetLimit(userId) {
+      currentUserId = userId;
+      const modal = new bootstrap.Modal(document.getElementById('setLimitModal'));
+      modal.show();
+    }
+
+    document.getElementById('confirmSetLimitBtn').addEventListener('click', async () => {
+      const newLimit = parseInt(document.getElementById('newLimitInput').value);
+      if (!newLimit) return;
+      await fetch('/api/admin/set-limit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ userId: currentUserId, dailyLimit: newLimit })
+      });
+      const modalEl = document.getElementById('setLimitModal');
+      bootstrap.Modal.getInstance(modalEl).hide();
+      loadUsers();
+    });
+
+    async function resetQuota(userId) {
+      await fetch('/api/admin/reset-daily/' + userId, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      loadUsers();
+    }
+
+    checkProfile();
+  </script>
+</body>
+</html>
