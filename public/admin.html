@@ -1,136 +1,501 @@
-<!DOCTYPE html>
-<html lang="en" class="dark">
+<!doctype html>
+<html lang="vi" data-theme="dark">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Admin Dashboard</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>body{background:#0f1724;color:#e2e8f0} .card-dark{background:#0b1220;color:#e2e8f0} .actions-dropdown{min-width:180px}</style>
+
+  <!-- Toastify (toasts/feedback) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+  <!-- SheetJS (xuất Excel) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#0f172a; --panel:#111827; --panel-2:#0b1220;
+      --text:#e5e7eb; --muted:#9ca3af; --brand:#22d3ee;
+      --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; --ring:#60a5fa;
+      --card:#111827; --card-border:#1f2937;
+      --chip:#1f2937; --chip-text:#e5e7eb;
+      --btn:#1f2937; --btn-text:#e5e7eb;
+      --btn-hover:#374151;
+      --input:#0b1220; --input-border:#1f2937;
+      --shadow:0 10px 30px rgba(0,0,0,.25);
+    }
+    [data-theme="light"]{
+      --bg:#f4f6fb; --panel:#ffffff; --panel-2:#f7f8fc;
+      --text:#0f172a; --muted:#4b5563; --brand:#0ea5e9;
+      --ok:#16a34a; --warn:#d97706; --err:#dc2626; --ring:#2563eb;
+      --card:#ffffff; --card-border:#e5e7eb;
+      --chip:#eef2ff; --chip-text:#1e293b;
+      --btn:#0ea5e9; --btn-text:#ffffff;
+      --btn-hover:#0284c7;
+      --input:#ffffff; --input-border:#cbd5e1;
+      --shadow:0 10px 30px rgba(2,6,23,.08);
+    }
+    html,body{height:100%}
+    body{
+      margin:0; background:var(--bg); color:var(--text);
+      font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;
+    }
+    .wrap{max-width:1200px;margin:24px auto;padding:0 16px;}
+    .topbar{
+      display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:18px;
+    }
+    .left, .right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .brand{font-weight:800;letter-spacing:.2px}
+    .chip{
+      background:var(--chip);color:var(--chip-text);border-radius:999px;
+      padding:6px 12px;font-weight:600;border:1px solid var(--card-border)
+    }
+    .btn{
+      background:var(--btn);color:var(--btn-text);border:0;border-radius:10px;
+      padding:10px 14px;font-weight:700;cursor:pointer;transition:.15s;box-shadow:var(--shadow-sm,none)
+    }
+    .btn:hover{background:var(--btn-hover)}
+    .btn.ghost{background:transparent;border:1px solid var(--input-border);color:var(--text)}
+    .btn.ok{background:var(--ok)} .btn.warn{background:var(--warn)} .btn.err{background:var(--err)}
+    .metrics{
+      display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:16px;
+    }
+    .metric{
+      background:var(--panel);border:1px solid var(--card-border);border-radius:14px;padding:16px;box-shadow:var(--shadow);
+    }
+    .metric .label{color:var(--muted);font-weight:600}
+    .metric .value{font-size:24px;font-weight:800;margin-top:6px}
+    .toolbar{
+      background:var(--panel);border:1px solid var(--card-border);border-radius:14px;display:flex;gap:10px;align-items:center;padding:12px;flex-wrap:wrap;margin-bottom:16px;
+    }
+    .input{
+      background:var(--input);border:1px solid var(--input-border);color:var(--text);
+      padding:10px 12px;border-radius:10px;outline:none;min-width:220px;
+    }
+    .select{appearance:none}
+    .grid{
+      display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;
+    }
+    @media (max-width:1024px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+    @media (max-width:720px){.grid{grid-template-columns:1fr}}
+    .card{
+      background:var(--card);border:1px solid var(--card-border);border-radius:16px;padding:14px;box-shadow:var(--shadow);display:flex;gap:14px
+    }
+    .avatar{width:56px;height:56px;border-radius:12px;object-fit:cover;border:1px solid var(--card-border)}
+    .c-main{flex:1;min-width:0}
+    .name{font-weight:800}
+    .sub{color:var(--muted);font-size:13px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+    .tag{background:var(--chip);color:var(--chip-text);border-radius:8px;padding:6px 8px;border:1px solid var(--card-border)}
+    .limits{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .limit{background:var(--panel-2);border:1px solid var(--card-border);border-radius:8px;padding:6px 8px}
+    .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .muted{opacity:.6}
+    .blocked{outline:2px dashed var(--err)}
+    .footer-bar{display:flex;justify-content:space-between;margin:18px 0 6px;color:var(--muted)}
+    .pill{background:var(--panel);border:1px solid var(--card-border);border-radius:999px;padding:8px 12px}
+    /* modal */
+    .modal-back{position:fixed;inset:0;display:none;background:rgba(0,0,0,.45);place-items:center;z-index:40}
+    .modal{width:420px;max-width:92vw;background:var(--panel);border:1px solid var(--card-border);border-radius:14px;box-shadow:var(--shadow);padding:16px}
+    .modal .title{font-weight:800;margin-bottom:10px}
+    .hr{height:1px;background:var(--card-border);margin:12px 0}
+  </style>
 </head>
 <body>
-<nav class="navbar navbar-dark bg-dark">
-  <div class="container-fluid">
-    <a class="navbar-brand" href="#">Admin Dashboard</a>
-    <div class="d-flex">
-      <a class="btn btn-light me-2" href="/trang-chu.html">🏠 Trang chủ</a>
-      <span id="adminName" class="navbar-text text-light"></span>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="left">
+        <div class="brand chip">Admin Dashboard</div>
+        <div id="themeChip" class="chip" style="cursor:pointer">🌗 Dark</div>
+      </div>
+      <div class="right">
+        <button id="exportCsvBtn" class="btn ghost">⬇️ Export CSV</button>
+        <button id="exportXlsxBtn" class="btn ghost">⬇️ Export Excel</button>
+        <a href="/" class="btn">🏠 Trang chủ</a>
+      </div>
     </div>
-  </div>
-</nav>
-<main class="container my-4">
-  <div class="row mb-3">
-    <div class="col"><div class="card card-dark p-3 text-center"><h5>Tổng số user</h5><div id="statTotalUsers">0</div></div></div>
-    <div class="col"><div class="card card-dark p-3 text-center"><h5>Tổng tin nhắn hôm nay</h5><div id="statTotalMsgs">0</div></div></div>
-    <div class="col"><div class="card card-dark p-3 text-center"><h5>User vượt hạn mức</h5><div id="statExceeded">0</div></div></div>
-    <div class="col"><div class="card card-dark p-3 text-center"><h5>Bị chặn</h5><div id="statBanned">0</div></div></div>
-    <div class="col"><div class="card card-dark p-3 text-center"><h5>SMS bị chặn</h5><div id="statSmsBlocked">0</div></div></div>
-  </div>
 
-  <div class="card card-dark p-3 mb-3">
-    <div class="d-flex mb-2">
-      <input id="searchInput" class="form-control me-2" placeholder="Tìm theo username / email / phone" />
-      <button id="searchBtn" class="btn btn-outline-light">Tìm</button>
-      <button id="resetBtn" class="btn btn-secondary ms-2">Tải lại</button>
+    <div class="metrics">
+      <div class="metric">
+        <div class="label">Tổng số user</div>
+        <div id="m-totalUsers" class="value">-</div>
+      </div>
+      <div class="metric">
+        <div class="label">Tổng tin nhắn hôm nay</div>
+        <div id="m-todayMsgs" class="value">-</div>
+      </div>
+      <div class="metric">
+        <div class="label">User vượt hạn mức</div>
+        <div id="m-overLimit" class="value">-</div>
+      </div>
+      <div class="metric">
+        <div class="label">Bị chặn / SMS bị chặn</div>
+        <div class="value"><span id="m-blocked">-</span> / <span id="m-smsBlocked">-</span></div>
+      </div>
     </div>
-    <div class="table-responsive" style="max-height:520px; overflow:auto;">
-      <table class="table table-dark table-striped" id="usersTable">
-        <thead><tr>
-          <th>ID</th><th>Email</th><th>Tên</th><th>Thu nhập</th><th>Công việc</th><th>Phone</th><th>Role</th><th>SentToday</th>
-          <th>Daily</th><th>Weekly</th><th>Monthly</th><th>Yearly</th><th>Actions</th>
-        </tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-</main>
 
-<!-- Set Limit Modal -->
-<div class="modal fade" id="setLimitModal" tabindex="-1">
-  <div class="modal-dialog"><div class="modal-content bg-dark text-light">
-    <div class="modal-header"><h5 class="modal-title">Đặt hạn mức</h5><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-    <div class="modal-body">
-      <select id="limitType" class="form-select mb-2">
-        <option value="daily">Daily</option>
-        <option value="weekly">Weekly</option>
-        <option value="monthly">Monthly</option>
-        <option value="yearly">Yearly</option>
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <input id="q" class="input" placeholder="Tìm theo username / email / phone" />
+      <select id="fRole" class="input select">
+        <option value="">Tất cả vai trò</option>
+        <option value="admin">Admin</option>
+        <option value="user">User</option>
       </select>
-      <input id="newLimitInput" class="form-control" type="number" placeholder="Nhập số lượng mới" />
+      <select id="fStatus" class="input select">
+        <option value="">Tất cả trạng thái</option>
+        <option value="normal">Bình thường</option>
+        <option value="blocked">Đang bị chặn</option>
+      </select>
+      <button id="btnSearch" class="btn ghost">Tìm</button>
+      <button id="btnReload" class="btn ghost">Tải lại</button>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-      <button id="confirmSetLimitBtn" class="btn btn-primary">Xác nhận</button>
-    </div>
-  </div></div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Cards grid -->
+    <div id="grid" class="grid"></div>
+
+    <div class="footer-bar">
+      <div class="pill">Hiển thị: <span id="countShowing">0</span> / <span id="countTotal">0</span></div>
+      <div class="muted">* Click “⋮ Actions” để thực hiện Set limit/Reset/Chặn</div>
+    </div>
+  </div>
+
+  <!-- Modal: set limits -->
+  <div id="modalBack" class="modal-back">
+    <div class="modal">
+      <div class="title">Thiết lập hạn mức SMS</div>
+      <div id="modalUser" class="muted">User: --</div>
+      <div class="hr"></div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+        <div><div class="muted">Daily</div><input id="iDaily" type="number" min="0" class="input" placeholder="Daily" /></div>
+        <div><div class="muted">Weekly</div><input id="iWeekly" type="number" min="0" class="input" placeholder="Weekly" /></div>
+        <div><div class="muted">Monthly</div><input id="iMonthly" type="number" min="0" class="input" placeholder="Monthly" /></div>
+        <div><div class="muted">Yearly</div><input id="iYearly" type="number" min="0" class="input" placeholder="Yearly" /></div>
+      </div>
+      <div class="hr"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button id="btnCancel" class="btn ghost">Hủy</button>
+        <button id="btnSaveLimit" class="btn ok">Lưu</button>
+      </div>
+    </div>
+  </div>
+
 <script>
-let token = localStorage.getItem('token'); if(!token) location.href='/login.html';
-let currentUserId=null;
+(() => {
+  // ======= Config các endpoint (sửa nếu backend bạn khác) =========
+  const API = {
+    LIST_USERS: '/api/admin/users',
+    DASH_METRICS: '/api/admin/metrics',
+    SET_LIMIT: (id) => `/api/admin/users/${id}/limit`,
+    RESET: (id) => `/api/admin/users/${id}/reset`,
+    BLOCK: (id) => `/api/admin/users/${id}/block`,
+    UNBLOCK: (id) => `/api/admin/users/${id}/unblock`,
+  };
 
-async function checkProfile(){
-  const res=await fetch('/api/profile',{headers:{'Authorization':'Bearer '+token}});
-  if(!res.ok){location.href='/';return;}
-  const data=await res.json();
-  document.getElementById('adminName').innerText = data.username + ' ('+(data.role||'')+')';
-  if(!['admin','superadmin'].includes(data.role)) { location.href='/'; return;}
-  loadUsers();
-}
+  // ======= State =======
+  let users = [];
+  let filtered = [];
+  let currentUserForModal = null;
 
-async function loadUsers(q){
-  const url = '/api/admin/users' + (q?('?q='+encodeURIComponent(q)): '');
-  const res=await fetch(url,{headers:{'Authorization':'Bearer '+token}});
-  if(!res.ok){console.error(res.status); return;}
-  const users=await res.json();
-  const tbody=document.querySelector('#usersTable tbody');
-  tbody.innerHTML='';
-  let totalMsgs=0, exceeded=0, banned=0, smsblocked=0;
-  users.forEach(u=>{
-    totalMsgs += u.sentToday||0;
-    if((u.sentToday||0) > (u.dailyLimit||0)) exceeded++;
-    if(u.isBanned) banned++;
-    if(u.smsBlocked) smsblocked++;
-    const tr=document.createElement('tr');
-    tr.innerHTML = `<td>${u._id}</td><td>${u.email||'Chưa cập nhật'}</td><td>${u.username||'Chưa cập nhật'}</td>
-      <td>${u.income||'Chưa cập nhật'}</td><td>${u.job||'Chưa cập nhật'}</td><td>${u.phone||'Chưa cập nhật'}</td>
-      <td>${u.role||'user'}</td><td>${u.sentToday||0}</td>
-      <td>${u.dailyLimit||0}</td><td>${u.weeklyLimit||0}</td><td>${u.monthlyLimit||0}</td><td>${u.yearlyLimit||0}</td>
-      <td>
-        <div class="btn-group">
-          <button class="btn btn-sm btn-outline-light" data-bs-toggle="dropdown">Actions</button>
-          <ul class="dropdown-menu actions-dropdown">
-            <li><a class="dropdown-item" href="#" onclick="openSetLimit('${u._id}');return false;">Set Limit</a></li>
-            <li><a class="dropdown-item" href="#" onclick="resetQuota('${u._id}');return false;">Reset Sent</a></li>
-            <li><a class="dropdown-item" href="#" onclick="viewAccount('${u._id}');return false;">Truy cập</a></li>
-            <li><a class="dropdown-item" href="#" onclick="banAccount('${u._id}');return false;">Chặn tài khoản</a></li>
-            <li><a class="dropdown-item" href="#" onclick="blockSms('${u._id}');return false;">Chặn SMS</a></li>
-          </ul>
+  // ======= Elements =======
+  const grid = document.getElementById('grid');
+  const q = document.getElementById('q');
+  const fRole = document.getElementById('fRole');
+  const fStatus = document.getElementById('fStatus');
+  const btnSearch = document.getElementById('btnSearch');
+  const btnReload = document.getElementById('btnReload');
+  const themeChip = document.getElementById('themeChip');
+  const exportCsvBtn = document.getElementById('exportCsvBtn');
+  const exportXlsxBtn = document.getElementById('exportXlsxBtn');
+
+  const mTotal = document.getElementById('m-totalUsers');
+  const mToday = document.getElementById('m-todayMsgs');
+  const mOverLimit = document.getElementById('m-overLimit');
+  const mBlocked = document.getElementById('m-blocked');
+  const mSmsBlocked = document.getElementById('m-smsBlocked');
+
+  const countShowing = document.getElementById('countShowing');
+  const countTotal = document.getElementById('countTotal');
+
+  // Modal
+  const modalBack = document.getElementById('modalBack');
+  const modalUser = document.getElementById('modalUser');
+  const iDaily = document.getElementById('iDaily');
+  const iWeekly = document.getElementById('iWeekly');
+  const iMonthly = document.getElementById('iMonthly');
+  const iYearly = document.getElementById('iYearly');
+  const btnCancel = document.getElementById('btnCancel');
+  const btnSaveLimit = document.getElementById('btnSaveLimit');
+
+  // ======= Utils =======
+  const toast = (text, type='info') => {
+    const bg = type==='ok' ? '#16a34a' : type==='warn' ? '#d97706' : type==='err' ? '#dc2626' : '#0ea5e9';
+    Toastify({text, gravity:'top', position:'right', duration:2200, close:true, style:{background:bg}}).showToast();
+  };
+  const fetchJSON = async (url, opts={}) => {
+    const res = await fetch(url, {headers:{'Content-Type':'application/json'}, ...opts});
+    if(!res.ok) throw new Error(await res.text());
+    return res.json();
+  };
+
+  // ======= Render =======
+  const renderMetrics = (m)=>{
+    mTotal.textContent = m?.totalUsers ?? 0;
+    mToday.textContent = m?.todayMessages ?? 0;
+    mOverLimit.textContent = m?.overLimitUsers ?? 0;
+    mBlocked.textContent = m?.blockedUsers ?? 0;
+    mSmsBlocked.textContent = m?.blockedSMS ?? 0;
+  };
+
+  const userMatches = (u, term) => {
+    const t = term.trim().toLowerCase();
+    if(!t) return true;
+    return (u.username||'').toLowerCase().includes(t) ||
+           (u.email||'').toLowerCase().includes(t) ||
+           (u.phone||'').toLowerCase().includes(t);
+  };
+
+  const applyFilter = ()=>{
+    const term = q.value;
+    const role = fRole.value;
+    const st = fStatus.value;
+
+    filtered = users.filter(u => {
+      if(!userMatches(u, term)) return false;
+      if(role && u.role !== role) return false;
+      if(st==='blocked' && !u.blocked) return false;
+      if(st==='normal' && !!u.blocked) return false;
+      return true;
+    });
+    renderGrid();
+  };
+
+  const tiny = (v)=> v === undefined || v === null || v === '' ? '—' : v;
+
+  const renderGrid = ()=>{
+    grid.innerHTML = '';
+    filtered.forEach(u => {
+      const card = document.createElement('div');
+      card.className = 'card' + (u.blocked? ' blocked':'');
+      card.innerHTML = `
+        <img class="avatar" src="${u.avatar || 'https://i.pravatar.cc/100?u='+(u.email||u.username)}" alt="">
+        <div class="c-main">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+            <div>
+              <div class="name">${tiny(u.name) || tiny(u.username)}</div>
+              <div class="sub">${tiny(u.email)}${u.phone? ' · '+u.phone : ''}</div>
+            </div>
+            <div class="actions">
+              <div class="btn ghost" data-act="profile" data-id="${u._id}">Truy cập</div>
+              <div class="btn ghost" data-act="menu" data-id="${u._id}">⋮ Actions</div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="tag">Role: <b>${u.role||'user'}</b></div>
+            <div class="tag">Công việc: <b>${tiny(u.job)}</b></div>
+            <div class="tag">Thu nhập: <b>${tiny(u.income)}</b></div>
+            <div class="tag ${u.blocked?'err':''}">${u.blocked? 'Đang bị chặn SMS':'Bình thường'}</div>
+          </div>
+
+          <div class="limits">
+            <div class="limit">Daily: <b>${u.limits?.daily ?? 0}</b></div>
+            <div class="limit">Weekly: <b>${u.limits?.weekly ?? 0}</b></div>
+            <div class="limit">Monthly: <b>${u.limits?.monthly ?? 0}</b></div>
+            <div class="limit">Yearly: <b>${u.limits?.yearly ?? 0}</b></div>
+            <div class="limit">Sent today: <b>${u.stats?.sentToday ?? 0}</b></div>
+          </div>
         </div>
-      </td>`;
-    tbody.appendChild(tr);
-  });
-  document.getElementById('statTotalUsers').innerText = users.length;
-  document.getElementById('statTotalMsgs').innerText = totalMsgs;
-  document.getElementById('statExceeded').innerText = exceeded;
-  document.getElementById('statBanned').innerText = banned;
-  document.getElementById('statSmsBlocked').innerText = smsblocked;
-}
+      `;
+      grid.appendChild(card);
 
-function openSetLimit(id){ currentUserId=id; new bootstrap.Modal(document.getElementById('setLimitModal')).show(); }
-document.getElementById('confirmSetLimitBtn').addEventListener('click', async ()=>{
-  const type = document.getElementById('limitType').value;
-  const v = Number(document.getElementById('newLimitInput').value)||0;
-  await fetch('/api/admin/set-limit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body: JSON.stringify({ userId: currentUserId, type, value: v })});
-  bootstrap.Modal.getInstance(document.getElementById('setLimitModal')).hide();
+      // Actions
+      card.querySelector('[data-act="profile"]').onclick = ()=> window.location.href = `profile.html?id=${encodeURIComponent(u._id)}`;
+      card.querySelector('[data-act="menu"]').onclick = (e)=>{
+        showActionsMenu(e.currentTarget, u);
+      };
+    });
+
+    countShowing.textContent = filtered.length;
+    countTotal.textContent = users.length;
+  };
+
+  // simple actions menu (inline)
+  const showActionsMenu = (anchor, user)=>{
+    // remove old
+    document.querySelectorAll('.pop').forEach(el=>el.remove());
+    const pop = document.createElement('div');
+    pop.className = 'pop';
+    pop.style.cssText = `
+      position:absolute; background:var(--panel); border:1px solid var(--card-border);
+      border-radius:10px; box-shadow:var(--shadow); padding:8px; z-index:30;
+      transform: translate(-60%, 8px);
+    `;
+    pop.innerHTML = `
+      <div class="btn ghost" data-k="set">✏️ Set limit</div>
+      <div class="btn ghost" data-k="reset">♻️ Reset counters</div>
+      ${user.blocked
+        ? `<div class="btn ok" data-k="unblock">✅ Bỏ chặn SMS</div>`
+        : `<div class="btn err" data-k="block">⛔ Chặn SMS</div>`
+      }
+    `;
+    document.body.appendChild(pop);
+    const rect = anchor.getBoundingClientRect();
+    pop.style.left = (rect.left + window.scrollX) + 'px';
+    pop.style.top  = (rect.bottom + window.scrollY) + 'px';
+
+    const close = (ev)=>{
+      if(!pop.contains(ev.target) && ev.target !== anchor){ pop.remove(); document.removeEventListener('click', close); }
+    };
+    setTimeout(()=>document.addEventListener('click', close),0);
+
+    pop.querySelector('[data-k="set"]').onclick = ()=> { pop.remove(); openLimitModal(user); };
+    pop.querySelector('[data-k="reset"]').onclick = ()=> { pop.remove(); resetCounters(user); };
+    const b = pop.querySelector('[data-k="block"]'); if(b) b.onclick = ()=> { pop.remove(); blockUser(user,true); };
+    const ub = pop.querySelector('[data-k="unblock"]'); if(ub) ub.onclick = ()=> { pop.remove(); blockUser(user,false); };
+  };
+
+  // ======= Actions =======
+  const openLimitModal = (u)=>{
+    currentUserForModal = u;
+    modalUser.textContent = `User: ${u.name || u.username || u.email}`;
+    iDaily.value = u.limits?.daily ?? 0;
+    iWeekly.value = u.limits?.weekly ?? 0;
+    iMonthly.value = u.limits?.monthly ?? 0;
+    iYearly.value = u.limits?.yearly ?? 0;
+    modalBack.style.display = 'grid';
+  };
+  const closeModal = ()=>{ modalBack.style.display='none'; currentUserForModal=null; };
+
+  btnCancel.onclick = closeModal;
+  modalBack.onclick = (e)=>{ if(e.target===modalBack) closeModal(); };
+  btnSaveLimit.onclick = async ()=>{
+    if(!currentUserForModal) return;
+    const id = currentUserForModal._id;
+    const body = {
+      daily: +iDaily.value||0, weekly:+iWeekly.value||0,
+      monthly:+iMonthly.value||0, yearly:+iYearly.value||0,
+    };
+    try{
+      await fetchJSON(API.SET_LIMIT(id), {method:'POST', body:JSON.stringify(body)});
+      toast('Đã cập nhật hạn mức ✅','ok');
+      // cập nhật local
+      Object.assign(currentUserForModal.limits, body);
+      renderGrid();
+      closeModal();
+    }catch(err){
+      toast('Lỗi cập nhật hạn mức','err');
+      console.error(err);
+    }
+  };
+
+  const resetCounters = async (u)=>{
+    try{
+      await fetchJSON(API.RESET(u._id), {method:'POST'});
+      toast('Đã reset counters ✅','ok');
+      u.stats = u.stats || {};
+      u.stats.sentToday = 0;
+      renderGrid();
+    }catch(err){
+      toast('Lỗi reset','err'); console.error(err);
+    }
+  };
+
+  const blockUser = async (u, yes)=>{
+    try{
+      await fetchJSON( yes ? API.BLOCK(u._id) : API.UNBLOCK(u._id), {method:'POST'});
+      toast( yes ? 'Đã chặn SMS ✅' : 'Đã bỏ chặn SMS ✅','ok');
+      u.blocked = !!yes;
+      renderGrid();
+      // cập nhật metrics lại cho đẹp
+      loadMetrics();
+    }catch(err){
+      toast('Lỗi thao tác chặn/bỏ chặn','err'); console.error(err);
+    }
+  };
+
+  // ======= Export =======
+  const exportCSV = ()=>{
+    const header = ['Email','Username','Name','Phone','Role','Income','Job','Daily','Weekly','Monthly','Yearly','SentToday','Blocked'];
+    const rows = filtered.map(u=>[
+      u.email||'', u.username||'', u.name||'', u.phone||'', u.role||'user',
+      u.income||'', u.job||'',
+      u.limits?.daily??0, u.limits?.weekly??0, u.limits?.monthly??0, u.limits?.yearly??0,
+      u.stats?.sentToday??0, u.blocked?'Y':''
+    ]);
+    const csv = [header, ...rows].map(r => r.map(v=>{
+      const s = String(v).replace(/"/g,'""');
+      return `"${s}"`;
+    }).join(',')).join('\n');
+
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement('a'), {href:url, download:'users.csv'});
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  };
+
+  const exportXLSX = ()=>{
+    const data = filtered.map(u=>({
+      Email: u.email||'',
+      Username: u.username||'',
+      Name: u.name||'',
+      Phone: u.phone||'',
+      Role: u.role||'user',
+      Income: u.income||'',
+      Job: u.job||'',
+      Daily: u.limits?.daily??0,
+      Weekly: u.limits?.weekly??0,
+      Monthly: u.limits?.monthly??0,
+      Yearly: u.limits?.yearly??0,
+      SentToday: u.stats?.sentToday??0,
+      Blocked: u.blocked ? 'Y' : ''
+    }));
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, 'Users');
+    XLSX.writeFile(wb, 'users.xlsx');
+  };
+
+  exportCsvBtn.onclick = exportCSV;
+  exportXlsxBtn.onclick = exportXLSX;
+
+  // ======= Theme toggle =======
+  const applyTheme = (t)=>{ document.documentElement.setAttribute('data-theme', t); themeChip.textContent = t==='dark'?'🌗 Dark':'🌞 Light'; localStorage.setItem('theme', t); };
+  themeChip.onclick = ()=> applyTheme( document.documentElement.getAttribute('data-theme')==='dark' ? 'light':'dark' );
+  applyTheme(localStorage.getItem('theme') || 'dark');
+
+  // ======= Loaders =======
+  const loadMetrics = async ()=>{
+    try{
+      const m = await fetchJSON(API.DASH_METRICS);
+      renderMetrics(m);
+    }catch{ renderMetrics({}); }
+  };
+
+  const loadUsers = async ()=>{
+    const data = await fetchJSON(API.LIST_USERS);
+    // Chuẩn hoá dữ liệu
+    users = (data||[]).map(x => ({
+      _id: x._id, email:x.email, username:x.username, name:x.name, phone:x.phone,
+      role: x.role || 'user',
+      income: x.income, job: x.job,
+      avatar: x.avatar,
+      blocked: !!x.blocked,
+      limits: {daily:x.dailyLimit??x.limits?.daily??0, weekly:x.weeklyLimit??x.limits?.weekly??0, monthly:x.monthlyLimit??x.limits?.monthly??0, yearly:x.yearlyLimit??x.limits?.yearly??0},
+      stats: {sentToday: x.sentToday ?? 0}
+    }));
+    filtered = users.slice();
+    applyFilter();
+  };
+
+  btnSearch.onclick = applyFilter;
+  btnReload.onclick = ()=>{ loadMetrics(); loadUsers().then(()=>toast('Đã tải lại ✅','ok')); };
+  q.addEventListener('keydown', e=>{ if(e.key==='Enter') applyFilter(); });
+
+  // init
+  loadMetrics();
   loadUsers();
-});
-async function resetQuota(id){ await fetch('/api/admin/reset-daily/'+id,{method:'POST',headers:{'Authorization':'Bearer '+token}}); loadUsers(); }
-async function banAccount(id){ await fetch('/api/admin/ban/'+id,{method:'POST',headers:{'Authorization':'Bearer '+token}}); loadUsers(); }
-async function blockSms(id){ await fetch('/api/admin/block-sms/'+id,{method:'POST',headers:{'Authorization':'Bearer '+token}}); loadUsers(); }
-function viewAccount(id){ window.location.href='/profile.html?uid='+id; }
-document.getElementById('searchBtn').addEventListener('click', ()=>{ const q = document.getElementById('searchInput').value.trim(); loadUsers(q); });
-document.getElementById('resetBtn').addEventListener('click', ()=>{ document.getElementById('searchInput').value=''; loadUsers(); });
-checkProfile();
+})();
 </script>
-</body></html>
+</body>
+</html>

@@ -1,37 +1,73 @@
-<!DOCTYPE html>
-<html lang="en" class="dark">
-<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Profile</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<style>body{background:#0f1724;color:#e2e8f0}.card-profile{background:#0b1220;color:#e2e8f0;border-radius:12px;padding:20px}</style></head>
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Hồ sơ người dùng</title>
+  <style>
+    :root{--bg:#0f172a;--panel:#111827;--text:#e5e7eb;--muted:#a1a1aa;--border:#1f2937;--brand:#22d3ee}
+    [data-theme="light"]{--bg:#f5f7fb;--panel:#ffffff;--text:#0f172a;--muted:#4b5563;--border:#e5e7eb;--brand:#0ea5e9}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;}
+    .wrap{max-width:900px;margin:30px auto;padding:0 16px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .head{display:flex;gap:16px}
+    .av{width:84px;height:84px;border-radius:14px;object-fit:cover;border:1px solid var(--border)}
+    .name{font-weight:900;font-size:20px}
+    .muted{color:var(--muted)}
+    .grid{margin-top:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .box{background:rgba(255,255,255,.02);border:1px dashed var(--border);border-radius:12px;padding:12px}
+    .hr{height:1px;background:var(--border);margin:14px 0}
+    .btn{display:inline-block;background:var(--brand);color:#fff;padding:10px 14px;border-radius:10px;text-decoration:none}
+  </style>
+</head>
 <body>
-<nav class="navbar navbar-dark bg-dark"><div class="container-fluid"><a class="navbar-brand" href="#">Profile</a><div class="d-flex"><a class="btn btn-light" href="/admin.html">⬅ Quay về Dashboard</a></div></div></nav>
-<main class="container my-4"><div class="card card-profile mx-auto" style="max-width:720px;">
-  <div class="d-flex align-items-center">
-    <div style="width:96px;height:96px;border-radius:50%;background:#374151;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:28px;margin-right:18px" id="avatar">A</div>
-    <div>
-      <h3 id="pname">Tên</h3>
-      <div id="pemail">email</div>
-      <div id="pphone">phone</div>
+  <div class="wrap">
+    <a href="admin.html" class="btn">← Quay về Admin</a><br/><br/>
+    <div class="card">
+      <div class="head">
+        <img id="av" class="av" src="" alt="">
+        <div>
+          <div id="name" class="name">—</div>
+          <div id="sub" class="muted">—</div>
+        </div>
+      </div>
+      <div class="hr"></div>
+      <div class="grid">
+        <div class="box"><b>Thu nhập:</b> <span id="income">—</span></div>
+        <div class="box"><b>Công việc:</b> <span id="job">—</span></div>
+        <div class="box"><b>Role:</b> <span id="role">—</span></div>
+        <div class="box"><b>Trạng thái:</b> <span id="status">—</span></div>
+      </div>
+      <div class="hr"></div>
+      <div class="grid">
+        <div class="box"><b>Daily:</b> <span id="d">0</span></div>
+        <div class="box"><b>Weekly:</b> <span id="w">0</span></div>
+        <div class="box"><b>Monthly:</b> <span id="m">0</span></div>
+        <div class="box"><b>Yearly:</b> <span id="y">0</span></div>
+      </div>
     </div>
   </div>
-  <hr style="border-color:#1f2937" />
-  <div class="row">
-    <div class="col-md-6">
-      <p><strong>Công việc:</strong> <span id="pjob"></span></p>
-      <p><strong>Thu nhập:</strong> <span id="pincome"></span></p>
-      <p><strong>Role:</strong> <span id="prole"></span></p>
-    </div>
-    <div class="col-md-6">
-      <p><strong>SentToday:</strong> <span id="psent"></span></p>
-      <p><strong>Daily/Weekly/Monthly/Yearly:</strong> <span id="plimits"></span></p>
-      <p><strong>Trạng thái:</strong> <span id="pstatus"></span></p>
-    </div>
-  </div>
-</div></main>
+
 <script>
-let token = localStorage.getItem('token'); if(!token) location.href='/login.html';
-function getParam(name){ return new URLSearchParams(window.location.search).get(name); }
-async function loadProfile(){ const uid = getParam('uid'); if(!uid){ return; } const res = await fetch('/api/admin/users?q='+uid,{headers:{'Authorization':'Bearer '+token}}); if(!res.ok){ return; } const data = await res.json(); const u = Array.isArray(data)? data.find(x=>x._id===uid) : data; if(!u) return; document.getElementById('avatar').innerText = (u.username||'U').substr(0,1).toUpperCase(); document.getElementById('pname').innerText = u.username||''; document.getElementById('pemail').innerText = u.email||''; document.getElementById('pphone').innerText = u.phone||''; document.getElementById('pjob').innerText = u.job||'Chưa cập nhật'; document.getElementById('pincome').innerText = u.income||'Chưa cập nhật'; document.getElementById('prole').innerText = u.role||'user'; document.getElementById('psent').innerText = u.sentToday||0; document.getElementById('plimits').innerText = (u.dailyLimit||0)+' / '+(u.weeklyLimit||0)+' / '+(u.monthlyLimit||0)+' / '+(u.yearlyLimit||0); document.getElementById('pstatus').innerHTML = u.isBanned?'<span style="color:#ff6b6b">Bị chặn</span>':(u.smsBlocked?'<span style="color:#f59e0b">SMS bị chặn</span>':'<span style="color:#10b981">Active</span>'); }
-loadProfile();
+(async ()=>{
+  const API = {DETAIL: id=>`/api/admin/users/${id}`};
+  const qs = new URLSearchParams(location.search);
+  const id = qs.get('id');
+
+  const data = await fetch(API.DETAIL(id)).then(r=>r.json()).catch(()=>null);
+  const u = data || {};
+  document.getElementById('av').src = u.avatar || 'https://i.pravatar.cc/150?u='+(u.email||u.username);
+  document.getElementById('name').textContent = u.name || u.username || '—';
+  document.getElementById('sub').textContent = [u.email,u.phone].filter(Boolean).join(' · ') || '—';
+  document.getElementById('income').textContent = u.income ?? '—';
+  document.getElementById('job').textContent = u.job ?? '—';
+  document.getElementById('role').textContent = u.role || 'user';
+  document.getElementById('status').textContent = u.blocked ? 'Đang bị chặn SMS' : 'Bình thường';
+  document.getElementById('d').textContent = u.limits?.daily ?? u.dailyLimit ?? 0;
+  document.getElementById('w').textContent = u.limits?.weekly ?? u.weeklyLimit ?? 0;
+  document.getElementById('m').textContent = u.limits?.monthly ?? u.monthlyLimit ?? 0;
+  document.getElementById('y').textContent = u.limits?.yearly ?? u.yearlyLimit ?? 0;
+})();
 </script>
-</body></html>
+</body>
+</html>
