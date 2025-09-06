@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Admin Dashboard</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>body{background:#0f1724;color:#e2e8f0} .card-dark{background:#111827;color:#e2e8f0}</style>
+  <style>body{background:#0f1724;color:#e2e8f0} .card-dark{background:#0b1220;color:#e2e8f0} .actions-dropdown{min-width:180px}</style>
 </head>
 <body>
 <nav class="navbar navbar-dark bg-dark">
@@ -22,15 +22,25 @@
     <div class="col"><div class="card card-dark p-3 text-center"><h5>Tổng số user</h5><div id="statTotalUsers">0</div></div></div>
     <div class="col"><div class="card card-dark p-3 text-center"><h5>Tổng tin nhắn hôm nay</h5><div id="statTotalMsgs">0</div></div></div>
     <div class="col"><div class="card card-dark p-3 text-center"><h5>User vượt hạn mức</h5><div id="statExceeded">0</div></div></div>
+    <div class="col"><div class="card card-dark p-3 text-center"><h5>Bị chặn</h5><div id="statBanned">0</div></div></div>
+    <div class="col"><div class="card card-dark p-3 text-center"><h5>SMS bị chặn</h5><div id="statSmsBlocked">0</div></div></div>
   </div>
-  <div class="card card-dark p-3">
-    <h5>Quản lý người dùng</h5>
-    <table class="table table-dark table-striped" id="usersTable">
-      <thead><tr>
-        <th>ID</th><th>Email</th><th>Tên</th><th>Thu nhập</th><th>Công việc</th><th>Phone</th><th>Role</th><th>SentToday</th><th>DailyLimit</th><th>Actions</th>
-      </tr></thead>
-      <tbody></tbody>
-    </table>
+
+  <div class="card card-dark p-3 mb-3">
+    <div class="d-flex mb-2">
+      <input id="searchInput" class="form-control me-2" placeholder="Tìm theo username / email / phone" />
+      <button id="searchBtn" class="btn btn-outline-light">Tìm</button>
+      <button id="resetBtn" class="btn btn-secondary ms-2">Tải lại</button>
+    </div>
+    <div class="table-responsive" style="max-height:520px; overflow:auto;">
+      <table class="table table-dark table-striped" id="usersTable">
+        <thead><tr>
+          <th>ID</th><th>Email</th><th>Tên</th><th>Thu nhập</th><th>Công việc</th><th>Phone</th><th>Role</th><th>SentToday</th>
+          <th>Daily</th><th>Weekly</th><th>Monthly</th><th>Yearly</th><th>Actions</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </div>
 </main>
 
@@ -38,63 +48,89 @@
 <div class="modal fade" id="setLimitModal" tabindex="-1">
   <div class="modal-dialog"><div class="modal-content bg-dark text-light">
     <div class="modal-header"><h5 class="modal-title">Đặt hạn mức</h5><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-    <div class="modal-body"><input id="newLimitInput" class="form-control" type="number" /></div>
-    <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button><button id="confirmSetLimitBtn" class="btn btn-primary">Xác nhận</button></div>
+    <div class="modal-body">
+      <select id="limitType" class="form-select mb-2">
+        <option value="daily">Daily</option>
+        <option value="weekly">Weekly</option>
+        <option value="monthly">Monthly</option>
+        <option value="yearly">Yearly</option>
+      </select>
+      <input id="newLimitInput" class="form-control" type="number" placeholder="Nhập số lượng mới" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+      <button id="confirmSetLimitBtn" class="btn btn-primary">Xác nhận</button>
+    </div>
   </div></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-let token = localStorage.getItem('token');
-if(!token) { window.location.href='/login.html'; }
+let token = localStorage.getItem('token'); if(!token) location.href='/login.html';
+let currentUserId=null;
+
 async function checkProfile(){
-  const res = await fetch('/api/profile',{ headers: { 'Authorization':'Bearer '+token } });
-  if(!res.ok){ window.location.href='/'; return; }
-  const data = await res.json();
-  document.getElementById('adminName').innerText = data.username + ' ('+ (data.role||'') +')';
-  if(!['admin','superadmin'].includes(data.role)) { window.location.href='/'; return;}
+  const res=await fetch('/api/profile',{headers:{'Authorization':'Bearer '+token}});
+  if(!res.ok){location.href='/';return;}
+  const data=await res.json();
+  document.getElementById('adminName').innerText = data.username + ' ('+(data.role||'')+')';
+  if(!['admin','superadmin'].includes(data.role)) { location.href='/'; return;}
   loadUsers();
 }
-async function loadUsers(){
-  const res = await fetch('/api/admin/users',{ headers: { 'Authorization':'Bearer '+token } });
-  if(!res.ok){ console.error('users fetch failed', res.status); return; }
-  const users = await res.json();
-  const tbody = document.querySelector('#usersTable tbody');
-  tbody.innerHTML = '';
-  let totalMsgs=0, exceeded=0;
+
+async function loadUsers(q){
+  const url = '/api/admin/users' + (q?('?q='+encodeURIComponent(q)): '');
+  const res=await fetch(url,{headers:{'Authorization':'Bearer '+token}});
+  if(!res.ok){console.error(res.status); return;}
+  const users=await res.json();
+  const tbody=document.querySelector('#usersTable tbody');
+  tbody.innerHTML='';
+  let totalMsgs=0, exceeded=0, banned=0, smsblocked=0;
   users.forEach(u=>{
     totalMsgs += u.sentToday||0;
     if((u.sentToday||0) > (u.dailyLimit||0)) exceeded++;
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${u._id}</td><td>${u.email||'-'}</td><td>${u.username||'-'}</td><td>${u.income||'-'}</td><td>${u.job||'-'}</td><td>${u.phone||'-'}</td><td>${u.role||'-'}</td><td>${u.sentToday||0}</td><td>${u.dailyLimit||0}</td>
-    <td>
-      <button class="btn btn-sm btn-warning" onclick="openSetLimit('${u._id}')">Set Limit</button>
-      <button class="btn btn-sm btn-danger" onclick="resetQuota('${u._id}')">Reset</button>
-      <button class="btn btn-sm btn-info" onclick="viewAccount('${u._id}')">Truy cập</button>
-      <button class="btn btn-sm btn-secondary" onclick="banAccount('${u._id}')">Chặn</button>
-      <button class="btn btn-sm btn-dark" onclick="blockSms('${u._id}')">Chặn SMS</button>
-    </td>`;
+    if(u.isBanned) banned++;
+    if(u.smsBlocked) smsblocked++;
+    const tr=document.createElement('tr');
+    tr.innerHTML = `<td>${u._id}</td><td>${u.email||'Chưa cập nhật'}</td><td>${u.username||'Chưa cập nhật'}</td>
+      <td>${u.income||'Chưa cập nhật'}</td><td>${u.job||'Chưa cập nhật'}</td><td>${u.phone||'Chưa cập nhật'}</td>
+      <td>${u.role||'user'}</td><td>${u.sentToday||0}</td>
+      <td>${u.dailyLimit||0}</td><td>${u.weeklyLimit||0}</td><td>${u.monthlyLimit||0}</td><td>${u.yearlyLimit||0}</td>
+      <td>
+        <div class="btn-group">
+          <button class="btn btn-sm btn-outline-light" data-bs-toggle="dropdown">Actions</button>
+          <ul class="dropdown-menu actions-dropdown">
+            <li><a class="dropdown-item" href="#" onclick="openSetLimit('${u._id}');return false;">Set Limit</a></li>
+            <li><a class="dropdown-item" href="#" onclick="resetQuota('${u._id}');return false;">Reset Sent</a></li>
+            <li><a class="dropdown-item" href="#" onclick="viewAccount('${u._id}');return false;">Truy cập</a></li>
+            <li><a class="dropdown-item" href="#" onclick="banAccount('${u._id}');return false;">Chặn tài khoản</a></li>
+            <li><a class="dropdown-item" href="#" onclick="blockSms('${u._id}');return false;">Chặn SMS</a></li>
+          </ul>
+        </div>
+      </td>`;
     tbody.appendChild(tr);
   });
   document.getElementById('statTotalUsers').innerText = users.length;
   document.getElementById('statTotalMsgs').innerText = totalMsgs;
   document.getElementById('statExceeded').innerText = exceeded;
+  document.getElementById('statBanned').innerText = banned;
+  document.getElementById('statSmsBlocked').innerText = smsblocked;
 }
 
-let currentUserId=null;
 function openSetLimit(id){ currentUserId=id; new bootstrap.Modal(document.getElementById('setLimitModal')).show(); }
 document.getElementById('confirmSetLimitBtn').addEventListener('click', async ()=>{
-  const v = parseInt(document.getElementById('newLimitInput').value);
-  if(!v) return;
-  await fetch('/api/admin/set-limit',{ method:'POST', headers:{ 'Content-Type':'application/json','Authorization':'Bearer '+token }, body: JSON.stringify({ userId: currentUserId, dailyLimit: v }) });
+  const type = document.getElementById('limitType').value;
+  const v = Number(document.getElementById('newLimitInput').value)||0;
+  await fetch('/api/admin/set-limit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body: JSON.stringify({ userId: currentUserId, type, value: v })});
   bootstrap.Modal.getInstance(document.getElementById('setLimitModal')).hide();
   loadUsers();
 });
-async function resetQuota(id){ await fetch('/api/admin/reset-daily/'+id,{ method:'POST', headers:{ 'Authorization':'Bearer '+token } }); loadUsers(); }
-async function banAccount(id){ await fetch('/api/admin/ban/'+id,{ method:'POST', headers:{ 'Authorization':'Bearer '+token } }); loadUsers(); }
-async function blockSms(id){ await fetch('/api/admin/block-sms/'+id,{ method:'POST', headers:{ 'Authorization':'Bearer '+token } }); loadUsers(); }
+async function resetQuota(id){ await fetch('/api/admin/reset-daily/'+id,{method:'POST',headers:{'Authorization':'Bearer '+token}}); loadUsers(); }
+async function banAccount(id){ await fetch('/api/admin/ban/'+id,{method:'POST',headers:{'Authorization':'Bearer '+token}}); loadUsers(); }
+async function blockSms(id){ await fetch('/api/admin/block-sms/'+id,{method:'POST',headers:{'Authorization':'Bearer '+token}}); loadUsers(); }
 function viewAccount(id){ window.location.href='/profile.html?uid='+id; }
-
+document.getElementById('searchBtn').addEventListener('click', ()=>{ const q = document.getElementById('searchInput').value.trim(); loadUsers(q); });
+document.getElementById('resetBtn').addEventListener('click', ()=>{ document.getElementById('searchInput').value=''; loadUsers(); });
 checkProfile();
 </script>
 </body></html>
