@@ -1,0 +1,20 @@
+[
+  {
+    "_id": "admin_check_1",
+    "username": "Admin_Check_1",
+    "email": "admin_check_1@local",
+    "password": "87787323",
+    "role": "admin",
+    "smsBalance": 100,
+    "name": "Admin_Check_1"
+  },
+  {
+    "_id": "user_001",
+    "username": "check2",
+    "email": "check2@local",
+    "password": "password",
+    "role": "user",
+    "smsBalance": 5,
+    "name": "check2"
+  }
+]

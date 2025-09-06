@@ -1,0 +1,27 @@
+
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Profile</title></head>
+<body>
+  <h2>Profile</h2>
+  <div id="profile_card">
+    <p><strong id="p_username">-</strong></p>
+    <p id="p_email"></p>
+    <div id="sms_info">Đã gửi: <strong id="p_sent">0</strong> / <strong id="p_limit">0</strong></div>
+    <div>Reset at: <span id="p_reset">-</span></div>
+  </div>
+  <script>
+  (async function(){
+    const API_PROFILE = '/api/profile';
+    const API_LIMITS = '/api/profile/limits';
+    const token = localStorage.getItem('authToken') || (document.cookie.match(/(?:^|; )token=([^;]+)/) || [])[1];
+    if(!token){ document.getElementById('profile_card').innerHTML = '<p>Vui lòng đăng nhập để xem profile.</p>'; return; }
+    try{
+      const [pRes, lRes] = await Promise.all([ fetch(API_PROFILE, { headers:{ 'Authorization': 'Bearer '+token } }), fetch(API_LIMITS, { headers:{ 'Authorization': 'Bearer '+token } }) ]);
+      if(pRes.ok){ const p = await pRes.json(); document.getElementById('p_username').textContent = p.username || p.name || p._id; document.getElementById('p_email').textContent = p.email || ''; }
+      if(lRes.ok){ const l = await lRes.json(); document.getElementById('p_sent').textContent = l.dailySent || 0; document.getElementById('p_limit').textContent = l.dailyLimit || 0; document.getElementById('p_reset').textContent = l.dailyResetAt ? (new Date(l.dailyResetAt)).toLocaleString() : '-'; }
+    }catch(e){ console.warn(e); }
+  })();
+  </script>
+</body>
+</html>

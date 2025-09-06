@@ -1,27 +1,37 @@
-
-<!doctype html>
-<html>
-<head><meta charset="utf-8"><title>Profile</title></head>
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Profile</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>body{background:#0f1724;color:#e2e8f0}.card-profile{background:#0b1220;color:#e2e8f0;border-radius:12px;padding:20px}</style></head>
 <body>
-  <h2>Profile</h2>
-  <div id="profile_card">
-    <p><strong id="p_username">-</strong></p>
-    <p id="p_email"></p>
-    <div id="sms_info">Đã gửi: <strong id="p_sent">0</strong> / <strong id="p_limit">0</strong></div>
-    <div>Reset at: <span id="p_reset">-</span></div>
+<nav class="navbar navbar-dark bg-dark"><div class="container-fluid"><a class="navbar-brand" href="#">Profile</a><div class="d-flex"><a class="btn btn-light" href="/admin.html">⬅ Quay về Dashboard</a></div></div></nav>
+<main class="container my-4"><div class="card card-profile mx-auto" style="max-width:720px;">
+  <div class="d-flex align-items-center">
+    <div style="width:96px;height:96px;border-radius:50%;background:#374151;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:28px;margin-right:18px" id="avatar">A</div>
+    <div>
+      <h3 id="pname">Tên</h3>
+      <div id="pemail">email</div>
+      <div id="pphone">phone</div>
+    </div>
   </div>
-  <script>
-  (async function(){
-    const API_PROFILE = '/api/profile';
-    const API_LIMITS = '/api/profile/limits';
-    const token = localStorage.getItem('authToken') || (document.cookie.match(/(?:^|; )token=([^;]+)/) || [])[1];
-    if(!token){ document.getElementById('profile_card').innerHTML = '<p>Vui lòng đăng nhập để xem profile.</p>'; return; }
-    try{
-      const [pRes, lRes] = await Promise.all([ fetch(API_PROFILE, { headers:{ 'Authorization': 'Bearer '+token } }), fetch(API_LIMITS, { headers:{ 'Authorization': 'Bearer '+token } }) ]);
-      if(pRes.ok){ const p = await pRes.json(); document.getElementById('p_username').textContent = p.username || p.name || p._id; document.getElementById('p_email').textContent = p.email || ''; }
-      if(lRes.ok){ const l = await lRes.json(); document.getElementById('p_sent').textContent = l.dailySent || 0; document.getElementById('p_limit').textContent = l.dailyLimit || 0; document.getElementById('p_reset').textContent = l.dailyResetAt ? (new Date(l.dailyResetAt)).toLocaleString() : '-'; }
-    }catch(e){ console.warn(e); }
-  })();
-  </script>
-</body>
-</html>
+  <hr style="border-color:#1f2937" />
+  <div class="row">
+    <div class="col-md-6">
+      <p><strong>Công việc:</strong> <span id="pjob"></span></p>
+      <p><strong>Thu nhập:</strong> <span id="pincome"></span></p>
+      <p><strong>Role:</strong> <span id="prole"></span></p>
+    </div>
+    <div class="col-md-6">
+      <p><strong>SentToday:</strong> <span id="psent"></span></p>
+      <p><strong>Daily/Weekly/Monthly/Yearly:</strong> <span id="plimits"></span></p>
+      <p><strong>Trạng thái:</strong> <span id="pstatus"></span></p>
+    </div>
+  </div>
+</div></main>
+<script>
+let token = localStorage.getItem('token'); if(!token) location.href='/login.html';
+function getParam(name){ return new URLSearchParams(window.location.search).get(name); }
+async function loadProfile(){ const uid = getParam('uid'); if(!uid){ return; } const res = await fetch('/api/admin/users?q='+uid,{headers:{'Authorization':'Bearer '+token}}); if(!res.ok){ return; } const data = await res.json(); const u = Array.isArray(data)? data.find(x=>x._id===uid) : data; if(!u) return; document.getElementById('avatar').innerText = (u.username||'U').substr(0,1).toUpperCase(); document.getElementById('pname').innerText = u.username||''; document.getElementById('pemail').innerText = u.email||''; document.getElementById('pphone').innerText = u.phone||''; document.getElementById('pjob').innerText = u.job||'Chưa cập nhật'; document.getElementById('pincome').innerText = u.income||'Chưa cập nhật'; document.getElementById('prole').innerText = u.role||'user'; document.getElementById('psent').innerText = u.sentToday||0; document.getElementById('plimits').innerText = (u.dailyLimit||0)+' / '+(u.weeklyLimit||0)+' / '+(u.monthlyLimit||0)+' / '+(u.yearlyLimit||0); document.getElementById('pstatus').innerHTML = u.isBanned?'<span style="color:#ff6b6b">Bị chặn</span>':(u.smsBlocked?'<span style="color:#f59e0b">SMS bị chặn</span>':'<span style="color:#10b981">Active</span>'); }
+loadProfile();
+</script>
+</body></html>

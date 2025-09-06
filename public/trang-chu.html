@@ -795,5 +795,82 @@ async function onOpenChatWith(otherId){
   refreshUnread();
 }
 </script>
+
+<script>
+(function(){
+  async function detectAdmin(){
+    try {
+      const r = await fetch('/api/profile', {credentials:'include'});
+      if (r.ok) {
+        const u = await r.json();
+        const uname = (u.username || u.email || '').toLowerCase();
+        const role = (u.role || '').toLowerCase();
+        if (role === 'admin' || role === 'superadmin' || uname.includes('admin')) return true;
+      }
+    } catch(e){}
+    const t = (document.body.innerText || '').toLowerCase();
+    return t.includes('admin_check_1') || t.includes('admin_check') || t.includes('admin');
+  }
+
+  function findVip(){
+    let el = document.querySelector('#btnVip');
+    if (el) return el;
+    el = Array.from(document.querySelectorAll('a, button'))
+      .find(a => (a.textContent || '').trim().toLowerCase().includes('nâng cấp vip'));
+    if (el) return el;
+    el = document.querySelector('a[href*="vip" i]');
+    return el || null;
+  }
+
+  function insertAfterVip(vip){
+    if (document.getElementById('adminDashboardNavItem')) return;
+    const li = vip.closest('li');
+    const holder = document.createElement(li ? 'li' : 'span');
+    holder.id = 'adminDashboardNavItem';
+    holder.className = li ? 'nav-item ms-2' : 'ms-2';
+
+    const a = document.createElement('a');
+    a.href = '/admin';
+    a.textContent = '🛡️ Admin Dashboard';
+    // Bootstrap dark button for consistent look
+    a.className = 'btn btn-dark';
+    a.style.marginLeft = '8px';
+
+    holder.appendChild(a);
+    (li || vip).insertAdjacentElement('afterend', holder);
+  }
+
+  async function init(){
+    const isAdmin = await detectAdmin();
+    if (!isAdmin) return;
+
+    // immediate try
+    let vip = findVip();
+    if (vip) { insertAfterVip(vip); return; }
+
+    // observe late render + polling fallback
+    const obs = new MutationObserver(() => {
+      const v = findVip();
+      if (v) { insertAfterVip(v); obs.disconnect(); }
+    });
+    obs.observe(document.body, {childList: true, subtree: true});
+
+    let tries = 0;
+    const timer = setInterval(() => {
+      tries++;
+      vip = findVip();
+      if (vip) { insertAfterVip(vip); clearInterval(timer); obs.disconnect(); }
+      if (tries > 20) { clearInterval(timer); obs.disconnect(); }
+    }, 500);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+
 </body>
 </html>
