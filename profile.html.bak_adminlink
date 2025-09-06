@@ -71,29 +71,5 @@
     })();
     </script>
 
-
-<!-- Admin quick link (only for admin/superadmin) -->
-<script>
-(async ()=>{
-  try{
-    const token = localStorage.getItem('token') || localStorage.getItem('authToken');
-    if(!token) return;
-    const res = await fetch('/api/profile', { headers: { 'Authorization': 'Bearer ' + token } });
-    if(!res.ok) return;
-    const me = await res.json();
-    if(me && (me.role==='admin' || me.role==='superadmin')){
-      const btn = document.createElement('a');
-      btn.href = '/admin';
-      btn.textContent = 'Admin Panel';
-      btn.className = 'btn btn-sm btn-outline-light';
-      btn.style.marginLeft = '8px';
-      // Try to attach to navbar if exists
-      const nav = document.querySelector('nav .container, nav .navbar, nav .d-flex, nav, header, .topbar') || document.body;
-      (nav || document.body).appendChild(btn);
-    }
-  }catch(e){}
-})();
-</script>
-
 </body>
 </html>

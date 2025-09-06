@@ -58,6 +58,12 @@
               <input type="text" id="job" class="form-control" placeholder="VD: Kỹ sư, Kinh doanh...">
             </div>
           </div>
+          
+            <div class="col-md-6">
+              <label class="form-label">Số điện thoại</label>
+              <input type="text" id="phone" class="form-control" placeholder="VD: 0987123456" required>
+            </div>
+
           <button class="btn btn-pink w-100 mt-3" id="btnRegister"><i class="fa-solid fa-user-plus"></i> Đăng ký</button>
           <div class="text-center mt-3">
             Đã có tài khoản? <a href="login.html">Đăng nhập</a>
@@ -81,7 +87,7 @@
         const res = await fetch(`${API_BASE}/api/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, email, password, gender, income, job })
+          body: JSON.stringify({username, email, password, gender, income, job, phone })
         });
         const data = await res.json();
         if(res.ok){

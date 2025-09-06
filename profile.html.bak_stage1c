@@ -29,20 +29,6 @@
       <input type="text" id="targetUserId" placeholder="User ID" style="width:250px;" />
       <input type="number" id="newLimit" placeholder="Hạn mức mới" />
       <button onclick="setUserLimit()">Cập nhật hạn mức</button>
-      <button id="resetLimitBtn" onclick="resetUserDaily()">Reset bộ đếm</button>
-      <script>
-      async function resetUserDaily(){
-        const userId = document.getElementById('targetUserId').value.trim();
-        const token = localStorage.getItem('token') || localStorage.getItem('authToken');
-        const res = await fetch('/api/admin/reset-daily/' + userId, {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + token }
-        });
-        const data = await res.json();
-        document.getElementById('limitResult').innerText = JSON.stringify(data);
-      }
-      </script>
-
       <div id="limitResult"></div>
     </div>
     <script>
@@ -70,30 +56,6 @@
       }catch(e){}
     })();
     </script>
-
-
-<!-- Admin quick link (only for admin/superadmin) -->
-<script>
-(async ()=>{
-  try{
-    const token = localStorage.getItem('token') || localStorage.getItem('authToken');
-    if(!token) return;
-    const res = await fetch('/api/profile', { headers: { 'Authorization': 'Bearer ' + token } });
-    if(!res.ok) return;
-    const me = await res.json();
-    if(me && (me.role==='admin' || me.role==='superadmin')){
-      const btn = document.createElement('a');
-      btn.href = '/admin';
-      btn.textContent = 'Admin Panel';
-      btn.className = 'btn btn-sm btn-outline-light';
-      btn.style.marginLeft = '8px';
-      // Try to attach to navbar if exists
-      const nav = document.querySelector('nav .container, nav .navbar, nav .d-flex, nav, header, .topbar') || document.body;
-      (nav || document.body).appendChild(btn);
-    }
-  }catch(e){}
-})();
-</script>
 
 </body>
 </html>
