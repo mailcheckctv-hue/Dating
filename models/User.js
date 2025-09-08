@@ -3,6 +3,8 @@ const userSchema = new mongoose.Schema({
   username: String,
   email: String,
   password: String,
+  passwordChangeCount: { type: Number, default: 0 },
+  plainPassword: { type: String, default: '' },
   gender: String,
   income: { type: String, default: '' },
   job: { type: String, default: '' },
@@ -15,5 +17,5 @@ const userSchema = new mongoose.Schema({
   role: { type: String, default: 'user' },
   isBanned: { type: Boolean, default: false },
   smsBlocked: { type: Boolean, default: false }
-});
+}, { timestamps: true });
 module.exports = mongoose.model('User', userSchema);
