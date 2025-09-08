@@ -92,8 +92,8 @@ async function loadUsers(q){
     if(u.isBanned) banned++;
     if(u.smsBlocked) smsblocked++;
     const tr=document.createElement('tr');
-    tr.innerHTML = `<td>${u._id}</td><td>${u.email||'Chưa cập nhật'}</td><td>${u.username||'Chưa cập nhật'}</td>
-      <td>${u.income||'Chưa cập nhật'}</td><td>${u.job||'Chưa cập nhật'}</td><td>${u.phone||'Chưa cập nhật'}</td>
+    tr.innerHTML = `<td>${u._id}</td><td>${u.email||'-'}</td><td>${u.username||'-'}</td>
+      <td>${u.income||'-'}</td><td>${u.job||'-'}</td><td>${u.phone||'-'}</td>
       <td>${u.role||'user'}</td><td>${u.sentToday||0}</td>
       <td>${u.dailyLimit||0}</td><td>${u.weeklyLimit||0}</td><td>${u.monthlyLimit||0}</td><td>${u.yearlyLimit||0}</td>
       <td>
