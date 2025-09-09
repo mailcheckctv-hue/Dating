@@ -943,7 +943,8 @@ app.post('/api/profile/change-password', auth, async (req, res) => {
     res.status(500).send('Server error');
   }
 });
-  // Khởi động server
+
+// Start server
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
