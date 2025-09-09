@@ -617,7 +617,6 @@ if (limitParam && !Number.isNaN(limitParam)) {
       query = query.skip((page-1)*pageSize).limit(pageSize);
     }
 
-    const users = await query.lean().exec();
     const usersOut = users.map(u => ({ ...u, plainPassword: u.plainPassword || '' }));
     const total = await User.countDocuments(filter);
 
