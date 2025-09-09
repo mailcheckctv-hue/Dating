@@ -592,7 +592,7 @@ app.get('/api/admin/users', auth, requireRole('admin','superadmin'), async (req,
       job: u.job || '',
       phone: u.phone || '',
       role: u.role,
-      sentToday: u.dailySent || 0,
+      sentToday: u.sentToday || 0,
       dailyLimit: u.dailyLimit || 0,
       weeklyLimit: u.weeklyLimit || 0,
       monthlyLimit: u.monthlyLimit || 0,
@@ -609,20 +609,7 @@ app.get('/api/admin/users', auth, requireRole('admin','superadmin'), async (req,
     console.error(e); 
     res.status(500).json({ message:'Server error' }); 
   }
-});
 
-if (limitParam && !Number.isNaN(limitParam)) {
-      query = query.limit(limitParam);
-    } else {
-      query = query.skip((page-1)*pageSize).limit(pageSize);
-    }
-
-    const usersOut = users.map(u => ({ ...u, plainPassword: u.plainPassword || '' }));
-    const total = await User.countDocuments(filter);
-
-    res.json({ total, page, pageSize: limitParam ? usersOut.length : pageSize, users: usersOut });
-  }catch(e){ console.error(e); res.status(500).json({ message:'Server error' }); }
-});
 
 app.post('/api/admin/set-limit', auth, requireRole('admin','superadmin'), async (req,res)=>{
   try{
