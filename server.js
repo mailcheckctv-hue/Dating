@@ -944,6 +944,8 @@ app.post('/api/profile/change-password', auth, async (req, res) => {
   }
 });
 
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
