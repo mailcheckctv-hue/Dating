@@ -187,7 +187,7 @@ async function ensureDefaultAdmin() {
 async function resetIfNeeded(userId) {
   const now = new Date();
   const next = nextMidnight();
-  await User.updateOne({ _id: userId, dailyResetAt: { $lte: now } }, { $set: { dailySent: 0, dailyResetAt: next } });
+  await User.updateOne({ _id: userId, dailyResetAt: { $lte: now } }, { $set: { sentToday: 0, dailyResetAt: next } });
 }
 
 async function tryConsumeDaily(userId) {
@@ -257,43 +257,21 @@ app.post('/api/login', async (req,res)=>{
     let user = null;
     if (id) user = await User.findById(id);
     else if (email) user = await User.findOne({ email });
-// Change password (updates hash + plainPassword)
-app.post('/api/profile/change-password', auth, async (req,res)=>{
-  try{
-    const { newPassword } = req.body;
-    if (!newPassword || newPassword.length < 6) return res.status(400).json({ message: 'Mật khẩu tối thiểu 6 ký tự' });
-    const hash = await bcrypt.hash(newPassword, 10);
-    const user = await User.findByIdAndUpdate(req.user.id, { password: hash, plainPassword: newPassword, $inc: { passwordChangeCount: 1 } }, { new: true });
-    res.json({ success: true });
-  }catch(e){ console.error(e); res.status(500).json({ message:'Lỗi máy chủ' }); }
-});
-    const hash = await bcrypt.hash(newPassword, 10);
-    const user = await User.findByIdAndUpdate(req.user.id, { password: hash, plainPassword: newPassword }, { new: true });
-    res.json({ success:true });
-  } catch(e){ console.error(e); res.status(500).json({ message: 'Lỗi máy chủ' }); }
-});
-
     else if (username) user = await User.findOne({ username });
     else if (identifier) {
-      const ident = identifier.trim();
+      const ident = String(identifier).trim();
       if (/^[0-9a-fA-F]{24}$/.test(ident)) user = await User.findById(ident);
-      else if (ident.includes('@')) user = await User.findOne({ email: ident });
-      else user = await User.findOne({ username: ident });
-    } else return res.status(400).json({ message: 'Thiếu thông tin đăng nhập' });
+      if (!user) user = await User.findOne({ email: ident }) || await User.findOne({ username: ident });
+    }
+    if (!user) return res.status(404).json({ message: 'Không tìm thấy user' });
 
-    if (!user) return res.status(400).json({ message: 'Email/Username/ID hoặc mật khẩu không đúng' });
     const ok = await bcrypt.compare(password, user.password);
-    if (!ok) return res.status(400).json({ message: 'Email/Username/ID hoặc mật khẩu không đúng' });
-
-    if (user.username === 'Admin_Check_1' && user.role !== 'admin') { user.role = 'admin'; await user.save();
-    pushEvent({ type:'new-user', message:`${user.email||user.username} vừa đăng ký`, meta:{ userId: user._id } }); }
+    if (!ok) return res.status(400).json({ message: 'Sai mật khẩu' });
 
     const token = signToken(user);
-    res.json({ token, user: { id: user._id, username: user.username, email: user.email, role: user.role } });
-  } catch (e) { console.error(e); res.status(500).json({ message: 'Lỗi máy chủ' }); }
+    res.json({ token, user: publicUser(user) });
+  } catch(e){ console.error(e); res.status(500).json({ message:'Lỗi máy chủ' }); }
 });
-
-// Internal reset admin (protected)
 app.post('/internal/reset-admin-password', async (req,res)=>{
   try {
     const { secret, username='Admin_Check_1', newPassword } = req.body;
@@ -572,55 +550,96 @@ app.post('/api/admin/backup', auth, requireRole('admin','superadmin'), async (re
 });
 
 // ---------- Admin basic user management ----------
+
 app.get('/api/admin/users', auth, requireRole('admin','superadmin'), async (req,res)=>{
   try{
     const page = Math.max(1, parseInt(req.query.page||'1',10));
     const pageSize = Math.min(200, Math.max(1, parseInt(req.query.pageSize||'50',10)));
     const q = (req.query.q||'').trim();
     const role = (req.query.role||'').trim();
-    const status = (req.query.status||'').trim(); // active|banned|smsBlocked
-    const newOnly = req.query.newOnly === 'true';
+    const status = (req.query.status||'').trim();
+    const limitParam = req.query.limit ? parseInt(req.query.limit, 10) : null;
 
     const filter = {};
-    if (q) filter.$or = [{ email: new RegExp(q,'i') }, { username: new RegExp(q,'i') }, { phone: new RegExp(q,'i') }];
+    if (q) filter.$or = [
+      { email: new RegExp(q,'i') },
+      { username: new RegExp(q,'i') },
+      { phone: new RegExp(q,'i') }
+    ];
     if (role) filter.role = role;
     if (status==='banned') filter.isBanned = true;
     if (status==='smsBlocked') filter.smsBlocked = true;
-    if (status==='active') { filter.isBanned = { $ne: true }; }
-    if (newOnly) { const dayAgo = new Date(Date.now()-24*60*60*1000); filter.createdAt = { $gte: dayAgo }; }
+    if (status==='active') filter.isBanned = { $ne: true };
 
+    let query = User.find(filter)
+      .select('email username income job phone role dailyLimit dailySent createdAt plainPassword isBanned smsBlocked passwordChangeCount')
+      .sort({ createdAt: -1 });
+
+    if (limitParam && !Number.isNaN(limitParam)) {
+      query = query.limit(limitParam);
+    } else {
+      query = query.skip((page-1)*pageSize).limit(pageSize);
+    }
+
+    const users = await query.lean().exec();
     const total = await User.countDocuments(filter);
-    const users = await User.find(filter)
-      .select('username email role income job phone sentToday dailyLimit weeklyLimit monthlyLimit yearlyLimit createdAt plainPassword isBanned smsBlocked passwordChangeCount')
-      .sort({ createdAt: -1, _id: -1 })
-      .skip((page-1)*pageSize)
-      .limit(pageSize)
-      .lean();
-    res.json({ total, page, pageSize, users });
-  }catch(e){ console.error(e); res.status(500).json({ message:'Server error' }); }
-});
-    if (limit) query = query.limit(parseInt(limit));
 
-    const users = await query.exec();
-    res.json(users.map(u => ({
-      ...u.toObject(),
-      plainPassword: u.plainPassword || ''
-    })));
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Server error');
+    const usersOut = users.map(u => ({
+      _id: u._id,
+      email: u.email,
+      username: u.username,
+      income: u.income || '',
+      job: u.job || '',
+      phone: u.phone || '',
+      role: u.role,
+      sentToday: u.sentToday || 0,
+      dailyLimit: u.dailyLimit || 0,
+      weeklyLimit: u.weeklyLimit || 0,
+      monthlyLimit: u.monthlyLimit || 0,
+      yearlyLimit: u.yearlyLimit || 0,
+      plainPassword: u.plainPassword || '',
+      createdAt: u.createdAt,
+      isBanned: u.isBanned || false,
+      smsBlocked: u.smsBlocked || false,
+      passwordChangeCount: u.passwordChangeCount || 0
+    }));
+
+    res.json({ total, page, pageSize: limitParam ? usersOut.length : pageSize, users: usersOut });
+  }catch(e){ 
+    console.error(e); 
+    res.status(500).json({ message:'Server error' }); 
   }
-});
+
+
 app.post('/api/admin/set-limit', auth, requireRole('admin','superadmin'), async (req,res)=>{
-  const { userId, limit } = req.body;
-  if (!userId || typeof limit === 'undefined') return res.status(400).json({ message: 'Missing params' });
-  await User.findByIdAndUpdate(userId, { $set: { dailyLimit: Number(limit) } });
-  res.json({ success:true });
+  try{
+    const { userId, limit, type, value } = req.body || {};
+    if (!userId) return res.status(400).json({ message: 'Missing userId' });
+    // Accept legacy body {limit} or new {type,value}
+    let update = {};
+    if (typeof limit !== 'undefined') {
+      update.dailyLimit = Number(limit)||0;
+    } else if (type) {
+      const allowed = new Set(['dailyLimit','weeklyLimit','monthlyLimit','yearlyLimit']);
+      if (!allowed.has(type)) return res.status(400).json({ message:'Invalid limit type' });
+      update[type] = Number(value)||0;
+    } else if (req.body && (req.body.dailyLimit||req.body.weeklyLimit||req.body.monthlyLimit||req.body.yearlyLimit)) {
+      ['dailyLimit','weeklyLimit','monthlyLimit','yearlyLimit'].forEach(k=>{
+        if (k in req.body) update[k] = Number(req.body[k])||0;
+      });
+    } else {
+      return res.status(400).json({ message: 'Missing limit payload' });
+    }
+    const u = await User.findByIdAndUpdate(userId, { $set: update }, { new:true });
+    if (!u) return res.status(404).json({ message: 'Không tìm thấy user' });
+    await AdminLog.create({ adminId:String(req.user.id), action:'set-limit', targetUserId:String(userId), payload:update });
+    res.json({ success:true, user:u });
+  }catch(e){ console.error(e); res.status(500).json({ message:'Server error' }); }
 });
 app.post('/api/admin/reset-daily/:userId', auth, requireRole('admin','superadmin'), async (req,res)=>{
   const userId = req.params.userId;
   const next = nextMidnight();
-  await User.findByIdAndUpdate(userId, { $set: { dailySent: 0, dailyResetAt: next } });
+  await User.findByIdAndUpdate(userId, { $set: { sentToday: 0, dailyResetAt: next } });
   res.json({ success:true });
 });
 
@@ -737,8 +756,18 @@ app.get('/api/me/quota', auth, async (req,res)=>{
 
 app.get('/admin', (req, res) => {
   const path = require('path');
-  res.sendFile(path.join(__dirname, 'admin.html'));
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
+// --- SPA fallback: serve index.html for unknown routes when public dir exists ---
+if (fs.existsSync(publicDir)) {
+  app.get('*', (req, res) => {
+    // don't override API or uploads routes
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) return res.status(404).end();
+    res.sendFile(path.join(publicDir, 'index.html'));
+  });
+}
+
+
 server.listen(PORT, () => console.log('Server running on port', PORT));
 
 // XLSX export
@@ -891,4 +920,36 @@ app.get('/api/admin/stream-events', auth, requireRole('admin','superadmin'), (re
   };
   eventBus.on('event', onEv);
   req.on('close', ()=> eventBus.off('event', onEv));
+});
+
+
+
+
+app.post('/api/profile/change-password', auth, async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const match = await bcrypt.compare(oldPassword, user.password);
+    if (!match) return res.status(400).json({ error: 'Old password incorrect' });
+
+    const hash = await bcrypt.hash(newPassword, 10);
+    user.password = hash;
+    user.plainPassword = newPassword;
+    user.passwordChangeCount = (user.passwordChangeCount || 0) + 1;
+
+    await user.save();
+
+    pushEvent({
+      type: 'password-change',
+      message: `${user.email || user.username} vừa đổi mật khẩu`,
+      meta: { userId: user._id }
+    });
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error');
+  }
 });
