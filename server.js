@@ -953,3 +953,4 @@ app.post('/api/profile/change-password', auth, async (req, res) => {
     res.status(500).send('Server error');
   }
 });
+}
