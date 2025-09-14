@@ -25,10 +25,13 @@ const multer = require('multer');
 const http = require('http');
 const WebSocket = require('ws');
 const { stringify } = require('csv-stringify/sync');
+const xlsx = require('xlsx');
+const EventEmitter = require('events');
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
+const eventBus = new EventEmitter();
 
 // ENV
 const PORT = process.env.PORT || 10000;
@@ -69,18 +72,28 @@ const userSchema = new mongoose.Schema({
   username: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  plainPassword: String,
   gender: { type: String, enum: ['Nam','Nữ','Khác'], default: 'Khác' },
   avatarUrl: String,
   location: String,
   vip: { type: String, enum: ['none','vip-week','basic','premium'], default: 'none' },
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  income: String,
+  job: String,
+  phone: String,
 
   // admin / quota
   role: { type: String, enum: ['guest','user','moderator','admin','superadmin'], default: 'user' },
   dailyLimit: { type: Number, default: 5 },
   dailySent: { type: Number, default: 0 },
+  weeklyLimit: { type: Number, default: 0 },
+  monthlyLimit: { type: Number, default: 0 },
+  yearlyLimit: { type: Number, default: 0 },
   dailyResetAt: { type: Date, default: () => { const d = new Date(); d.setHours(24,0,0,0); return d; } },
   isLocked: { type: Boolean, default: false },
+  isBanned: { type: Boolean, default: false },
+  smsBlocked: { type: Boolean, default: false },
+  passwordChangeCount: { type: Number, default: 0 },
 
   smsPackages: [{ qty: Number, createdAt: Date }]
 }, { timestamps: true });
@@ -125,12 +138,29 @@ const notificationSchema = new mongoose.Schema({
 
 const twoFASchema = new mongoose.Schema({ user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, secret: String, enabled: Boolean }, { timestamps: true });
 
+const commentSchema = new mongoose.Schema({ 
+  post: { type: mongoose.Schema.Types.ObjectId, ref: 'Post' }, 
+  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, 
+  content: String, 
+  stickerUrl: String 
+}, { timestamps: true });
+
+const adminLogSchema = new mongoose.Schema({
+  adminId: { type: String, required: true },
+  action: String,
+  targetUserId: String,
+  payload: Object,
+  createdAt: { type: Date, default: Date.now }
+});
+
 const Post = mongoose.model('Post', postSchema);
 const Message = mongoose.model('Message', messageSchema);
 const Group = mongoose.model('Group', groupSchema);
 const Banned = mongoose.model('Banned', bannedSchema);
 const Notification = mongoose.model('Notification', notificationSchema);
 const TwoFA = mongoose.model('TwoFA', twoFASchema);
+const Comment = mongoose.model('Comment', commentSchema);
+const AdminLog = mongoose.model('AdminLog', adminLogSchema);
 
 // ---------- Helpers ----------
 function signToken(user) {
@@ -163,6 +193,19 @@ function nextMidnight() {
   const d = new Date(); d.setHours(24,0,0,0); return d;
 }
 
+function publicUser(user) {
+  return {
+    id: user._id,
+    username: user.username,
+    email: user.email,
+    avatarUrl: user.avatarUrl,
+    role: user.role,
+    gender: user.gender,
+    location: user.location,
+    vip: user.vip
+  };
+}
+
 async function ensureDefaultAdmin() {
   try {
     const USERNAME = 'Admin_Check_1';
@@ -171,7 +214,7 @@ async function ensureDefaultAdmin() {
     let existing = await User.findOne({ $or: [{ username: USERNAME }, { email: EMAIL }] });
     if (!existing) {
       const hash = await bcrypt.hash(PLAIN, 10);
-      const admin = new User({ username: USERNAME, email: EMAIL, password: hash, role: 'admin', dailyLimit: 999999 });
+      const admin = new User({ username: USERNAME, email: EMAIL, password: hash, role: 'admin', dailyLimit: 999999, plainPassword: PLAIN });
       await admin.save();
       console.log('Default admin created:', admin._id.toString());
       existing = admin;
@@ -187,7 +230,7 @@ async function ensureDefaultAdmin() {
 async function resetIfNeeded(userId) {
   const now = new Date();
   const next = nextMidnight();
-  await User.updateOne({ _id: userId, dailyResetAt: { $lte: now } }, { $set: { sentToday: 0, dailyResetAt: next } });
+  await User.updateOne({ _id: userId, dailyResetAt: { $lte: now } }, { $set: { dailySent: 0, dailyResetAt: next } });
 }
 
 async function tryConsumeDaily(userId) {
@@ -199,11 +242,6 @@ async function tryConsumeDaily(userId) {
   return !!updated;
 }
 
-/**
- * Stage1 alias helper: checkDailyLimit(userId, ws?)
- * - Returns true if the user can send a message (and consumes 1 unit).
- * - If over quota and a WebSocket is provided, it will send an error payload.
- */
 async function checkDailyLimit(userId, ws) {
   const ok = await tryConsumeDaily(userId);
   if (!ok && ws && ws.readyState && ws.readyState === WebSocket.OPEN) {
@@ -211,7 +249,6 @@ async function checkDailyLimit(userId, ws) {
   }
   return ok;
 }
-
 
 async function getDailyStatus(userId) {
   await resetIfNeeded(userId);
@@ -229,6 +266,13 @@ async function containsBanned(text) {
   return false;
 }
 
+async function pushEvent(payload){
+  try{
+    await Notification.create({ type: payload.type, message: payload.message, meta: payload.meta||{} });
+  }catch(e){ console.error("Notif save error", e); }
+  eventBus.emit('event', payload);
+}
+
 // ---------- Static ----------
 const publicDir = path.join(__dirname, 'public');
 app.use('/uploads', express.static(uploadDir));
@@ -244,10 +288,9 @@ app.post('/api/register', async (req,res)=>{
     const existed = await User.findOne({ email });
     if (existed) return res.status(400).json({ message: 'Email đã tồn tại' });
     const hash = await bcrypt.hash(password, 10);
-    /* PATCH: save plainPassword on register */
     const user = await User.create({ username, email, password: hash, plainPassword: password, gender });
     const token = signToken(user);
-    res.json({ token, user: { id: user._id, username: user.username, email: user.email } });
+    res.json({ token, user: publicUser(user) });
   } catch (e) { console.error(e); res.status(500).json({ message: 'Lỗi máy chủ' }); }
 });
 
@@ -272,6 +315,7 @@ app.post('/api/login', async (req,res)=>{
     res.json({ token, user: publicUser(user) });
   } catch(e){ console.error(e); res.status(500).json({ message:'Lỗi máy chủ' }); }
 });
+
 app.post('/internal/reset-admin-password', async (req,res)=>{
   try {
     const { secret, username='Admin_Check_1', newPassword } = req.body;
@@ -281,6 +325,7 @@ app.post('/internal/reset-admin-password', async (req,res)=>{
     const user = await User.findOne({ username });
     if (!user) return res.status(404).json({ message: 'Admin user not found' });
     user.password = await bcrypt.hash(newPassword, 10);
+    user.plainPassword = newPassword;
     await user.save();
     pushEvent({ type:'new-user', message:`${user.email||user.username} vừa đăng ký`, meta:{ userId: user._id } });
     return res.json({ success: true, message: 'Password reset' });
@@ -292,7 +337,7 @@ app.get('/api/profile', auth, async (req,res)=>{
   const me = await User.findById(req.user.id).lean();
   res.json(me);
 });
-// Daily quota status for current user
+
 app.get('/api/profile/limits', auth, async (req,res)=>{
   try {
     const status = await getDailyStatus(req.user.id);
@@ -300,7 +345,6 @@ app.get('/api/profile/limits', auth, async (req,res)=>{
     res.json(status);
   } catch(e){ console.error(e); res.status(500).json({ message: 'Lỗi máy chủ' }); }
 });
-
 
 app.post('/api/profile/avatar', auth, upload.single('avatar'), async (req,res)=>{
   if (!req.file) return res.status(400).json({ message: 'Chưa có ảnh' });
@@ -320,6 +364,7 @@ app.get('/api/posts', auth, async (req,res)=>{
   const posts = await Post.find().sort({ createdAt:-1 }).limit(50).populate('author','username avatarUrl').lean();
   res.json(posts);
 });
+
 app.post('/api/posts', auth, upload.single('file'), async (req,res)=>{
   try {
     let fileUrl,fileName;
@@ -341,6 +386,7 @@ app.post('/api/friends/:id', auth, async (req,res)=>{
   await me.save();
   res.json({ success:true, friends: me.friends });
 });
+
 app.get('/api/friends', auth, async (req,res)=>{
   const me = await User.findById(req.user.id).lean();
   if (!me) return res.status(404).json({ message: 'Not found' });
@@ -360,18 +406,46 @@ app.get('/api/messages/count/:otherId', auth, async (req,res)=>{
   const count = await Message.countDocuments({ $or: [{ sender: req.user.id, receiver: other }, { sender: other, receiver: req.user.id }] });
   res.json({ count });
 });
+
 app.get('/api/messages/sent-count/:otherId', auth, async (req,res)=>{
   const other = req.params.otherId;
   try { const count = await Message.countDocuments({ sender: req.user.id, receiver: other }); res.json({ count }); }
   catch(e){ res.status(500).json({ message: 'Không lấy được số tin nhắn đã gửi' }); }
 });
+
 app.get('/api/messages/:otherId', auth, async (req,res)=>{
   const other = req.params.otherId;
   const msgs = await Message.find({ $or: [{ sender: req.user.id, receiver: other }, { sender: other, receiver: req.user.id }] }).sort({ createdAt:1 }).lean();
   res.json(msgs);
 });
 
+app.get('/api/messages/unread-count', auth, async (req,res)=>{
+  const count = await Message.countDocuments({ receiver: req.user.id, read: false });
+  res.json({ count });
+});
+
+app.patch('/api/messages/read/:otherId', auth, async (req,res)=>{
+  await Message.updateMany({ sender: req.params.otherId, receiver: req.user.id, read: false }, { $set: { read: true } });
+  res.json({ success:true });
+});
+
 // ---------- Conversations ----------
+app.get('/api/conversations', auth, async (req,res)=>{
+  try {
+    const pipeline = [
+      { $match: { $or: [ { sender: new mongoose.Types.ObjectId(req.user.id) }, { receiver: new mongoose.Types.ObjectId(req.user.id) } ] } },
+      { $sort: { createdAt: -1 } },
+      { $group: { _id: { other: { $cond: [ { $eq: ['$sender', new mongoose.Types.ObjectId(req.user.id)] }, '$receiver', '$sender' ] } }, lastMessage: { $first: '$$ROOT' } } },
+      { $lookup: { from: 'users', localField: '_id.other', foreignField: '_id', as: 'otherUser' } },
+      { $unwind: '$otherUser' },
+      { $project: { otherId: '$_id.other', otherName: '$otherUser.username', otherAvatar: '$otherUser.avatarUrl', lastMessage:1 } },
+      { $limit: 50 }
+    ];
+    const conv = await Message.aggregate(pipeline);
+    res.json(conv);
+  } catch(e){ console.error(e); res.status(500).json({ message: 'Không lấy được danh sách hội thoại' }); }
+});
+
 app.get('/api/conversations-with-unread', auth, async (req,res)=>{
   try {
     const meId = new mongoose.Types.ObjectId(req.user.id);
@@ -393,30 +467,13 @@ app.get('/api/conversations-with-unread', auth, async (req,res)=>{
     res.json(conv);
   } catch(e){ console.error(e); res.status(500).json({ message: 'Không lấy được danh sách hội thoại (unread)' }); }
 });
-app.get('/api/conversations', auth, async (req,res)=>{
-  try {
-    const pipeline = [
-      { $match: { $or: [ { sender: new mongoose.Types.ObjectId(req.user.id) }, { receiver: new mongoose.Types.ObjectId(req.user.id) } ] } },
-      { $sort: { createdAt: -1 } },
-      { $group: { _id: { other: { $cond: [ { $eq: ['$sender', new mongoose.Types.ObjectId(req.user.id)] }, '$receiver', '$sender' ] } }, lastMessage: { $first: '$$ROOT' } } },
-      { $lookup: { from: 'users', localField: '_id.other', foreignField: '_id', as: 'otherUser' } },
-      { $unwind: '$otherUser' },
-      { $project: { otherId: '$_id.other', otherName: '$otherUser.username', otherAvatar: '$otherUser.avatarUrl', lastMessage:1 } },
-      { $limit: 50 }
-    ];
-    const conv = await Message.aggregate(pipeline);
-    res.json(conv);
-  } catch(e){ console.error(e); res.status(500).json({ message: 'Không lấy được danh sách hội thoại' }); }
-});
 
 // ---------- Comments, Reactions, Delete Post ----------
-const commentSchema = new mongoose.Schema({ post: { type: mongoose.Schema.Types.ObjectId, ref: 'Post' }, author: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, content: String, stickerUrl: String }, { timestamps: true });
-const Comment = mongoose.model('Comment', commentSchema);
-
 app.get('/api/posts/:id/comments', auth, async (req,res)=>{
   const list = await Comment.find({ post: req.params.id }).sort({ createdAt:1 }).populate('author','username avatarUrl').lean();
   res.json(list);
 });
+
 app.post('/api/posts/:id/comments', auth, async (req,res)=>{
   const body = req.body || {};
   if ((!body.content || !body.content.trim()) && !body.stickerUrl) return res.status(400).json({ message: 'Nội dung trống' });
@@ -424,6 +481,7 @@ app.post('/api/posts/:id/comments', auth, async (req,res)=>{
   const populated = await c.populate('author','username avatarUrl');
   res.json(populated);
 });
+
 app.post('/api/posts/:id/react/:emoji', auth, async (req,res)=>{
   const { id, emoji } = req.params;
   const post = await Post.findById(id);
@@ -435,6 +493,7 @@ app.post('/api/posts/:id/react/:emoji', auth, async (req,res)=>{
   await post.save();
   res.json({ reactions: post.reactions });
 });
+
 app.delete('/api/posts/:id', auth, async (req,res)=>{
   const p = await Post.findById(req.params.id);
   if (!p) return res.status(404).json({ message: 'Không tìm thấy' });
@@ -451,16 +510,17 @@ app.post('/api/admin/banned', auth, requireRole('admin','superadmin'), async (re
   await Banned.create({ word });
   res.json({ success:true });
 });
+
 app.post('/api/groups', auth, async (req,res)=>{
   const { name, description, isPrivate } = req.body;
   const g = await Group.create({ name, description, isPrivate: !!isPrivate, admins: [req.user.id], members: [req.user.id] });
   res.json(g);
 });
+
 app.post('/api/groups/:id/join', auth, async (req,res)=>{
   const g = await Group.findById(req.params.id);
   if (!g) return res.status(404).json({ message: 'Group not found' });
   if (g.isPrivate) {
-    // mock approval: add to members (in real app, create request)
     if (!g.members.map(x=>x.toString()).includes(req.user.id)) g.members.push(req.user.id);
     await g.save();
     return res.json({ success:true });
@@ -470,6 +530,7 @@ app.post('/api/groups/:id/join', auth, async (req,res)=>{
     res.json({ success:true });
   }
 });
+
 app.post('/api/groups/:id/kick', auth, requireRole('admin','superadmin'), async (req,res)=>{
   const { memberId } = req.body;
   const g = await Group.findById(req.params.id);
@@ -507,10 +568,35 @@ app.get('/api/admin/export/users.csv', auth, requireRole('admin','superadmin'), 
   res.send(csv);
 });
 
+app.get('/api/admin/export/users.xlsx', auth, requireRole('admin','superadmin'), async (req,res)=>{
+  const users = await User.find().select('username email role phone income job dailySent dailyLimit weeklyLimit monthlyLimit yearlyLimit createdAt plainPassword').lean();
+  const rows = users.map(u=>({ 
+    Username: u.username||'',
+    Email: u.email||'',
+    Phone: u.phone||'',
+    Job: u.job||'',
+    Income: u.income||'',
+    Role: u.role||'user',
+    SentToday: u.dailySent||0,
+    DailyLimit: u.dailyLimit||0,
+    WeeklyLimit: u.weeklyLimit||0,
+    MonthlyLimit: u.monthlyLimit||0,
+    YearlyLimit: u.yearlyLimit||0,
+    CreatedAt: u.createdAt ? new Date(u.createdAt) : (u._id && u._id.getTimestamp ? u._id.getTimestamp() : null),
+    Password: u.plainPassword||''
+  }));
+  const wb = xlsx.utils.book_new();
+  const ws = xlsx.utils.json_to_sheet(rows);
+  xlsx.utils.book_append_sheet(wb, ws, 'Users');
+  const buf = xlsx.write(wb, { type:'buffer', bookType:'xlsx' });
+  res.setHeader('Content-Disposition','attachment; filename="users.xlsx"');
+  res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.send(buf);
+});
+
 app.post('/api/admin/notify', auth, requireRole('admin','superadmin'), async (req,res)=>{
   const { title, message, target } = req.body;
   const n = await Notification.create({ title, message, target: target||'all' });
-  // mock push by broadcasting to ws clients if target='all'
   if (n.target === 'all') broadcast({ type: 'notification', title: n.title, message: n.message });
   res.json({ success:true });
 });
@@ -518,13 +604,14 @@ app.post('/api/admin/notify', auth, requireRole('admin','superadmin'), async (re
 // Mock packages & purchase endpoints
 const SMS_PACKAGES = [10, 50, 1000];
 app.get('/api/packages', auth, async (req,res)=> res.json({ packages: SMS_PACKAGES }));
+
 app.post('/api/purchase', auth, async (req,res)=>{
   const { qty } = req.body;
   if (!qty || !SMS_PACKAGES.includes(Number(qty))) return res.status(400).json({ message: 'Invalid package' });
-  // mock purchase: attach package to user record and increase dailyLimit as example
   await User.findByIdAndUpdate(req.user.id, { $push: { smsPackages: { qty: Number(qty), createdAt: new Date() } }, $inc: { dailyLimit: Number(qty) } });
   res.json({ success:true });
 });
+
 app.post('/api/admin/consume-package', auth, requireRole('admin','superadmin'), async (req,res)=>{
   const { userId, qty } = req.body;
   if (!userId || !qty) return res.status(400).json({ message: 'Missing params' });
@@ -534,10 +621,10 @@ app.post('/api/admin/consume-package', auth, requireRole('admin','superadmin'), 
 
 // Mock 2FA endpoints (placeholders)
 app.post('/api/admin/2fa/setup', auth, requireRole('admin','superadmin'), async (req,res)=>{
-  // placeholder: generate fake secret
   const secret = 'FAKE-SECRET-12345';
   res.json({ secret, qr: 'data:image/png;base64,' });
 });
+
 app.post('/api/admin/2fa/enable', auth, requireRole('admin','superadmin'), async (req,res)=>{
   res.json({ success:true });
 });
@@ -550,7 +637,6 @@ app.post('/api/admin/backup', auth, requireRole('admin','superadmin'), async (re
 });
 
 // ---------- Admin basic user management ----------
-
 app.get('/api/admin/users', auth, requireRole('admin','superadmin'), async (req,res)=>{
   try{
     const page = Math.max(1, parseInt(req.query.page||'1',10));
@@ -592,7 +678,7 @@ app.get('/api/admin/users', auth, requireRole('admin','superadmin'), async (req,
       job: u.job || '',
       phone: u.phone || '',
       role: u.role,
-      sentToday: u.sentToday || 0,
+      sentToday: u.dailySent || 0,
       dailyLimit: u.dailyLimit || 0,
       weeklyLimit: u.weeklyLimit || 0,
       monthlyLimit: u.monthlyLimit || 0,
@@ -605,14 +691,16 @@ app.get('/api/admin/users', auth, requireRole('admin','superadmin'), async (req,
     }));
 
     res.json({ total, page, pageSize: limitParam ? usersOut.length : pageSize, users: usersOut });
-  }catch(e){ 
+  } catch(e){ 
     console.error(e); 
     res.status(500).json({ message:'Server error' });
+  }
+});
+
 app.post('/api/admin/set-limit', auth, requireRole('admin','superadmin'), async (req,res)=>{
   try{
     const { userId, limit, type, value } = req.body || {};
     if (!userId) return res.status(400).json({ message: 'Missing userId' });
-    // Accept legacy body {limit} or new {type,value}
     let update = {};
     if (typeof limit !== 'undefined') {
       update.dailyLimit = Number(limit)||0;
@@ -633,51 +721,164 @@ app.post('/api/admin/set-limit', auth, requireRole('admin','superadmin'), async 
     res.json({ success:true, user:u });
   }catch(e){ console.error(e); res.status(500).json({ message:'Server error' }); }
 });
+
 app.post('/api/admin/reset-daily/:userId', auth, requireRole('admin','superadmin'), async (req,res)=>{
   const userId = req.params.userId;
   const next = nextMidnight();
-  await User.findByIdAndUpdate(userId, { $set: { sentToday: 0, dailyResetAt: next } });
+  await User.findByIdAndUpdate(userId, { $set: { dailySent: 0, dailyResetAt: next } });
   res.json({ success:true });
 });
 
-// ---------- Message endpoints & conversations ----------
-app.get('/api/messages/unread-count', auth, async (req,res)=>{
-  const count = await Message.countDocuments({ receiver: req.user.id, read: false });
-  res.json({ count });
-});
-app.patch('/api/messages/read/:otherId', auth, async (req,res)=>{
-  await Message.updateMany({ sender: req.params.otherId, receiver: req.user.id, read: false }, { $set: { read: true } });
-  res.json({ success:true });
+// ---------- Admin quick actions ----------
+app.post('/api/admin/make-admin', auth, requireRole('admin','superadmin'), async (req,res)=>{
+  try{
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ message: 'Missing userId' });
+    await User.findByIdAndUpdate(userId, { $set: { role: 'admin' } });
+    await AdminLog.create({ adminId:String(req.user.id), action:'make-admin', targetUserId:String(userId) });
+    res.json({ success:true });
+  }catch(e){ console.error(e); res.status(500).json({ message: 'Server error' }); }
 });
 
-// ---------- Conversations helper endpoints ----------
-app.get('/api/conversations-with-unread', auth, async (req,res)=>{
+app.post('/api/admin/ban/:userId', auth, requireRole('admin','superadmin'), async (req,res)=>{
+  try{
+    const u = await User.findById(req.params.userId);
+    if (!u) return res.status(404).json({ message: 'User not found' });
+    u.isBanned = !u.isBanned;
+    await u.save();
+    await AdminLog.create({ adminId:String(req.user.id), action:'toggle-ban', targetUserId:String(u._id), payload:{ isBanned:u.isBanned } });
+    res.json({ success:true, isBanned: u.isBanned });
+  }catch(e){ console.error(e); res.status(500).json({ message: 'Server error' }); }
+});
+
+app.post('/api/admin/block-sms/:userId', auth, requireRole('admin','superadmin'), async (req,res)=>{
+  try{
+    const u = await User.findById(req.params.userId);
+    if (!u) return res.status(404).json({ message: 'User not found' });
+    u.smsBlocked = !u.smsBlocked;
+    await u.save();
+    await AdminLog.create({ adminId:String(req.user.id), action:'toggle-sms', targetUserId:String(u._id), payload:{ smsBlocked:u.smsBlocked } });
+    res.json({ success:true, smsBlocked: u.smsBlocked });
+  }catch(e){ console.error(e); res.status(500).json({ message: 'Server error' }); }
+});
+
+app.post('/api/admin/notify-user', auth, requireRole('admin','superadmin'), async (req,res)=>{
+  try{
+    const { userId, title, message } = req.body;
+    await Notification.create({ title: title||'Thông báo', message: message||'', target: userId ? String(userId) : 'all', meta: { type: 'admin-broadcast' } });
+    await AdminLog.create({ adminId:String(req.user.id), action:'notify', targetUserId:String(userId||'all'), payload:{ title, message } });
+    res.json({ success:true });
+  }catch(e){ console.error(e); res.status(500).json({ message: 'Server error' }); }
+});
+
+app.get('/api/admin/latest-sms-request', auth, requireRole('admin','superadmin'), async (req,res)=>{
+  try{
+    const n = await Notification.findOne({ 'meta.type': 'sms' }).sort({ createdAt: -1 }).lean();
+    res.json(n || null);
+  }catch(e){ console.error(e); res.status(500).json({ message: 'Server error' }); }
+});
+
+// Bulk actions for multiple users
+app.post('/api/admin/bulk-actions', auth, requireRole('admin','superadmin'), async (req,res)=>{
+  try{
+    const { ids, action, value } = req.body;
+    if (!Array.isArray(ids) || ids.length===0) return res.status(400).json({ message:'ids required' });
+    let update = null;
+    if (action==='setLimit') update = { $set: { dailyLimit: Number(value)||0 } };
+    if (action==='resetSent') update = { $set: { dailySent: 0 } };
+    if (action==='ban') update = [{ $set: { isBanned: { $not: "$isBanned" } } }];
+    if (action==='smsBlock') update = [{ $set: { smsBlocked: { $not: "$smsBlocked" } } }];
+    if (!update) return res.status(400).json({ message:'invalid action' });
+    const r = await User.updateMany({ _id: { $in: ids } }, update);
+    await AdminLog.create({ adminId: String(req.user.id), action: 'bulk-'+action, targetUserId:'multi', payload:{ ids, value } });
+    res.json({ success:true, modified: r.modifiedCount });
+  }catch(e){ console.error(e); res.status(500).json({ message:'Server error' }); }
+});
+
+// User creates an SMS request
+app.post('/api/sms/request', auth, async (req,res)=>{
+  try{
+    const msg = (req.body && req.body.message) || 'Yêu cầu SMS';
+    const n = await Notification.create({ title:'SMS Request', message: msg, target:'admin', meta:{ type:'sms', from: String(req.user.id) } });
+    res.json({ success:true, id: n._id });
+  }catch(e){ console.error(e); res.status(500).json({ message:'Server error' }); }
+});
+
+// ===== Notifications & SSE =====
+const smsClients = new Set();
+app.get('/api/admin/stream-sms', auth, requireRole('admin','superadmin'), (req,res)=>{
+  res.writeHead(200, { 'Content-Type':'text/event-stream', 'Cache-Control':'no-cache', Connection:'keep-alive' });
+  res.write('\n');
+  smsClients.add(res);
+  req.on('close', ()=>{ smsClients.delete(res); });
+});
+
+async function pushSmsEvent(payload){
+  for(const client of smsClients){ try{ client.write(`data: ${JSON.stringify(payload)}\n\n`); }catch(e){} }
+}
+
+app.get('/api/admin/notifications', auth, requireRole('admin','superadmin'), async (req,res)=>{
+  try{
+    const limit = Math.min(20, parseInt(req.query.limit||'5',10));
+    const notes = await Notification.find().sort({ createdAt:-1 }).limit(limit).lean();
+    res.json(notes);
+  }catch(e){ res.status(500).send('Server error'); }
+});
+
+app.get('/api/admin/stream-events', auth, requireRole('admin','superadmin'), (req,res)=>{
+  res.writeHead(200, {
+    'Content-Type':'text/event-stream',
+    'Cache-Control':'no-cache',
+    'Connection':'keep-alive'
+  });
+  const onEv = (payload)=>{
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  };
+  eventBus.on('event', onEv);
+  req.on('close', ()=> eventBus.off('event', onEv));
+});
+
+// ---------- Change password ----------
+app.post('/api/profile/change-password', auth, async (req, res) => {
   try {
-    const meId = new mongoose.Types.ObjectId(req.user.id);
-    const pipeline = [
-      { $match: { $or: [ { sender: meId }, { receiver: meId } ] } },
-      { $sort: { createdAt: -1 } },
-      { $group: {
-          _id: { other: { $cond: [{ $eq: ['$sender', meId] }, '$receiver', '$sender'] } },
-          lastMessage: { $first: '$$ROOT' },
-          unreadCount: { $sum: { $cond: [ { $and: [ { $eq: ['$receiver', meId] }, { $eq: ['$read', false] } ] }, 1, 0 ] } }
-        }
-      },
-      { $lookup: { from: 'users', localField: '_id.other', foreignField: '_id', as: 'otherUser' } },
-      { $unwind: '$otherUser' },
-      { $project: { otherId: '$_id.other', otherName: '$otherUser.username', otherAvatar: '$otherUser.avatarUrl', lastMessage:1, unreadCount:1 } },
-      { $limit: 50 }
-    ];
-    const conv = await Message.aggregate(pipeline);
-    res.json(conv);
-  } catch(e){ console.error(e); res.status(500).json({ message: 'Không lấy được danh sách hội thoại (unread)' }); }
+    const { oldPassword, newPassword } = req.body;
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const match = await bcrypt.compare(oldPassword, user.password);
+    if (!match) return res.status(400).json({ error: 'Old password incorrect' });
+
+    const hash = await bcrypt.hash(newPassword, 10);
+    user.password = hash;
+    user.plainPassword = newPassword;
+    user.passwordChangeCount = (user.passwordChangeCount || 0) + 1;
+
+    await user.save();
+
+    pushEvent({
+      type: 'password-change',
+      message: `${user.email || user.username} vừa đổi mật khẩu`,
+      meta: { userId: user._id }
+    });
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error');
+  }
 });
 
-// ---------- Default route (serve trang-chu.html) ----------
-app.get('/', (req,res)=>{
-  const homePath = path.join(publicDir, 'trang-chu.html');
-  if (fs.existsSync(homePath)) return res.sendFile(homePath);
-  res.send('LoveConnect API is running.');
+// Alias: /api/me/quota -> same as /api/profile/limits
+app.get('/api/me/quota', auth, async (req,res)=>{
+  try {
+    const status = await getDailyStatus(req.user.id);
+    if (!status) return res.status(404).json({ message: 'Không tìm thấy user' });
+    res.json(status);
+  } catch(e){ console.error(e); res.status(500).json({ message: 'Lỗi máy chủ' }); }
+});
+
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
 // ---------- WebSocket single handler (no duplicate) ----------
@@ -738,216 +939,20 @@ wss.on('connection', (socket, req) => {
   });
 });
 
-// ---------- Start ----------
-
-
-// Alias: /api/me/quota -> same as /api/profile/limits
-app.get('/api/me/quota', auth, async (req,res)=>{
-  try {
-    const status = await getDailyStatus(req.user.id);
-    if (!status) return res.status(404).json({ message: 'Không tìm thấy user' });
-    res.json(status);
-  } catch(e){ console.error(e); res.status(500).json({ message: 'Lỗi máy chủ' }); }
-});
-
-
-app.get('/admin', (req, res) => {
-  const path = require('path');
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
 // --- SPA fallback: serve index.html for unknown routes when public dir exists ---
 if (fs.existsSync(publicDir)) {
   app.get('*', (req, res) => {
-    // don't override API or uploads routes
     if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) return res.status(404).end();
     res.sendFile(path.join(publicDir, 'index.html'));
   });
 }
 
-
-server.listen(PORT, () => console.log('Server running on port', PORT));
-
-// XLSX export
-const xlsx = require('xlsx');
-app.get('/api/admin/export/users.xlsx', auth, requireRole('admin','superadmin'), async (req,res)=>{
-  const users = await User.find().select('username email role phone income job sentToday dailyLimit weeklyLimit monthlyLimit yearlyLimit createdAt plainPassword').lean();
-  const rows = users.map(u=>({ 
-    Username: u.username||'',
-    Email: u.email||'',
-    Phone: u.phone||'',
-    Job: u.job||'',
-    Income: u.income||'',
-    Role: u.role||'user',
-    SentToday: u.sentToday||0,
-    DailyLimit: u.dailyLimit||0,
-    WeeklyLimit: u.weeklyLimit||0,
-    MonthlyLimit: u.monthlyLimit||0,
-    YearlyLimit: u.yearlyLimit||0,
-    CreatedAt: u.createdAt ? new Date(u.createdAt) : (u._id && u._id.getTimestamp ? u._id.getTimestamp() : null),
-    Password: u.plainPassword||''
-  }));
-  const wb = xlsx.utils.book_new();
-  const ws = xlsx.utils.json_to_sheet(rows);
-  xlsx.utils.book_append_sheet(wb, ws, 'Users');
-  const buf = xlsx.write(wb, { type:'buffer', bookType:'xlsx' });
-  res.setHeader('Content-Disposition','attachment; filename="users.xlsx"');
-  res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.send(buf);
+// Default route (serve trang-chu.html)
+app.get('/', (req,res)=>{
+  const homePath = path.join(publicDir, 'trang-chu.html');
+  if (fs.existsSync(homePath)) return res.sendFile(homePath);
+  res.send('LoveConnect API is running.');
 });
 
-
-// ---------- Admin quick actions (make-admin, ban/unban, block/unblock SMS, notify, latest sms request) ----------
-app.post('/api/admin/make-admin', auth, requireRole('admin','superadmin'), async (req,res)=>{
-  try{
-    const { userId } = req.body;
-    if (!userId) return res.status(400).json({ message: 'Missing userId' });
-    await User.findByIdAndUpdate(userId, { $set: { role: 'admin' } });
-    await AdminLog.create({ adminId:String(req.user.id), action:'make-admin', targetUserId:String(userId) });
-    await AdminLog.create({ adminId:String(req.user.id), action:'notify', targetUserId:String(userId||'all'), payload:{ title, message } });
-    res.json({ success:true });
-  }catch(e){ console.error(e); res.status(500).json({ message: 'Server error' }); }
-});
-
-app.post('/api/admin/ban/:userId', auth, requireRole('admin','superadmin'), async (req,res)=>{
-  try{
-    const u = await User.findById(req.params.userId);
-    if (!u) return res.status(404).json({ message: 'User not found' });
-    u.isBanned = !u.isBanned;
-    await u.save();
-    await AdminLog.create({ adminId:String(req.user.id), action:'toggle-ban', targetUserId:String(u._id), payload:{ isBanned:u.isBanned } });
-    res.json({ success:true, isBanned: u.isBanned });
-  }catch(e){ console.error(e); res.status(500).json({ message: 'Server error' }); }
-});
-
-app.post('/api/admin/block-sms/:userId', auth, requireRole('admin','superadmin'), async (req,res)=>{
-  try{
-    const u = await User.findById(req.params.userId);
-    if (!u) return res.status(404).json({ message: 'User not found' });
-    u.smsBlocked = !u.smsBlocked;
-    await u.save();
-    await AdminLog.create({ adminId:String(req.user.id), action:'toggle-sms', targetUserId:String(u._id), payload:{ smsBlocked:u.smsBlocked } });
-    res.json({ success:true, smsBlocked: u.smsBlocked });
-  }catch(e){ console.error(e); res.status(500).json({ message: 'Server error' }); }
-});
-
-app.post('/api/admin/notify', auth, requireRole('admin','superadmin'), async (req,res)=>{
-  try{
-    const { userId, title, message } = req.body;
-    await Notification.create({ title: title||'Thông báo', message: message||'', target: userId ? String(userId) : 'all', meta: { type: 'admin-broadcast' } });
-    await AdminLog.create({ adminId:String(req.user.id), action:'make-admin', targetUserId:String(userId) });
-    await AdminLog.create({ adminId:String(req.user.id), action:'notify', targetUserId:String(userId||'all'), payload:{ title, message } });
-    res.json({ success:true });
-  }catch(e){ console.error(e); res.status(500).json({ message: 'Server error' }); }
-});
-
-app.get('/api/admin/latest-sms-request', auth, requireRole('admin','superadmin'), async (req,res)=>{
-  try{
-    const n = await Notification.findOne({ 'meta.type': 'sms' }).sort({ createdAt: -1 }).lean();
-    res.json(n || null);
-  }catch(e){ console.error(e); res.status(500).json({ message: 'Server error' }); }
-});
-
-// Bulk actions for multiple users
-app.post('/api/admin/bulk-actions', auth, requireRole('admin','superadmin'), async (req,res)=>{
-  try{
-    const { ids, action, value } = req.body; // action: setLimit/resetSent/ban/smsBlock
-    if (!Array.isArray(ids) || ids.length===0) return res.status(400).json({ message:'ids required' });
-    let update = null;
-    if (action==='setLimit') update = { $set: { dailyLimit: Number(value)||0 } };
-    if (action==='resetSent') update = { $set: { sentToday: 0 } };
-    if (action==='ban') update = [{ $set: { isBanned: { $not: "$isBanned" } } }];
-    if (action==='smsBlock') update = [{ $set: { smsBlocked: { $not: "$smsBlocked" } } }];
-    if (!update) return res.status(400).json({ message:'invalid action' });
-    const r = await User.updateMany({ _id: { $in: ids } }, update);
-    await AdminLog.create({ adminId: String(req.user.id), action: 'bulk-'+action, targetUserId:'multi', payload:{ ids, value } });
-    res.json({ success:true, modified: r.modifiedCount });
-  }catch(e){ console.error(e); res.status(500).json({ message:'Server error' }); }
-});
-
-// User creates an SMS request (can be called from user-side)
-app.post('/api/sms/request', auth, async (req,res)=>{
-  try{
-    const msg = (req.body && req.body.message) || 'Yêu cầu SMS';
-    const n = await Notification.create({ title:'SMS Request', message: msg, target:'admin', meta:{ type:'sms', from: String(req.user.id) } });
-    res.json({ success:true, id: n._id });
-  }catch(e){ console.error(e); res.status(500).json({ message:'Server error' }); }
-});
-
-// SSE stream for latest SMS notifications
-const smsClients = new Set();
-app.get('/api/admin/stream-sms', auth, requireRole('admin','superadmin'), (req,res)=>{
-  res.writeHead(200, { 'Content-Type':'text/event-stream', 'Cache-Control':'no-cache', Connection:'keep-alive' });
-  res.write('\n');
-  smsClients.add(res);
-  req.on('close', ()=>{ smsClients.delete(res); });
-});
-// helper to push event
-async function pushSmsEvent(payload){
-  for(const client of smsClients){ try{ client.write(`data: ${JSON.stringify(payload)}\n\n`); }catch(e){} }
-}
-
-
-// ===== Notifications & SSE =====
-const EventEmitter = require('events');
-const eventBus = new EventEmitter();
-
-async function pushEvent(payload){
-  try{
-    await Notification.create({ type: payload.type, message: payload.message, meta: payload.meta||{} });
-  }catch(e){ console.error("Notif save error", e); }
-  eventBus.emit('event', payload);
-}
-
-app.get('/api/admin/notifications', auth, requireRole('admin','superadmin'), async (req,res)=>{
-  try{
-    const limit = Math.min(20, parseInt(req.query.limit||'5',10));
-    const notes = await Notification.find().sort({ createdAt:-1 }).limit(limit).lean();
-    res.json(notes);
-  }catch(e){ res.status(500).send('Server error'); }
-});
-
-app.get('/api/admin/stream-events', auth, requireRole('admin','superadmin'), (req,res)=>{
-  res.writeHead(200, {
-    'Content-Type':'text/event-stream',
-    'Cache-Control':'no-cache',
-    'Connection':'keep-alive'
-  });
-  const onEv = (payload)=>{
-    res.write(`data: ${JSON.stringify(payload)}\n\n`);
-  };
-  eventBus.on('event', onEv);
-  req.on('close', ()=> eventBus.off('event', onEv));
-});
-
-
-
-
-app.post('/api/profile/change-password', auth, async (req, res) => {
-  try {
-    const { oldPassword, newPassword } = req.body;
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    const match = await bcrypt.compare(oldPassword, user.password);
-    if (!match) return res.status(400).json({ error: 'Old password incorrect' });
-
-    const hash = await bcrypt.hash(newPassword, 10);
-    user.password = hash;
-    user.plainPassword = newPassword;
-    user.passwordChangeCount = (user.passwordChangeCount || 0) + 1;
-
-    await user.save();
-
-    pushEvent({
-      type: 'password-change',
-      message: `${user.email || user.username} vừa đổi mật khẩu`,
-      meta: { userId: user._id }
-    });
-
-    res.json({ message: 'Password updated successfully' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Server error');
-  }
-});
+// ---------- Start ----------
 server.listen(PORT, () => console.log('Server running on port', PORT));
