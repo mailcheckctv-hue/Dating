@@ -609,6 +609,8 @@ app.get('/api/admin/users', auth, requireRole('admin','superadmin'), async (req,
     console.error(e); 
     res.status(500).json({ message:'Server error' }); 
   }
+});
+
 
 
 app.post('/api/admin/set-limit', auth, requireRole('admin','superadmin'), async (req,res)=>{
@@ -953,4 +955,3 @@ app.post('/api/profile/change-password', auth, async (req, res) => {
     res.status(500).send('Server error');
   }
 });
-server.listen(PORT, () => console.log('Server running on port', PORT));
