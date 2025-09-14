@@ -608,9 +608,6 @@ app.get('/api/admin/users', auth, requireRole('admin','superadmin'), async (req,
   }catch(e){ 
     console.error(e); 
     res.status(500).json({ message:'Server error' }); 
-  });
-
-
 app.post('/api/admin/set-limit', auth, requireRole('admin','superadmin'), async (req,res)=>{
   try{
     const { userId, limit, type, value } = req.body || {};
