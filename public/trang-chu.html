@@ -235,6 +235,50 @@
 <script>
 const API = (window.location.origin) + '/api';
 let token = localStorage.getItem('token');
+
+// --- suggestions & admin link helpers ---
+async function loadSuggestions(){
+  try{
+    const el = document.getElementById('suggestions');
+    if(!el) return;
+    el.innerHTML = '<div class="text-muted">Đang tải...</div>';
+    const r = await fetch(API + '/suggestions', { headers: { Authorization: 'Bearer ' + token } });
+    if(!r.ok){ el.innerHTML = '<div class="text-muted">Không thể tải gợi ý</div>'; return; }
+    const list = await r.json();
+    if(!Array.isArray(list) || list.length===0){ el.innerHTML = '<div class="text-muted">Không có gợi ý kết bạn</div>'; return; }
+    el.innerHTML = '';
+    list.forEach(u=>{
+      const div = document.createElement('div');
+      div.className = 'd-flex align-items-center gap-2 mb-2';
+      const avatar = u.avatarUrl ? `<img src="${u.avatarUrl}" class="rounded-circle" style="width:36px;height:36px;object-fit:cover">` :
+                   `<div class="avatar avatar-sm">${(u.username||'').split(' ').map(s=>s[0]).join('').slice(0,2).toUpperCase()}</div>`;
+      div.innerHTML = avatar + `<div class="flex-grow-1 ms-2"><div class='fw-bold'>${u.username||'Người dùng'}</div><div class='small text-muted'>${u.location||''}</div></div><div><button class='btn btn-sm btn-outline-primary' onclick="(async()=>{ await fetch(API+'/friends/'+encodeURIComponent('${'u._id'}'),{method:'POST',headers:{Authorization:'Bearer '+token}}); loadSuggestions(); })()">Kết bạn</button></div>`;
+      // Note: the encodeURIComponent trick with template is static here; replace using DOM to attach actual id
+      // We'll instead set dataset and attach a click handler
+      el.appendChild(div);
+      // attach handler properly
+      const btn = div.querySelector('button');
+      if(btn){ btn.addEventListener('click', async ()=>{ await fetch(API + '/friends/' + u._id, { method:'POST', headers:{ Authorization:'Bearer ' + token } }); loadSuggestions(); }); }
+    });
+  }catch(e){ console.error('loadSuggestions err', e); const el=document.getElementById('suggestions'); if(el) el.innerHTML='<div class="text-muted">Lỗi tải gợi ý</div>'; }
+}
+
+function ensureAdminLink(){
+  try{
+    if(!me) return;
+    if(me.role==='admin' || me.role==='superadmin'){
+      const logoutBtn = document.getElementById('btnLogout');
+      if(logoutBtn && !document.getElementById('adminDashLink')){
+        const a = document.createElement('a');
+        a.id = 'adminDashLink';
+        a.href = 'admin.html';
+        a.textContent = '⚠ Admin Dashboard';
+        a.className = 'btn btn-sm btn-warning me-2';
+        logoutBtn.parentNode.insertBefore(a, logoutBtn);
+      }
+    }
+  }catch(e){ console.error(e); }
+}
 if(!token){ window.location.href = 'login.html'; }
 let me = null;
 let ws = null;
@@ -304,7 +348,7 @@ function setAvatar(prefix, url, name){
     if(initEl){ initEl.textContent = fmtNameToInitial(name); initEl.style.display='block'; }
   }
 }
-loadProfile();
+loadProfile().then(()=>{ try{ ensureAdminLink(); loadSuggestions(); }catch(e){console.error(e);} }).catch(()=>{});
 
 // Avatar uploader
 document.getElementById('avatarFile').addEventListener('change', async (e)=>{
