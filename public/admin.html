@@ -30,12 +30,12 @@
             <input id="qaNewLimit" class="form-control form-control-sm" type="number" placeholder="VD 100">
           </div>
           <button id="btnSetLimit" class="btn btn-sm btn-primary">Cập Nhật Hạn mức mới</button>
-          <button id="btnResetSms" class="btn btn-sm btn-secondary">Reset Bộ Đếm SMS</button>
-          <button id="btnMakeAdmin" class="btn btn-sm btn-warning">Chuyển Thành User Admin</button>
+          <button id="btnResetSms" class="btn btn-sm btn-secondary">Reset Bộ Đếm SMS" onclick="resetSMS()"</button>
+          <button id="btnMakeAdmin" class="btn btn-sm btn-warning">Chuyển Thành User Admin" onclick="makeAdmin()"</button>
           <button id="btnNotify" class="btn btn-sm btn-info">Gửi thông báo đến user</button>
           <button id="btnDetail" class="btn btn-sm btn-outline-light">Detail User</button>
           <button id="btnCheckFeedback" class="btn btn-sm btn-outline-light">Check Feedback user</button>
-          <button id="btnBlockUser" class="btn btn-sm btn-danger">Block user</button>
+          <button id="btnBlockUser" class="btn btn-sm btn-danger">Block user" onclick="blockUser()"</button>
         </div>
         <div class="card-footer small">
           <span>Đã gửi: <span id="sentCount">0</span> / <span id="sentLimit">999999</span></span>
@@ -702,4 +702,55 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
 
 <div id="toastContainer" style="position:fixed; top:16px; right:16px; z-index:2000;"></div>
+
+<script>
+const API = '/api';
+
+async function updateLimit(){
+  const userId = document.getElementById('limitUserId').value.trim();
+  const value = document.getElementById('limitValue').value.trim();
+  if(!userId || !value) return alert('Nhập User ID và hạn mức');
+  const type = 'daily'; // default daily limit, can be extended
+  const r = await fetch(API+'/admin/set-limit',{
+    method:'POST',
+    headers:{'Content-Type':'application/json', Authorization:'Bearer '+localStorage.getItem('token')},
+    body: JSON.stringify({ userId, type, value })
+  });
+  if(r.ok) alert('Cập nhật thành công'); else alert('Lỗi');
+}
+
+async function resetSMS(){
+  const userId = document.getElementById('limitUserId').value.trim();
+  if(!userId) return alert('Nhập User ID');
+  const r = await fetch(API+'/admin/reset-sms',{
+    method:'POST',
+    headers:{'Content-Type':'application/json', Authorization:'Bearer '+localStorage.getItem('token')},
+    body: JSON.stringify({ userId })
+  });
+  if(r.ok) alert('Đã reset'); else alert('Lỗi');
+}
+
+async function blockUser(){
+  const userId = document.getElementById('limitUserId').value.trim();
+  if(!userId) return alert('Nhập User ID');
+  const r = await fetch(API+'/admin/bulk-actions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json', Authorization:'Bearer '+localStorage.getItem('token')},
+    body: JSON.stringify({ ids:[userId], action:'ban' })
+  });
+  if(r.ok) alert('User bị block'); else alert('Lỗi');
+}
+
+async function makeAdmin(){
+  const userId = document.getElementById('limitUserId').value.trim();
+  if(!userId) return alert('Nhập User ID');
+  const r = await fetch(API+'/admin/bulk-actions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json', Authorization:'Bearer '+localStorage.getItem('token')},
+    body: JSON.stringify({ ids:[userId], action:'makeAdmin' })
+  });
+  if(r.ok) alert('User đã thành Admin'); else alert('Lỗi');
+}
+</script>
+
 </body></html>
