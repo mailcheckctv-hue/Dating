@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin — SMS Packages</title>
+  <style>
+    :root{
+      --bg:#ffffff; --fg:#111827; --card:#f3f4f6; --muted:#6b7280;
+    }
+    [data-theme="dark"]{
+      --bg:#0b1220; --fg:#e6eef8; --card:#0f1724; --muted:#9ca3af;
+    }
+    body{margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:var(--bg);color:var(--fg)}
+    header{display:flex;align-items:center;justify-content:space-between;padding:1rem;border-bottom:1px solid rgba(0,0,0,0.06);background:var(--card)}
+    .container{max-width:1100px;margin:1.25rem auto;padding:1rem}
+    .grid{display:grid;grid-template-columns:1fr 360px;gap:1rem}
+    .card{background:var(--card);padding:1rem;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,0.03)}
+    .user-list{max-height:60vh;overflow:auto}
+    .user-item{display:flex;align-items:center;justify-content:space-between;padding:0.5rem;border-radius:8px;margin-bottom:6px}
+    .user-item:hover{outline:1px solid rgba(0,0,0,0.04)}
+    .btn{padding:0.5rem 0.75rem;border-radius:8px;border:none;cursor:pointer}
+    .btn-primary{background:#0066ff;color:white}
+    .btn-ghost{background:transparent;border:1px solid rgba(0,0,0,0.08)}
+    label{display:block;margin:0.5rem 0;font-size:0.9rem;color:var(--muted)}
+    input[type="number"],select{width:100%;padding:0.5rem;border-radius:8px;border:1px solid rgba(0,0,0,0.08);background:transparent;color:var(--fg)}
+    .small{font-size:0.85rem;color:var(--muted)}
+    .history-list{max-height:35vh;overflow:auto}
+    @media (max-width:900px){
+      .grid{grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex;gap:1rem;align-items:center">
+      <h2 style="margin:0">SMS Package Management</h2>
+      <div class="small">Admin console</div>
+    </div>
+    <div style="display:flex;gap:0.5rem;align-items:center">
+      <button id="themeToggle" class="btn btn-ghost">Toggle Dark</button>
+      <button id="refreshBtn" class="btn btn-ghost">Refresh</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="grid">
+      <section class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <h3 style="margin:0">Users</h3>
+            <div class="small">Select a user to grant SMS packages</div>
+          </div>
+          <div>
+            <input id="search" placeholder="Search by name or email" style="padding:0.5rem;border-radius:8px;border:1px solid rgba(0,0,0,0.06)"/>
+          </div>
+        </div>
+
+        <div class="user-list" id="users"></div>
+      </section>
+
+      <aside class="card">
+        <div>
+          <h4 style="margin:0">Grant SMS Package</h4>
+          <div class="small">Selected user:</div>
+          <div id="selectedUser" style="padding:0.5rem;border-radius:8px;background:rgba(0,0,0,0.02);margin-top:0.5rem">None</div>
+
+          <label for="qty">Quantity (SMS)</label>
+          <input id="qty" type="number" value="10" min="1" />
+
+          <label for="note">Note (optional)</label>
+          <input id="note" type="text" placeholder="Reason or note for the grant" />
+
+          <div style="display:flex;gap:0.5rem;margin-top:0.75rem">
+            <button id="grantBtn" class="btn btn-primary">Grant</button>
+            <button id="viewHistoryBtn" class="btn btn-ghost">View History</button>
+          </div>
+
+          <div id="result" style="margin-top:0.75rem"></div>
+        </div>
+
+        <hr style="margin:0.75rem 0;border:none;border-top:1px solid rgba(0,0,0,0.06)"/>
+
+        <div>
+          <h4 style="margin:0">History</h4>
+          <div class="history-list" id="history"></div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+<script>
+const api = (path, opts) => fetch(path, Object.assign({credentials:'same-origin',headers:{'Content-Type':'application/json'}}, opts));
+let usersCache = [];
+let selectedUser = null;
+const el = id=>document.getElementById(id);
+
+async function loadUsers(q){
+  try{
+    el('users').innerHTML = '<div class="small">Loading users…</div>';
+    const res = await api('/api/admin/users');
+    if(!res.ok) throw new Error('Failed to load users');
+    const users = await res.json();
+    usersCache = users;
+    renderUsers(users);
+  }catch(e){
+    el('users').innerHTML = '<div class="small">Error loading users</div>';
+    console.error(e);
+  }
+}
+
+function renderUsers(users){
+  const q = el('search').value.toLowerCase().trim();
+  const filtered = users.filter(u=> (u.name||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q) || (u._id||'').includes(q));
+  if(filtered.length===0){ el('users').innerHTML = '<div class="small">No users</div>'; return; }
+  el('users').innerHTML = filtered.map(u=>`
+    <div class="user-item" data-id="${u._id}">
+      <div>
+        <div><strong>${escapeHtml(u.name||u.email||'Unknown')}</strong></div>
+        <div class="small">${escapeHtml(u.email||'')}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost" data-action="select" data-id="${u._id}">Select</button>
+      </div>
+    </div>
+  `).join('');
+  document.querySelectorAll('[data-action="select"]').forEach(b=>{
+    b.addEventListener('click', e=>{
+      const id = e.currentTarget.dataset.id;
+      selectedUser = usersCache.find(x=>x._id==id) || null;
+      updateSelected();
+    });
+  });
+}
+
+function updateSelected(){
+  el('selectedUser').textContent = selectedUser ? `${selectedUser.name||selectedUser.email} (id: ${selectedUser._id})` : 'None';
+}
+
+function escapeHtml(s){ return s ? s.replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])) : ''; }
+
+el('search').addEventListener('input', ()=> renderUsers(usersCache));
+
+el('refreshBtn').addEventListener('click', ()=> { loadUsers(); loadHistory(); });
+
+el('themeToggle').addEventListener('click', ()=>{
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur==='dark' ? '' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+});
+
+el('grantBtn').addEventListener('click', async ()=>{
+  if(!selectedUser){ showResult('Select a user first','error'); return; }
+  const qty = parseInt(el('qty').value,10);
+  const note = el('note').value || '';
+  if(!qty || qty<=0){ showResult('Quantity must be > 0','error'); return; }
+  el('grantBtn').disabled = true;
+  try{
+    const res = await api('/api/admin/consume-package', {
+      method: 'POST',
+      body: JSON.stringify({ userId: selectedUser._id, qty, note })
+    });
+    const data = await res.json();
+    if(!res.ok){ showResult(data && (data.error||data.message) || 'Grant failed','error'); }
+    else { showResult('Grant successful','success'); loadHistory(); }
+  }catch(e){
+    console.error(e);
+    showResult('Network error','error');
+  }finally{ el('grantBtn').disabled = false; }
+});
+
+el('viewHistoryBtn').addEventListener('click', ()=> loadHistory());
+
+async function loadHistory(){
+  try{
+    el('history').innerHTML = '<div class="small">Loading…</div>';
+    const res = await api('/api/admin/sms-packages/history');
+    if(!res.ok) throw new Error('Failed to load history');
+    const rows = await res.json();
+    if(!Array.isArray(rows) || rows.length===0){ el('history').innerHTML = '<div class="small">No history</div>'; return; }
+    el('history').innerHTML = rows.slice().reverse().map(r=>`
+      <div style="padding:0.5rem;border-radius:8px;margin-bottom:6px;background:rgba(0,0,0,0.02)">
+        <div><strong>${escapeHtml(r.userId)}</strong> — ${r.qty} SMS</div>
+        <div class="small">Admin: ${escapeHtml(r.adminId||'system')} · ${new Date(r.createdAt).toLocaleString()}</div>
+        ${r.note ? `<div class="small">Note: ${escapeHtml(r.note)}</div>` : ''}
+      </div>
+    `).join('');
+  }catch(e){
+    el('history').innerHTML = '<div class="small">Error loading history</div>';
+    console.error(e);
+  }
+}
+
+function showResult(msg, type){
+  el('result').innerHTML = `<div class="small" style="color:${type==='error' ? 'crimson' : 'green'}">${escapeHtml(msg)}</div>`;
+}
+
+// init
+loadUsers(); loadHistory();
+</script>
+</body>
+</html>
