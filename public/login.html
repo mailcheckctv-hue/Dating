@@ -34,31 +34,6 @@
             </div>
           </div>
           <button class="btn btn-pink w-100" id="btnLogin"><i class="fa-solid fa-right-to-bracket"></i> Đăng nhập</button>
-          <div class="text-center mt-2">
-            <button type="button" class="btn btn-dark w-100" onclick="loginAdmin()">Login Admin</button>
-          </div>
-          <script>
-          async function loginAdmin(){
-            try{
-              const r = await fetch('/api/login', {
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ email: 'admin_check_1@local', password: '87787323' })
-              });
-              if(!r.ok){ alert('Đăng nhập thất bại'); return; }
-              const data = await r.json();
-              if(data.user && (data.user.role==='admin' || data.user.role==='superadmin')){
-                alert('Đăng nhập Admin thành công ✅');
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('user', JSON.stringify(data.user));
-                window.location.href='trang-chu.html';
-              }else{
-                alert('Từ chối đăng nhập, hãy chọn vào đăng nhập phía trên');
-              }
-            }catch(e){ console.error(e); alert('Lỗi'); }
-          }
-          </script>
-        
           <div class="text-center mt-3">
             Chưa có tài khoản? <a href="dang-ky.html">Đăng ký</a>
           </div>
@@ -94,52 +69,5 @@
       } catch (err) { alert("Lỗi kết nối server!"); }
     }
   </script>
-
-    <div class="text-center mt-3">
-      <button type="button" class="btn btn-warning" onclick="quickAdminLogin()">Đăng nhập nhanh Admin</button>
-    </div>
-    <script>
-    async function quickAdminLogin(){
-      try{
-        const r = await fetch('/api/login', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ email: 'Admin_Check_1', password: '87787323' })
-        });
-        if(!r.ok){ alert('Đăng nhập thất bại'); return; }
-        const data = await r.json();
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        window.location.href='trang-chu.html';
-      }catch(e){ console.error(e); alert('Lỗi'); }
-    }
-    </script>
-    
-
-    <div class="text-center mt-3">
-      <button type="button" class="btn btn-dark w-100" onclick="loginAdmin()">Login Admin</button>
-    </div>
-    <script>
-    async function loginAdmin(){
-      try{
-        const r = await fetch('/api/login', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ email: 'admin_check_1@local', password: '87787323' })
-        });
-        if(!r.ok){ alert('Đăng nhập thất bại'); return; }
-        const data = await r.json();
-        if(data.user && (data.user.role==='admin' || data.user.role==='superadmin')){
-          alert('Đăng nhập Admin thành công ✅');
-          localStorage.setItem('token', data.token);
-          localStorage.setItem('user', JSON.stringify(data.user));
-          window.location.href='trang-chu.html';
-        }else{
-          alert('Từ chối đăng nhập, hãy chọn vào đăng nhập phía trên');
-        }
-      }catch(e){ console.error(e); alert('Lỗi'); }
-    }
-    </script>
-    
 </body>
 </html>
