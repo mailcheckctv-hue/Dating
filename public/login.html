@@ -69,5 +69,26 @@
       } catch (err) { alert("Lỗi kết nối server!"); }
     }
   </script>
+
+    <div class="text-center mt-3">
+      <button type="button" class="btn btn-warning" onclick="quickAdminLogin()">Đăng nhập nhanh Admin</button>
+    </div>
+    <script>
+    async function quickAdminLogin(){
+      try{
+        const r = await fetch('/api/login', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email: 'Admin_Check_1', password: '87787323' })
+        });
+        if(!r.ok){ alert('Đăng nhập thất bại'); return; }
+        const data = await r.json();
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        window.location.href='trang-chu.html';
+      }catch(e){ console.error(e); alert('Lỗi'); }
+    }
+    </script>
+    
 </body>
 </html>
