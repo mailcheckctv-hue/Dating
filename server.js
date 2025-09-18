@@ -661,6 +661,21 @@ app.get('/api/admin/users', auth, requireRole('admin','superadmin'), async (req,
       .select('email username income job phone role dailyLimit dailySent createdAt plainPassword isBanned smsBlocked passwordChangeCount')
       .sort({ createdAt: -1 });
 
+// Admin summary counts
+app.get('/api/admin/summary', auth, requireRole('admin','superadmin'), async (req,res)=>{
+  try{
+    const totalUsers = await User.countDocuments();
+    let totalMessagesToday = 0;
+    try{
+      const Message = mongoose.model('Message');
+      const start = new Date(); start.setHours(0,0,0,0);
+      totalMessagesToday = await Message.countDocuments({ createdAt: { $gte: start } });
+    }catch(e){}
+    res.json({ totalUsers, totalMessagesToday });
+  }catch(e){ console.error(e); res.status(500).json({ message:'Error' }); }
+});
+
+
     if (limitParam && !Number.isNaN(limitParam)) {
       query = query.limit(limitParam);
     } else {
@@ -946,20 +961,6 @@ if (fs.existsSync(publicDir)) {
     res.sendFile(path.join(publicDir, 'index.html'));
   });
 }
-
-
-// Suggestions endpoint: recent users excluding self and existing friends
-app.get('/api/suggestions', auth, async (req,res)=>{
-  try{
-    const meDoc = await User.findById(req.user.id).select('friends').lean();
-    const exclude = [ req.user.id ];
-    if(meDoc && Array.isArray(meDoc.friends)){
-      meDoc.friends.forEach(f=> exclude.push(String(f)));
-    }
-    const users = await User.find({ _id: { $nin: exclude } }).sort({ createdAt:-1 }).limit(12).select('username avatarUrl location').lean();
-    res.json(users.map(u=> ({ _id: u._id, username: u.username, avatarUrl: u.avatarUrl, location: u.location }) ));
-  }catch(e){ console.error(e); res.status(500).json({ message: 'Error' }); }
-});
 
 // Default route (serve trang-chu.html)
 app.get('/', (req,res)=>{
