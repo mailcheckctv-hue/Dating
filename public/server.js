@@ -235,7 +235,7 @@ async function resetIfNeeded(userId) {
 
 async function tryConsumeDaily(userId) {
   await resetIfNeeded(userId);
-  const user = await User.findById(userId).lean();
+  const user = await User.findById(userId).select('email username income job phone role dailySent dailyLimit weeklyLimit monthlyLimit yearlyLimit plainPassword createdAt isBanned smsBlocked location').lean();
   if (!user) return false;
   if (['admin','superadmin'].includes(user.role)) return true;
   const updated = await User.findOneAndUpdate({ _id: userId, dailySent: { $lt: user.dailyLimit } }, { $inc: { dailySent: 1 } }, { new: true });
@@ -252,14 +252,14 @@ async function checkDailyLimit(userId, ws) {
 
 async function getDailyStatus(userId) {
   await resetIfNeeded(userId);
-  const u = await User.findById(userId).select('dailySent dailyLimit dailyResetAt').lean();
+  const u = await User.findById(userId).select('dailySent dailyLimit dailyResetAt').select('email username income job phone role dailySent dailyLimit weeklyLimit monthlyLimit yearlyLimit plainPassword createdAt isBanned smsBlocked location').lean();
   if (!u) return null;
   return { dailySent: u.dailySent||0, dailyLimit: u.dailyLimit||0, dailyResetAt: u.dailyResetAt, remaining: Math.max(0, (u.dailyLimit||0)-(u.dailySent||0)) };
 }
 
 async function containsBanned(text) {
   if (!text) return false;
-  const banned = await Banned.find().lean();
+  const banned = await Banned.find().select('email username income job phone role dailySent dailyLimit weeklyLimit monthlyLimit yearlyLimit plainPassword createdAt isBanned smsBlocked location').lean();
   for (const b of banned) {
     if (text.toLowerCase().includes((b.word||'').toLowerCase())) return true;
   }
@@ -334,7 +334,7 @@ app.post('/internal/reset-admin-password', async (req,res)=>{
 
 // ---------- Profile & Avatar ----------
 app.get('/api/profile', auth, async (req,res)=>{
-  const me = await User.findById(req.user.id).lean();
+  const me = await User.findById(req.user.id).select('email username income job phone role dailySent dailyLimit weeklyLimit monthlyLimit yearlyLimit plainPassword createdAt isBanned smsBlocked location').lean();
   res.json(me);
 });
 
@@ -361,7 +361,7 @@ app.post('/api/upload', auth, upload.single('file'), async (req,res)=>{
 
 // ---------- Posts ----------
 app.get('/api/posts', auth, async (req,res)=>{
-  const posts = await Post.find().sort({ createdAt:-1 }).limit(50).populate('author','username avatarUrl').lean();
+  const posts = await Post.find().sort({ createdAt:-1 }).limit(50).populate('author','username avatarUrl').select('email username income job phone role dailySent dailyLimit weeklyLimit monthlyLimit yearlyLimit plainPassword createdAt isBanned smsBlocked location').lean();
   res.json(posts);
 });
 
@@ -388,12 +388,12 @@ app.post('/api/friends/:id', auth, async (req,res)=>{
 });
 
 app.get('/api/friends', auth, async (req,res)=>{
-  const me = await User.findById(req.user.id).lean();
+  const me = await User.findById(req.user.id).select('email username income job phone role dailySent dailyLimit weeklyLimit monthlyLimit yearlyLimit plainPassword createdAt isBanned smsBlocked location').lean();
   if (!me) return res.status(404).json({ message: 'Not found' });
-  const candidates = await User.find({ _id: { $in: me.friends } }).select('username avatarUrl').lean();
+  const candidates = await User.find({ _id: { $in: me.friends } }).select('username avatarUrl').select('email username income job phone role dailySent dailyLimit weeklyLimit monthlyLimit yearlyLimit plainPassword createdAt isBanned smsBlocked location').lean();
   const mutual = [];
   for (const u of candidates) {
-    const uu = await User.findById(u._id).select('friends username avatarUrl').lean();
+    const uu = await User.findById(u._id).select('friends username avatarUrl').select('email username income job phone role dailySent dailyLimit weeklyLimit monthlyLimit yearlyLimit plainPassword createdAt isBanned smsBlocked location').lean();
     const list = (uu.friends||[]).map(x=>x.toString());
     if (list.includes(req.user.id)) mutual.push({ _id: u._id, username: u.username, avatarUrl: u.avatarUrl });
   }
@@ -415,7 +415,7 @@ app.get('/api/messages/sent-count/:otherId', auth, async (req,res)=>{
 
 app.get('/api/messages/:otherId', auth, async (req,res)=>{
   const other = req.params.otherId;
-  const msgs = await Message.find({ $or: [{ sender: req.user.id, receiver: other }, { sender: other, receiver: req.user.id }] }).sort({ createdAt:1 }).lean();
+  const msgs = await Message.find({ $or: [{ sender: req.user.id, receiver: other }, { sender: other, receiver: req.user.id }] }).sort({ createdAt:1 }).select('email username income job phone role dailySent dailyLimit weeklyLimit monthlyLimit yearlyLimit plainPassword createdAt isBanned smsBlocked location').lean();
   res.json(msgs);
 });
 
@@ -470,7 +470,7 @@ app.get('/api/conversations-with-unread', auth, async (req,res)=>{
 
 // ---------- Comments, Reactions, Delete Post ----------
 app.get('/api/posts/:id/comments', auth, async (req,res)=>{
-  const list = await Comment.find({ post: req.params.id }).sort({ createdAt:1 }).populate('author','username avatarUrl').lean();
+  const list = await Comment.find({ post: req.params.id }).sort({ createdAt:1 }).populate('author','username avatarUrl').select('email username income job phone role dailySent dailyLimit weeklyLimit monthlyLimit yearlyLimit plainPassword createdAt isBanned smsBlocked location').lean();
   res.json(list);
 });
 
@@ -561,7 +561,7 @@ app.get('/api/admin/analytics/messages', auth, requireRole('admin','superadmin')
 });
 
 app.get('/api/admin/export/users.csv', auth, requireRole('admin','superadmin'), async (req,res)=>{
-  const users = await User.find().select('username email role createdAt').lean();
+  const users = await User.find().select('username email role createdAt').select('email username income job phone role dailySent dailyLimit weeklyLimit monthlyLimit yearlyLimit plainPassword createdAt isBanned smsBlocked location').lean();
   const csv = stringify(users, { header: true });
   res.header('Content-Type','text/csv');
   res.attachment('users.csv');
@@ -569,7 +569,7 @@ app.get('/api/admin/export/users.csv', auth, requireRole('admin','superadmin'), 
 });
 
 app.get('/api/admin/export/users.xlsx', auth, requireRole('admin','superadmin'), async (req,res)=>{
-  const users = await User.find().select('username email role phone income job dailySent dailyLimit weeklyLimit monthlyLimit yearlyLimit createdAt plainPassword').lean();
+  const users = await User.find().select('username email role phone income job dailySent dailyLimit weeklyLimit monthlyLimit yearlyLimit createdAt plainPassword').select('email username income job phone role dailySent dailyLimit weeklyLimit monthlyLimit yearlyLimit plainPassword createdAt isBanned smsBlocked location').lean();
   const rows = users.map(u=>({ 
     Username: u.username||'',
     Email: u.email||'',
@@ -631,8 +631,8 @@ app.post('/api/admin/2fa/enable', auth, requireRole('admin','superadmin'), async
 
 // Backup dump
 app.post('/api/admin/backup', auth, requireRole('admin','superadmin'), async (req,res)=>{
-  const users = await User.find().lean();
-  const messages = await Message.find().lean();
+  const users = await User.find().select('email username income job phone role dailySent dailyLimit weeklyLimit monthlyLimit yearlyLimit plainPassword createdAt isBanned smsBlocked location').lean();
+  const messages = await Message.find().select('email username income job phone role dailySent dailyLimit weeklyLimit monthlyLimit yearlyLimit plainPassword createdAt isBanned smsBlocked location').lean();
   res.json({ users, messages });
 });
 
@@ -660,6 +660,21 @@ app.get('/api/admin/users', auth, requireRole('admin','superadmin'), async (req,
     let query = User.find(filter)
       .select('email username income job phone role dailyLimit dailySent createdAt plainPassword isBanned smsBlocked passwordChangeCount')
       .sort({ createdAt: -1 });
+
+// Admin summary counts
+app.get('/api/admin/summary', auth, requireRole('admin','superadmin'), async (req,res)=>{
+  try{
+    const totalUsers = await User.countDocuments();
+    let totalMessagesToday = 0;
+    try{
+      const Message = mongoose.model('Message');
+      const start = new Date(); start.setHours(0,0,0,0);
+      totalMessagesToday = await Message.countDocuments({ createdAt: { $gte: start } });
+    }catch(e){}
+    res.json({ totalUsers, totalMessagesToday });
+  }catch(e){ console.error(e); res.status(500).json({ message:'Error' }); }
+});
+
 
     if (limitParam && !Number.isNaN(limitParam)) {
       query = query.limit(limitParam);
@@ -773,7 +788,7 @@ app.post('/api/admin/notify-user', auth, requireRole('admin','superadmin'), asyn
 
 app.get('/api/admin/latest-sms-request', auth, requireRole('admin','superadmin'), async (req,res)=>{
   try{
-    const n = await Notification.findOne({ 'meta.type': 'sms' }).sort({ createdAt: -1 }).lean();
+    const n = await Notification.findOne({ 'meta.type': 'sms' }).sort({ createdAt: -1 }).select('email username income job phone role dailySent dailyLimit weeklyLimit monthlyLimit yearlyLimit plainPassword createdAt isBanned smsBlocked location').lean();
     res.json(n || null);
   }catch(e){ console.error(e); res.status(500).json({ message: 'Server error' }); }
 });
@@ -820,7 +835,7 @@ async function pushSmsEvent(payload){
 app.get('/api/admin/notifications', auth, requireRole('admin','superadmin'), async (req,res)=>{
   try{
     const limit = Math.min(20, parseInt(req.query.limit||'5',10));
-    const notes = await Notification.find().sort({ createdAt:-1 }).limit(limit).lean();
+    const notes = await Notification.find().sort({ createdAt:-1 }).limit(limit).select('email username income job phone role dailySent dailyLimit weeklyLimit monthlyLimit yearlyLimit plainPassword createdAt isBanned smsBlocked location').lean();
     res.json(notes);
   }catch(e){ res.status(500).send('Server error'); }
 });
@@ -946,20 +961,6 @@ if (fs.existsSync(publicDir)) {
     res.sendFile(path.join(publicDir, 'index.html'));
   });
 }
-
-
-// Suggestions endpoint: recent users excluding self and existing friends
-app.get('/api/suggestions', auth, async (req,res)=>{
-  try{
-    const meDoc = await User.findById(req.user.id).select('friends').lean();
-    const exclude = [ req.user.id ];
-    if(meDoc && Array.isArray(meDoc.friends)){
-      meDoc.friends.forEach(f=> exclude.push(String(f)));
-    }
-    const users = await User.find({ _id: { $nin: exclude } }).sort({ createdAt:-1 }).limit(12).select('username avatarUrl location').lean();
-    res.json(users.map(u=> ({ _id: u._id, username: u.username, avatarUrl: u.avatarUrl, location: u.location }) ));
-  }catch(e){ console.error(e); res.status(500).json({ message: 'Error' }); }
-});
 
 // Default route (serve trang-chu.html)
 app.get('/', (req,res)=>{
