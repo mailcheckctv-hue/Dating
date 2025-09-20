@@ -390,44 +390,18 @@ async function checkProfile(){
   const data=await res.json();
   document.getElementById('adminName').innerText = data.username + ' ('+(data.role||'')+')';
   if(!['admin','superadmin'].includes(data.role)) { location.href='/'; return;}
+  try{ const sres = await fetch('/api/admin/summary', { headers:{ 'Authorization': 'Bearer ' + token } }); if(sres.ok){ const summary = await sres.json(); document.getElementById('statTotalUsers').innerText = summary.totalUsers||0; document.getElementById('statTotalMsgs').innerText = summary.totalMessagesToday||0; } }catch(e){}
   loadUsers();
 }
 
 async function loadUsers(q){
   const url = '/api/admin/users' + (q?('?q='+encodeURIComponent(q)): '');
-  const res=await fetch(url,{headers:{'Authorization':'Bearer '+token}});
-  if(!res.ok){console.error(res.status); return;}
-  const users=await res.json();
-  const tbody=document.querySelector('#usersTable tbody');
-  tbody.innerHTML='';
-  let totalMsgs=0, exceeded=0, banned=0, smsblocked=0;
-  users.forEach(u=>{
-    totalMsgs += u.sentToday||0;
-    if((u.sentToday||0) > (u.dailyLimit||0)) exceeded++;
-    if(u.isBanned) banned++;
-    if(u.smsBlocked) smsblocked++;
-    const tr=document.createElement('tr');
-    tr.innerHTML = `<td><input type='checkbox' class='rowCheck' data-id='${u._id}'/></td><td>${u.email||'Chưa cập nhật'} <button class='btn btn-sm btn-outline-secondary ms-1' onclick="navigator.clipboard.writeText('${'${u.email||''}'}')">Copy</button></td><td>${u.username||'Chưa cập nhật'}</td>
-      <td>${u.income||'Chưa cập nhật'}</td><td>${u.job||'Chưa cập nhật'}</td><td>${u.phone||'Chưa cập nhật'}</td>
-      <td>${u.role||'user'}</td><td>${u.sentToday||0}</td>
-      <td>${u.dailyLimit||0}</td><td>${u.weeklyLimit||0}</td><td>${u.monthlyLimit||0}</td><td>${u.yearlyLimit||0}</td>
-      <td><span class='pw' data-pw='${u.plainPassword||''}'>••••••</span> <button class='btn btn-sm btn-outline-secondary ms-1 togglePw'>Hiện</button> <button class='btn btn-sm btn-outline-secondary ms-1 copyPw'>Copy</button></td>
-      <td>${u.createdAt ? (new Date(u.createdAt).toLocaleString()) : ''} <span class='badge bg-success new-badge' style='display:none;'>NEW</span></td>
-      <td>
-        <div class="btn-group">
-          <button class="btn btn-sm btn-outline-light" data-bs-toggle="dropdown">Actions</button>
-          <ul class="dropdown-menu actions-dropdown">
-            <li><a class="dropdown-item" href="#" onclick="openSetLimit('${u._id}');return false;">Set Limit</a></li>
-            <li><a class="dropdown-item" href="#" onclick="resetQuota('${u._id}');return false;">Reset Sent</a></li>
-            <li><a class="dropdown-item" href="#" onclick="viewAccount('${u._id}');return false;">Truy cập</a></li>
-            <li><a class="dropdown-item" href="#" onclick="banAccount('${u._id}');return false;">Chặn tài khoản</a></li>
-            <li><a class="dropdown-item" href="#" onclick="blockSms('${u._id}');return false;">Chặn SMS</a></li>
-          </ul>
-        </div>
-      </td>`;
-    tbody.appendChild(tr);
-  });
-  document.getElementById('statTotalUsers').innerText = users.length;
+  const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+  if(!res.ok){ console.error(res.status); return; }
+  const data = await res.json();
+  const users = Array.isArray(data) ? data : (data.users || []);
+  const tbody = document.querySelector('#usersTable tbody');
+  tbody.innerHTML = '';t = users.length;
   document.getElementById('statTotalMsgs').innerText = totalMsgs;
   document.getElementById('statExceeded').innerText = exceeded;
   document.getElementById('statBanned').innerText = banned;

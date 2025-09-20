@@ -58,7 +58,60 @@
               <input type="text" id="job" class="form-control" placeholder="VD: Kỹ sư, Kinh doanh...">
             </div>
           </div>
-          <button class="btn btn-pink w-100 mt-3" id="btnRegister"><i class="fa-solid fa-user-plus"></i> Đăng ký</button>
+          
+<div class="row g-3 mt-3">
+  <div class="col-md-12">
+    <label class="form-label">Giới thiệu bản thân</label>
+    <textarea class="form-control" id="bio" placeholder="Giới thiệu ngắn"></textarea>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Số điện thoại</label>
+    <input type="tel" class="form-control" id="phone" placeholder="0912xxxxx">
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Khu vực sinh sống</label>
+    <input type="text" class="form-control" id="region" placeholder="Khu vực">
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Đối tượng muốn kết bạn</label>
+    <select class="form-select" id="target">
+      <option value="">--Chọn--</option>
+      <option value="nam">Nam</option>
+      <option value="nu">Nữ</option>
+      <option value="khac">Khác</option>
+    </select>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Quốc gia</label>
+    <input type="text" class="form-control" id="country">
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Thành phố/Khu vực</label>
+    <input type="text" class="form-control" id="city">
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Địa chỉ</label>
+    <input type="text" class="form-control" id="address">
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Tình trạng hôn nhân</label>
+    <select class="form-select" id="marital">
+      <option value="">--Chọn--</option>
+      <option value="doc than">Độc thân</option>
+      <option value="da ket hon">Đã kết hôn</option>
+      <option value="ly hon">Ly hôn</option>
+    </select>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Chiều cao (cm)</label>
+    <input type="number" class="form-control" id="height">
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Cân nặng (kg)</label>
+    <input type="number" class="form-control" id="weight">
+  </div>
+</div>
+<button class="btn btn-pink w-100 mt-3" id="btnRegister"><i class="fa-solid fa-user-plus"></i> Đăng ký</button>
           <div class="text-center mt-3">
             Đã có tài khoản? <a href="login.html">Đăng nhập</a>
           </div>
@@ -93,5 +146,37 @@
       } catch(e){ alert('Lỗi kết nối server!'); }
     }
   </script>
+
+<script>
+document.getElementById('btnRegister').addEventListener('click', async function(e){
+  e.preventDefault();
+  const payload = {
+    username: document.getElementById('username').value.trim(),
+    gender: document.getElementById('gender').value,
+    email: document.getElementById('email').value.trim(),
+    password: document.getElementById('password').value,
+    income: document.getElementById('income') ? document.getElementById('income').value : '',
+    job: document.getElementById('job') ? document.getElementById('job').value : '',
+    bio: document.getElementById('bio') ? document.getElementById('bio').value : '',
+    phone: document.getElementById('phone') ? document.getElementById('phone').value : '',
+    region: document.getElementById('region') ? document.getElementById('region').value : '',
+    target: document.getElementById('target') ? document.getElementById('target').value : '',
+    country: document.getElementById('country') ? document.getElementById('country').value : '',
+    city: document.getElementById('city') ? document.getElementById('city').value : '',
+    address: document.getElementById('address') ? document.getElementById('address').value : '',
+    marital: document.getElementById('marital') ? document.getElementById('marital').value : '',
+    height: document.getElementById('height') ? document.getElementById('height').value : '',
+    weight: document.getElementById('weight') ? document.getElementById('weight').value : ''
+  };
+  try{
+    const res = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const d = await res.json();
+    if(!res.ok){ alert(d.message || 'Đăng ký thất bại'); return; }
+    alert('Đăng ký thành công!');
+    window.location.href = 'login.html';
+  }catch(e){ console.error(e); alert('Lỗi mạng'); }
+});
+</script>
+
 </body>
 </html>
