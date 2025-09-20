@@ -131,8 +131,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js">
 /* Admin Filters & PW Toggle + Pagination/Toast/Bulk */
-let _cachedUsers = [];
 const ONE_DAY = 24*60*60*1000;
+let _cachedUsers = [];
 function markNewBadges(){
   document.querySelectorAll('#usersTable tbody tr').forEach(tr=>{
     const dateCell = tr.querySelector('td:nth-last-child(1)'); // createdAt column
@@ -219,8 +219,8 @@ function showToast(msg, type='success'){
   setTimeout(()=>{ div.remove(); }, 2500);
 }
 
-let _cachedUsers = [];
 const ONE_DAY = 24*60*60*1000;
+let _cachedUsers = [];
 let _page=1, _pageSize=50, _total=0;
 
 function renderPagination(){
@@ -260,7 +260,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 const _origLoadUsers = loadUsers;
 
 loadUsers = async function(q){
-  const res = await fetch('/api/admin/users'+(q?('?q='+encodeURIComponent(q)):'')+'&page=${_page}&pageSize=${_pageSize}',{headers:{'Authorization':'Bearer '+token}});
+  const res = await fetch('/api/admin/users'+(q?('?q='+encodeURIComponent(q)):'') + '&page='+encodeURIComponent(_page)+'&pageSize='+encodeURIComponent(_pageSize),{headers:{'Authorization':'Bearer '+token}});
   if(!res.ok){console.error(res.status); return;}
   const data = await res.json();
   _cachedUsers = data.users; _total=data.total; _page=data.page; _pageSize=data.pageSize;
@@ -425,8 +425,8 @@ document.getElementById('resetBtn').addEventListener('click', ()=>{ document.get
 checkProfile();
 
 /* Admin Filters & PW Toggle + Pagination/Toast/Bulk */
-let _cachedUsers = [];
 const ONE_DAY = 24*60*60*1000;
+let _cachedUsers = [];
 function markNewBadges(){
   document.querySelectorAll('#usersTable tbody tr').forEach(tr=>{
     const dateCell = tr.querySelector('td:nth-last-child(1)'); // createdAt column
@@ -513,8 +513,8 @@ function showToast(msg, type='success'){
   setTimeout(()=>{ div.remove(); }, 2500);
 }
 
-let _cachedUsers = [];
 const ONE_DAY = 24*60*60*1000;
+let _cachedUsers = [];
 let _page=1, _pageSize=50, _total=0;
 
 function renderPagination(){
@@ -554,7 +554,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 const _origLoadUsers = loadUsers;
 
 loadUsers = async function(q){
-  const res = await fetch('/api/admin/users'+(q?('?q='+encodeURIComponent(q)):'')+'&page=${_page}&pageSize=${_pageSize}',{headers:{'Authorization':'Bearer '+token}});
+  const res = await fetch('/api/admin/users'+(q?('?q='+encodeURIComponent(q)):'') + '&page='+encodeURIComponent(_page)+'&pageSize='+encodeURIComponent(_pageSize),{headers:{'Authorization':'Bearer '+token}});
   if(!res.ok){console.error(res.status); return;}
   const data = await res.json();
   _cachedUsers = data.users; _total=data.total; _page=data.page; _pageSize=data.pageSize;
