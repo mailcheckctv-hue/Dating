@@ -916,5 +916,27 @@ async function onOpenChatWith(otherId){
 })();
 </script>
 
+
+<script>
+// helper: robust EventSource with reconnect/backoff
+function createEventSource(url, onmessage, onopen, onerror){
+  let es = null;
+  let retry = 1000;
+  function connect(){
+    if(es) try{ es.close(); }catch(e){}
+    es = new EventSource(url);
+    es.onopen = function(ev){ retry = 1000; if(onopen) onopen(ev); };
+    es.onmessage = function(ev){ if(onmessage) onmessage(ev); };
+    es.onerror = function(ev){
+      if(onerror) onerror(ev);
+      try{ es.close(); }catch(e){}
+      setTimeout(()=>{ retry = Math.min(30000, retry*1.5); connect(); }, retry);
+    };
+    return es;
+  }
+  return { connect };
+}
+</script>
+
 </body>
 </html>

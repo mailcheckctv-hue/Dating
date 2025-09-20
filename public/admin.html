@@ -131,8 +131,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js">
 /* Admin Filters & PW Toggle + Pagination/Toast/Bulk */
-const ONE_DAY = 24*60*60*1000;
 let _cachedUsers = [];
+const ONE_DAY = 24*60*60*1000;
 function markNewBadges(){
   document.querySelectorAll('#usersTable tbody tr').forEach(tr=>{
     const dateCell = tr.querySelector('td:nth-last-child(1)'); // createdAt column
@@ -219,8 +219,8 @@ function showToast(msg, type='success'){
   setTimeout(()=>{ div.remove(); }, 2500);
 }
 
-const ONE_DAY = 24*60*60*1000;
 let _cachedUsers = [];
+const ONE_DAY = 24*60*60*1000;
 let _page=1, _pageSize=50, _total=0;
 
 function renderPagination(){
@@ -257,35 +257,20 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const p100=document.getElementById('pkg100'); if(p100) p100.onclick=()=>bulk('setLimit',100);
 });
 
-const _origLoadUsers = loadUsers;
-
-loadUsers = async function(q){
-  const res = await fetch('/api/admin/users'+(q?('?q='+encodeURIComponent(q)):'') + '&page='+encodeURIComponent(_page)+'&pageSize='+encodeURIComponent(_pageSize),{headers:{'Authorization':'Bearer '+token}});
-  if(!res.ok){console.error(res.status); return;}
+// ensure single loadUsers implementation
+async function loadUsers(q){
+  const qstr = q ? ('?q='+encodeURIComponent(q)) : '';
+  const res = await fetch(`/api/admin/users${qstr}&page=${_page}&pageSize=${_pageSize}`, { headers: { 'Authorization': 'Bearer '+token }});
+  if(!res.ok){ console.error('loadUsers failed', res.status); return; }
   const data = await res.json();
-  _cachedUsers = data.users; _total=data.total; _page=data.page; _pageSize=data.pageSize;
-  renderRows(_cachedUsers);
+  _cachedUsers = data.users || data;
+  _total = data.total || (Array.isArray(_cachedUsers)?_cachedUsers.length:0);
+  _page = data.page || _page;
+  _pageSize = data.pageSize || _pageSize;
+  renderRows(_cachedUsers || []);
   renderPagination();
   bindFilterInputs();
 }
-
-function toast(msg){ try{ const el = document.getElementById('toast'); if(el){ el.innerText=msg; } }catch(e){} }
-
-async function qaCall(url, options){
-  const res = await fetch(url, { ...(options||{}), headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+token }});
-  if(!res.ok){ const t=await res.text(); throw new Error(t||res.status); }
-  return res.json().catch(()=>({success:true}));
-}
-
-function bindQuickActions(){
-  const $id = (id)=>document.getElementById(id);
-  $id('btnSetLimit').onclick = async ()=>{
-    const userId = $id('qaUserId').value.trim();
-    const limit = parseInt($id('qaNewLimit').value||'0',10);
-    if(!userId) return alert('Nhập User ID');
-    await qaCall('/api/admin/set-limit', { method:'POST', body: JSON.stringify({ userId, limit })});
-    loadUsers();
-  };
   $id('btnResetSms').onclick = async ()=>{
     const userId = $id('qaUserId').value.trim();
     if(!userId) return alert('Nhập User ID');
@@ -425,8 +410,8 @@ document.getElementById('resetBtn').addEventListener('click', ()=>{ document.get
 checkProfile();
 
 /* Admin Filters & PW Toggle + Pagination/Toast/Bulk */
-const ONE_DAY = 24*60*60*1000;
 let _cachedUsers = [];
+const ONE_DAY = 24*60*60*1000;
 function markNewBadges(){
   document.querySelectorAll('#usersTable tbody tr').forEach(tr=>{
     const dateCell = tr.querySelector('td:nth-last-child(1)'); // createdAt column
@@ -513,8 +498,8 @@ function showToast(msg, type='success'){
   setTimeout(()=>{ div.remove(); }, 2500);
 }
 
-const ONE_DAY = 24*60*60*1000;
 let _cachedUsers = [];
+const ONE_DAY = 24*60*60*1000;
 let _page=1, _pageSize=50, _total=0;
 
 function renderPagination(){
@@ -554,7 +539,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 const _origLoadUsers = loadUsers;
 
 loadUsers = async function(q){
-  const res = await fetch('/api/admin/users'+(q?('?q='+encodeURIComponent(q)):'') + '&page='+encodeURIComponent(_page)+'&pageSize='+encodeURIComponent(_pageSize),{headers:{'Authorization':'Bearer '+token}});
+  const res = await fetch('/api/admin/users'+(q?('?q='+encodeURIComponent(q)):'')+'&page=${_page}&pageSize=${_pageSize}',{headers:{'Authorization':'Bearer '+token}});
   if(!res.ok){console.error(res.status); return;}
   const data = await res.json();
   _cachedUsers = data.users; _total=data.total; _page=data.page; _pageSize=data.pageSize;
@@ -676,4 +661,26 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
 
 <div id="toastContainer" style="position:fixed; top:16px; right:16px; z-index:2000;"></div>
+
+<script>
+// helper: robust EventSource with reconnect/backoff
+function createEventSource(url, onmessage, onopen, onerror){
+  let es = null;
+  let retry = 1000;
+  function connect(){
+    if(es) try{ es.close(); }catch(e){}
+    es = new EventSource(url);
+    es.onopen = function(ev){ retry = 1000; if(onopen) onopen(ev); };
+    es.onmessage = function(ev){ if(onmessage) onmessage(ev); };
+    es.onerror = function(ev){
+      if(onerror) onerror(ev);
+      try{ es.close(); }catch(e){}
+      setTimeout(()=>{ retry = Math.min(30000, retry*1.5); connect(); }, retry);
+    };
+    return es;
+  }
+  return { connect };
+}
+</script>
+
 </body></html>
