@@ -29,6 +29,12 @@ const xlsx = require('xlsx');
 const EventEmitter = require('events');
 
 const app = express();
+
+
+// Simple in-memory cache for suggestions
+let suggestionsCache = { ts: 0, data: null, ttl: 30*1000 }; // 30 seconds TTL
+
+// wrap existing /suggestions if present: if not, create new
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 const eventBus = new EventEmitter();
@@ -69,6 +75,7 @@ const upload = multer({ storage });
 
 // ---------- Schemas ----------
 const userSchema = new mongoose.Schema({
+  birthdate: Date,
   username: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
@@ -194,6 +201,14 @@ function nextMidnight() {
 }
 
 function publicUser(user) {
+  const getAge = (b) => {
+    try {
+      if(!b) return undefined;
+      const d = new Date(b);
+      const diff = Date.now() - d.getTime();
+      return Math.floor(diff / (365.25*24*60*60*1000));
+    } catch(e){return undefined;}
+  };
   return {
     id: user._id,
     username: user.username,
@@ -202,7 +217,12 @@ function publicUser(user) {
     role: user.role,
     gender: user.gender,
     location: user.location,
-    vip: user.vip
+    vip: user.vip,
+    income: user.income,
+    job: user.job,
+    phone: user.phone,
+    birthdate: user.birthdate,
+    age: getAge(user.birthdate)
   };
 }
 
@@ -722,7 +742,22 @@ app.get('/api/admin/summary', auth, requireRole('admin','superadmin'), async (re
 });
 
 // Suggestions endpoint
-app.get('/api/suggestions', auth, async (req,res)=>{
+app.get('/api
+// Notifications: unread count (protected)
+app.get('/api/notifications/unread-count', auth, async (req,res)=>{
+  try{
+    // if Notification model exists, count unread for user
+    if(typeof Notification !== 'undefined'){
+      const count = await Notification.countDocuments({ userId: req.user.id, read: { $ne: true } });
+      return res.json({ unread: count });
+    } else {
+      // fallback: scan Messages or other store if available
+      return res.json({ unread: 0 });
+    }
+  }catch(e){ console.error('unread-count err', e); res.status(500).json({ message:'Server error' }); }
+});
+
+/suggestions', auth, async (req,res)=>{
   try{
     const me = await User.findById(req.user.id).select('friends').lean();
     const exclude = [ req.user.id ];
