@@ -98,31 +98,35 @@ async function loadUsers(q){
   const tbody=document.querySelector('#usersTable tbody');
   tbody.innerHTML='';
   let totalMsgs=0, exceeded=0, banned=0, smsblocked=0;
-  users.forEach(u=>{
-    totalMsgs += u.sentToday||0;
-    if((u.sentToday||0) > (u.dailyLimit||0)) exceeded++;
-    if(u.isBanned) banned++;
-    if(u.smsBlocked) smsblocked++;
-    const tr=document.createElement('tr');
-    tr.innerHTML = `<td>${u.email||'-'}</td><td>${u.username||'-'}</td>
-      <td>${u.income||'-'}</td><td>${u.job||'-'}</td><td>${u.phone||'-'}</td>
-      <td>${u.role||'user'}</td><td>${u.sentToday||0}</td>
-      <td>${u.dailyLimit||0}</td><td>${u.weeklyLimit||0}</td><td>${u.monthlyLimit||0}</td><td>${u.yearlyLimit||0}</td>
-      <td>${u.password||'-'}</td><td>${u.createdAt?u.createdAt.slice(0,10):'-'}</td>
-      <td>
-        <div class="btn-group">
-          <button class="btn btn-sm btn-outline-light" data-bs-toggle="dropdown">Actions</button>
-          <ul class="dropdown-menu actions-dropdown">
-            <li><a class="dropdown-item" href="#" onclick="openSetLimit('${u._id}');return false;">Set Limit</a></li>
-            <li><a class="dropdown-item" href="#" onclick="resetQuota('${u._id}');return false;">Reset Sent</a></li>
-            <li><a class="dropdown-item" href="#" onclick="viewAccount('${u._id}');return false;">Truy cập</a></li>
-            <li><a class="dropdown-item" href="#" onclick="banAccount('${u._id}');return false;">Chặn tài khoản</a></li>
-            <li><a class="dropdown-item" href="#" onclick="blockSms('${u._id}');return false;">Chặn SMS</a></li>
-          </ul>
-        </div>
-      </td>`;
-    tbody.appendChild(tr);
-  });
+  if (!users || users.length === 0) {
+    tbody.innerHTML = `<tr><td colspan='14' class='text-center text-muted'>Không có user nào</td></tr>`;
+  } else {
+    users.forEach(u=>{
+      totalMsgs += u.sentToday||0;
+      if((u.sentToday||0) > (u.dailyLimit||0)) exceeded++;
+      if(u.isBanned) banned++;
+      if(u.smsBlocked) smsblocked++;
+      const tr=document.createElement('tr');
+      tr.innerHTML = `<td>${u.email||'-'}</td><td>${u.username||'-'}</td>
+        <td>${u.income||'-'}</td><td>${u.job||'-'}</td><td>${u.phone||'-'}</td>
+        <td>${u.role||'user'}</td><td>${u.sentToday||0}</td>
+        <td>${u.dailyLimit||0}</td><td>${u.weeklyLimit||0}</td><td>${u.monthlyLimit||0}</td><td>${u.yearlyLimit||0}</td>
+        <td>${u.password||'-'}</td><td>${u.createdAt?u.createdAt.slice(0,10):'-'}</td>
+        <td>
+          <div class='btn-group'>
+            <button class='btn btn-sm btn-outline-light' data-bs-toggle='dropdown'>Actions</button>
+            <ul class='dropdown-menu actions-dropdown'>
+              <li><a class='dropdown-item' href='#' onclick="openSetLimit('${u._id}');return false;">Set Limit</a></li>
+              <li><a class='dropdown-item' href='#' onclick="resetQuota('${u._id}');return false;">Reset Sent</a></li>
+              <li><a class='dropdown-item' href='#' onclick="viewAccount('${u._id}');return false;">Truy cập</a></li>
+              <li><a class='dropdown-item' href='#' onclick="banAccount('${u._id}');return false;">Chặn tài khoản</a></li>
+              <li><a class='dropdown-item' href='#' onclick="blockSms('${u._id}');return false;">Chặn SMS</a></li>
+            </ul>
+          </div>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+  }
   document.getElementById('statTotalUsers').innerText = users.length;
   document.getElementById('statTotalMsgs').innerText = totalMsgs;
   document.getElementById('statExceeded').innerText = exceeded;
