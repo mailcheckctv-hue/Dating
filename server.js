@@ -556,8 +556,27 @@ app.post('/api/admin/backup', auth, requireRole('admin','superadmin'), async (re
 app.get('/api/admin/users', auth, requireRole('admin','superadmin'), async (req,res)=>{
   const limit = Math.min(200, parseInt(req.query.limit||50,10));
   const skip = parseInt(req.query.skip||0,10);
-  const users = await User.find().select('username email role dailySent dailyLimit createdAt').skip(skip).limit(limit).lean();
-  res.json(users);
+  const users = await User.find().skip(skip).limit(limit).lean();
+  // Map dữ liệu cho giao diện mới
+  const mapped = users.map(u => ({
+    email: u.email || '-',
+    username: u.username || '-',
+    income: u.income || '-',
+    job: u.job || '-',
+    phone: u.phone || '-',
+    role: u.role || 'user',
+    sentToday: u.dailySent || 0,
+    dailyLimit: u.dailyLimit || 0,
+    weeklyLimit: u.weeklyLimit || 0,
+    monthlyLimit: u.monthlyLimit || 0,
+    yearlyLimit: u.yearlyLimit || 0,
+    password: u.password ? '******' : '-',
+    createdAt: u.createdAt,
+    isBanned: u.isLocked || false,
+    smsBlocked: u.smsBlocked || false,
+    _id: u._id // vẫn giữ _id để thao tác actions, nhưng không render ra bảng
+  }));
+  res.json(mapped);
 });
 app.post('/api/admin/set-limit', auth, requireRole('admin','superadmin'), async (req,res)=>{
   const { userId, limit } = req.body;
