@@ -138,7 +138,8 @@ function openSetLimit(id){ currentUserId=id; new bootstrap.Modal(document.getEle
 document.getElementById('confirmSetLimitBtn').addEventListener('click', async ()=>{
   const type = document.getElementById('limitType').value;
   const v = Number(document.getElementById('newLimitInput').value)||0;
-  await fetch('/api/admin/set-limit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body: JSON.stringify({ userId: currentUserId, type, value: v })});
+  // FIX: Server endpoint `/api/admin/set-limit` chỉ nhận thuộc tính `limit` để cập nhật `dailyLimit`.
+  await fetch('/api/admin/set-limit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body: JSON.stringify({ userId: currentUserId, limit: v })});
   bootstrap.Modal.getInstance(document.getElementById('setLimitModal')).hide();
   loadUsers();
 });
@@ -146,8 +147,10 @@ async function resetQuota(id){ await fetch('/api/admin/reset-daily/'+id,{method:
 async function banAccount(id){ await fetch('/api/admin/ban/'+id,{method:'POST',headers:{'Authorization':'Bearer '+token}}); loadUsers(); }
 async function blockSms(id){ await fetch('/api/admin/block-sms/'+id,{method:'POST',headers:{'Authorization':'Bearer '+token}}); loadUsers(); }
 function viewAccount(id){ window.location.href='/profile.html?uid='+id; }
-document.getElementById('searchBtn').addEventListener('click', ()=>{ const q = document.getElementById('searchInput').value.trim(); loadUsers(q); });
-document.getElementById('resetBtn').addEventListener('click', ()=>{ document.getElementById('searchInput').value=''; loadUsers(); });
+// FIX: Các element 'searchBtn' và 'resetBtn' không tồn tại trong HTML, gây lỗi và dừng script.
+// Vô hiệu hóa để hàm checkProfile() có thể chạy.
+// document.getElementById('searchBtn').addEventListener('click', ()=>{ const q = document.getElementById('searchInput').value.trim(); loadUsers(q); });
+// document.getElementById('resetBtn').addEventListener('click', ()=>{ document.getElementById('searchInput').value=''; loadUsers(); });
 checkProfile();
 </script>
 </body></html>
